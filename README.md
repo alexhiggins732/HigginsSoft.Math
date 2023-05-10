@@ -1,4 +1,4 @@
-# DotMpi
+# HigginsSoft.Math
 
 ![Nuget](https://img.shields.io/nuget/v/HigginsSoft.Math.svg?style=flat-square) ![Release Tests](https://github.com/alexhiggins732/HigginsSoft.Math/actions/workflows/release.yml/badge.svg) ![Pre-Release Tests](https://github.com/alexhiggins732/HigginsSoft.Math/actions/workflows/pre-release.yml/badge.svg)
 
@@ -86,7 +86,11 @@ The following named methods are available, many with various overloads:
 | `Gcd` | `Mod` | `TryInvertMod` | 
 | `GetBit` | `ModAsInt32` | `Xor` | 
 
-### Prime Generator Methods:
+### Low-level GMP functions.
+
+While the `GmpInt` and `GmpFloat` types offer a fully managed native DotNet experience without the need to worry about managing unsafe types low-level GMP functions are available to throw using `gmp_lib` by importing `MathGmp.Native` which the libary currently uses for access to the native GMP library.
+
+### Prime Generation:
 
 A `PrimeGenerator` can be used to generate a list of primes. The default constructor will generate all primes starting from 2. You can also use the constructor overload to specify a starting and/or maximum prime.
 
