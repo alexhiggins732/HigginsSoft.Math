@@ -53,5 +53,5 @@ jobs:
       run: dotnet pack --configuration Release /p:Version=${{ env.NugetPackageVersion }}${{ steps.nbgv.outputs.BuildMetadataFragment }} --output .
     - name: Push
       if: github.event_name == 'push'  
-      run: dotnet nuget push HigginsSoft.DotMpi.${{ env.NugetPackageVersion }}.nupkg --skip-duplicate --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }}
+      run: dotnet nuget push HigginsSoft.Math.${{ env.NugetPackageVersion }}.nupkg --skip-duplicate --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }}
 

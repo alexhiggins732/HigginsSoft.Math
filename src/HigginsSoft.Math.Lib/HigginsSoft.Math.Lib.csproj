@@ -5,7 +5,49 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<Company>HigginsSoft</Company>
+		<PackageId>HigginsSoft.Math</PackageId>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<Title>HigginsSoft.Math</Title>
+		<Authors>HigginsSoft, alexhiggins732</Authors>
+		<Product>HigginsSoft.Math</Product>
+		<Description>HigginsSoft.Math is a free DotNet library inspired by GmpLib, Yafu, GGNFS, and other libraries that aims to bring high-performance multip-precision big number artihmetic and number theory operations to the DotNet world.</Description>
+		<Copyright>HigginsSoft.Math</Copyright>
+		<PackageProjectUrl>https://github.com/alexhiggins732/Math</PackageProjectUrl>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<RepositoryUrl>https://github.com/alexhiggins732/Math</RepositoryUrl>
+		<PackageTags>csharp,gmp,mpi,Math,prime,prime numbers,number theory,arithmetic,multi-precision arithmetic,big numbers, big integer.</PackageTags>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
+	</PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
+	</ItemGroup>
+	<PropertyGroup>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<SourceLinkCreate>true</SourceLinkCreate>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<Deterministic>true</Deterministic>
+		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+		<!-- Optional: Publish the repository URL in the built .nupkg (in the NuSpec <Repository> element) -->
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+
+		<!-- Optional: Embed source files that are not tracked by the source control manager in the PDB -->
+		<EmbedUntrackedSources>true</EmbedUntrackedSources>
   </PropertyGroup>
+
+	<ItemGroup>
+	  <None Include="..\..\LICENSE">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+	  <None Include="..\..\README.md">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+	</ItemGroup>
+
+
 
   <ItemGroup>
     <Compile Remove="BigInteger.cs" />
