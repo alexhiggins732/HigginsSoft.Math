@@ -110,7 +110,7 @@ namespace HigginsSoft.Math.Lib
 
         public int GetBitValue(int index)
         {
-            index = 5 + ((index >> 1) * 6) + (2 * index & 1);
+            index = 5 + ((index >> 1) * 6) + (2 * (index & 1));
             return index;
         }
     }

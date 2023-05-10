@@ -284,7 +284,7 @@ namespace HigginsSoft.Math.Lib.Tests
 
     }
 
-    namespace a_OpTests
+    namespace OpTests
     {
         [TestClass()]
         public class OpFactory_Tests

@@ -25,8 +25,8 @@ namespace HigginsSoft.Math.Lib
     internal class Generator
     {
 
-        private static string[] IntegerTypeNames = { 
-            typeof(int).Alias(), 
+        private static string[] IntegerTypeNames = {
+            typeof(int).Alias(),
             typeof(uint).Alias(),
             typeof(long).Alias(),
             typeof(ulong).Alias(),
@@ -72,7 +72,7 @@ namespace HigginsSoft.Math.Lib
             var code = sb.ToString();
             var classDefinition = MathUtilClassTemplate.Replace("[body]", code);
             var projectDir = GetMathLibPath();
-            var destPath=Path.Combine(projectDir.FullName, nameof(MathUtil), "Gcd.cs");
+            var destPath = Path.Combine(projectDir.FullName, nameof(MathUtil), "Gcd.cs");
             var fi = new FileInfo(destPath);
             File.WriteAllText(fi.FullName, classDefinition);
         }
@@ -80,15 +80,33 @@ namespace HigginsSoft.Math.Lib
         static DirectoryInfo GetMathLibPath()
         {
             var dir = AppContext.BaseDirectory;
-            var di = new DirectoryInfo(dir);
-          
-            while (di.GetDirectories(nameof(HigginsSoft.Math.Lib)).Count() == 0)
+            if (dir == null)
             {
-                di=di.Parent;
+                throw new Exception("Failed to get AppContext.BaseDirectory");
             }
-            return di.GetDirectories(nameof(HigginsSoft.Math.Lib)).First();
+            var di = new DirectoryInfo(dir);
+            if (di is not null)
+            {
+                while (di.GetDirectories(nameof(HigginsSoft.Math.Lib)).Count() == 0)
+                {
+                    var parent = di.Parent;
+                    if (parent is not null)
+                    {
+                        di = parent;
+                    }
+                    else
+                    {
+                        throw new Exception($"Failed to retrieve parent directory for {di.FullName}");
+                    }
+                }
+                return di.GetDirectories(nameof(HigginsSoft.Math.Lib)).First();
+            }
+            else
+            {
+
+                throw new Exception($"Failed to retrieve directory info for {dir}");
+            }
         }
     }
-
-    
 }
+

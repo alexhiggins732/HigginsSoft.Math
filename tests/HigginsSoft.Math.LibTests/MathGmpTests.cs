@@ -39,9 +39,9 @@ namespace HigginsSoft.Math.Lib.Tests.MathGmpTests
 
         private delegate TResult _Func<out TResult>();
 
-        private string Test(_Func<object> func)
+        private string Test(_Func<object?> func)
         {
-            object result = null;
+            object? result = null;
             try
             {
                 result = func();
@@ -50,7 +50,7 @@ namespace HigginsSoft.Math.Lib.Tests.MathGmpTests
             {
                 return ex.GetType().Name;
             }
-            return result.ToString();
+            return result?.ToString() ?? string.Empty;
         }
 
         #endregion
@@ -816,12 +816,12 @@ namespace HigginsSoft.Math.Lib.Tests.MathGmpTests
         [TestCategory("Memory allocation functions")]
         public void mp_get_memory_functions()
         {
-            allocate_function allocate;
-            reallocate_function reallocate;
-            free_function free;
+            allocate_function? allocate;
+            reallocate_function? reallocate;
+            free_function? free;
 
             // Retrieve the GMP memory allocation functions.
-            allocate = null; reallocate = null; free = null;
+            allocate = null!; reallocate = null!; free = null!;
             gmp_lib.mp_get_memory_functions(ref allocate, ref reallocate, ref free);
             Assert.IsTrue(allocate != null && reallocate != null && free != null);
 
@@ -835,9 +835,9 @@ namespace HigginsSoft.Math.Lib.Tests.MathGmpTests
         public void a_mp_set_memory_functions()
         {
             // Retrieve GMP default memory allocation functions.
-            allocate_function default_allocate = null;
-            reallocate_function default_reallocate = null;
-            free_function default_free = null;
+            allocate_function? default_allocate = null!;
+            reallocate_function? default_reallocate = null!;
+            free_function? default_free = null!;
             gmp_lib.mp_get_memory_functions(ref default_allocate, ref default_reallocate, ref default_free);
 
             // Create and set new memory allocation functions that count the number of times they are called.
@@ -848,9 +848,9 @@ namespace HigginsSoft.Math.Lib.Tests.MathGmpTests
             gmp_lib.mp_set_memory_functions(new_allocate, new_reallocate, new_free);
 
             // Retrieve GMP memory allocation functions.
-            allocate_function allocate = null;
-            reallocate_function reallocate = null;
-            free_function free = null;
+            allocate_function? allocate = null!;
+            reallocate_function? reallocate = null!;
+            free_function? free = null!;
             gmp_lib.mp_get_memory_functions(ref allocate, ref reallocate, ref free);
 
             // Call memory function and assert calls count.
@@ -4152,7 +4152,7 @@ namespace HigginsSoft.Math.Lib.Tests.MathGmpTests
         public void mpz_init_set_str_big_int()
         {
             BigInteger b = BigInteger.Pow(2, 128) - 1;
-            var bHex = b.ToString("x").TrimStart('0'); 
+            var bHex = b.ToString("x").TrimStart('0');
             char_ptr value = new char_ptr(bHex);
 
             mpz_t x = new mpz_t();

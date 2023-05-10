@@ -999,7 +999,7 @@ namespace HigginsSoft.Math.Lib
 
         public int CompareAbsTo(object obj)
         {
-            GmpInt objAsBigInt = obj as GmpInt;
+            GmpInt? objAsBigInt = obj as GmpInt;
 
             if (object.ReferenceEquals(objAsBigInt, null))
             {

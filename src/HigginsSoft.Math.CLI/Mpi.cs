@@ -19,6 +19,7 @@ using System.Diagnostics;
 using System.IO.Pipes;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.Versioning;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -56,7 +57,9 @@ namespace HigginsSoft.Math.CLI
                 Console.WriteLine($"[{DateTime.Now}] {id} {message}");
         }
 
-        public void DebugLine(object message) => DebugLine(message.ToString());
+        public void DebugLine(object? message) 
+            => DebugLine(message?.ToString() ?? string.Empty);
+
         public void DebugLine(string message)
         {
             if (DebugEnabled)
@@ -226,13 +229,9 @@ namespace HigginsSoft.Math.CLI
                     {
                         pipeName = args[2];
                         var command = args[3];
-                        int processorAffinity = clientIndex % Environment.ProcessorCount;
-                        var affinityMask = 1 << processorAffinity;
-                        var p = Process.GetCurrentProcess();
-
                         //Logger.WriteLine($"Setting Processor affinity to {affinityMask} for process {p.Id}");
-
-                        p.ProcessorAffinity = (IntPtr)(affinityMask);
+                        SetProcessor(clientIndex);
+                       
                         Logger.WriteLine($"Running client {string.Join(" ", args)}");
                         var sw = Stopwatch.StartNew();
                         LaunchSieve(startIndex, endIndex, pipeName);
@@ -247,6 +246,31 @@ namespace HigginsSoft.Math.CLI
 
             }
 
+
+
+            [SupportedOSPlatformGuard("windows")]  // The platform guard attributes used
+            [SupportedOSPlatformGuard("linux")]
+            private static readonly bool _isWindowsOrLinux = OperatingSystem.IsWindows() || OperatingSystem.IsLinux();
+
+            private static void SetProcessor(int clientIndex)
+            {
+                int processorAffinity = clientIndex % Environment.ProcessorCount;
+                var affinityMask = 1 << processorAffinity;
+                var p = Process.GetCurrentProcess();
+
+
+                p.PriorityClass = ProcessPriorityClass.BelowNormal;
+                if (_isWindowsOrLinux)
+                {
+                    Console.WriteLine($"[{DateTime.Now}] {id} Setting Processor affinity to {affinityMask} for process {p.Id}");
+                    p.ProcessorAffinity = (IntPtr)(affinityMask);
+                }
+                else
+                {
+                    Console.WriteLine($"[{DateTime.Now}] {id} Setting Processor affinity nonly supported on Windows and Linux");
+                }
+
+            }
 
             private static string _pipeName = string.Empty;
             private static string pipeName

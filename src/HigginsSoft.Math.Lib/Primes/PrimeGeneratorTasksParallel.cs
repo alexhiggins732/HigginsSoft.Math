@@ -12,12 +12,8 @@
 
 */
 
-using System;
 using System.Collections;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Diagnostics;
-using System.Threading;
 
 namespace HigginsSoft.Math.Lib
 {
@@ -63,7 +59,7 @@ namespace HigginsSoft.Math.Lib
         //P_31 = 1 << 31,
     }
 
-    public class PrimeGeneratorParallel : IEnumerable<int>, ISieveOfHiggins
+    public class PrimeGeneratorTasksParallel : IEnumerable<int>, ISieveOfHiggins
     {
         /// todo: calculate initial sieve with small primes already crossed of for each window.
         static readonly int[] arr = Enumerable.Repeat(-1, 342 * 2).ToArray();
@@ -89,13 +85,13 @@ namespace HigginsSoft.Math.Lib
         public int BitIndex => bitIndex;
 
 
-        private List<Mod6SievePrime>[] sievePrimes = null;
+        private List<Mod6SievePrime>[] sievePrimes = null!;
 
         public Action incNext = null!;
 
         readonly int threadMask;
         readonly int threadModMask;
-        public PrimeGeneratorParallel(int maxPrime = 2147483647, ProcessorCount numThreads = ProcessorCount.P_0)
+        public PrimeGeneratorTasksParallel(int maxPrime = 2147483647, ProcessorCount numThreads = ProcessorCount.P_0)
         {
 
             this.maxPrime = maxPrime;

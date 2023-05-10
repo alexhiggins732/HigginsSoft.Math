@@ -205,6 +205,51 @@ namespace HigginsSoft.Math.Lib
 
         }
 
+        public static int GetNextPrime(int value)
+        {
+            var result = GetNextPrime((GmpIntConvertible)value);
+            return (int)result;
+        }
+        public static uint GetNextPrime(uint value)
+        {
+            var result = GetNextPrime((GmpIntConvertible)value);
+            return (uint)result;
+        }
+        public static long GetNextPrime(long value)
+        {
+            var result = GetNextPrime((GmpIntConvertible)value);
+            return (int)result;
+        }
+        public static ulong GetNextPrime(ulong value)
+        {
+            var result = GetNextPrime((GmpIntConvertible)value);
+            return (uint)result;
+        }
+        public static GmpInt GetNextPrime(GmpIntConvertible value)
+        {
+            var result = GetNextPrime(value.Value);
+            return result;
+        }
+
+        public static GmpInt GetNextPrime(GmpInt value)
+        {
+
+            GmpInt z = value;
+            if (z.IsEven)
+            {
+                z += 1;
+            }
+
+            //TODO: only test candidates that +/-1 mod 6
+            var test = gmp_lib.mpz_probab_prime_p(z, 20);
+            while (test == 0)
+            {
+                z += 2;
+                test = gmp_lib.mpz_probab_prime_p(z, 20);
+            }
+            return z;
+
+        }
 
     }
     public class GmpIntConvertible

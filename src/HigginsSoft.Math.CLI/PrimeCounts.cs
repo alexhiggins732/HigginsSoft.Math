@@ -87,7 +87,7 @@ namespace HigginsSoft.Math.CLI
         private void TestPrimeGeneratorParallel(int bits, long max, ProcessorCount threadCount, out int count, out int previousPrime, out int currentPrime)
         {
 
-            var gen = new PrimeGeneratorParallel((int)max);
+            var gen = new PrimeGeneratorTasksParallel((int)max);
             count = 0;
             var iter = gen.GetEnumerator();
             while (iter.MoveNext())

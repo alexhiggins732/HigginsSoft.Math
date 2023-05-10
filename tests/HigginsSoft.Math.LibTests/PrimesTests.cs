@@ -13,7 +13,7 @@
 */
 
 #define SKIP_LONG_TESTS
-#undef SKIP_LONG_TESTS  // uncomment to enable long tests
+//#undef SKIP_LONG_TESTS  // uncomment to enable long tests
 
 //some tests take several seconds and up to a minute to complete.
 // These tests are disabled using SKIP_LONG_TESTS to keep unit testing short, and enable efficient Live Unit Testing
@@ -617,13 +617,13 @@ namespace HigginsSoft.Math.Lib.Tests
     namespace PrimeGeneratorTests
     {
         [TestClass]
-        public class PrimeGeneratorParallelTests
+        public class PrimeGeneratorTasksParallelTests
         {
 
             private void TestPrimeGenerator(int bits, long max, ProcessorCount threadCount, out int count, out int previousPrime, out int currentPrime)
             {
 
-                var gen = new PrimeGeneratorParallel((int)max, threadCount);
+                var gen = new PrimeGeneratorTasksParallel((int)max, threadCount);
                 count = 0;
 
                 while (true)
@@ -683,7 +683,7 @@ namespace HigginsSoft.Math.Lib.Tests
                 var testPrimes = new[] { 2, 3, 5, 7, 65537, 262147, 1048583 };
                 foreach (var prime in testPrimes)
                 {
-                    var gen = new PrimeGeneratorParallel(prime);
+                    var gen = new PrimeGeneratorTasksParallel(prime);
                     var iter = gen.GetEnumerator();
                     while (iter.MoveNext()) ;
                     Assert.AreEqual(prime, iter.Current);
@@ -1043,7 +1043,9 @@ namespace HigginsSoft.Math.Lib.Tests
                 TestRangeCompareTest(24);
             }
 
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_RangeCompare_P28_Tests()
             {
@@ -1051,8 +1053,9 @@ namespace HigginsSoft.Math.Lib.Tests
             }
 
 
-
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_RangeCompare_P31_Tests()
             {

@@ -99,6 +99,10 @@ namespace HigginsSoft.Math.Lib
             if (MathUtil.IsProbablePrime(startPrime))
             {
                 startPrime = MathUtil.GetPreviousPrime(startPrime);
+            } 
+            else
+            {
+                startPrime = MathUtil.GetNextPrime(startPrime);
             }
 
             if (startValue <= 2) return;
@@ -136,19 +140,14 @@ namespace HigginsSoft.Math.Lib
             }
 
             // move to start prime bit index
-            var c = _current;
-            var p = _previous;
-            if (startWindow > 0 && windowBitIndex > 1)
+            //TODO: handle case where windowBitIndex=0
+            if (windowBitIndex > 1)
             {
                 bitIndex = windowBitIndex - 1;
-                //incNext();
                 return;
             }
-            
-            while (bitIndex < windowBitIndex-1)
-            {
-                incNext();
-            }
+     
+           
 
         }
         public PrimeGeneratorUnsafe(int maxPrime = 2147483647)
@@ -682,7 +681,6 @@ namespace HigginsSoft.Math.Lib
             }
             if (value >= windowSize)
             {
-                string bp = "";
                 value -= windowSize;
             }
             else if (value >= bitLength)
