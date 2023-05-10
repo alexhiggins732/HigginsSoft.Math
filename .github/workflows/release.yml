@@ -28,7 +28,7 @@ jobs:
       id: nbgv
     - name: Set Package Version
       run: |
-          echo "NugetPackageVersion=${{ steps.nbgv.outputs.SimpleVersion }}-alpha.${{ steps.nbgv.outputs.VersionRevision }}" >> "$GITHUB_ENV"
+          echo "NugetPackageVersion=${{ steps.nbgv.outputs.SimpleVersion }}.${{ steps.nbgv.outputs.VersionRevision }}" >> "$GITHUB_ENV"
     - name: Diplay Package Version
       run: echo "PackageVersion=${{ env.NugetPackageVersion }}"
 
