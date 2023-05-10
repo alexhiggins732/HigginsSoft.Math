@@ -4,7 +4,7 @@
 
 # Installation
 
-HigginsSoft.Math is available as [nuget package](https://www.nuget.org/packages/HigginsSoft.Math/) can be installed using nuget:
+HigginsSoft.Math is available as [NuGet package](https://www.nuget.org/packages/HigginsSoft.Math/) can be installed using NuGet:
 - Visual Studio Package Manager
  - `Install-Package HigginsSoft.Math` 
 - DotNet CLI
@@ -12,7 +12,7 @@ HigginsSoft.Math is available as [nuget package](https://www.nuget.org/packages/
 -  PackageReference
  - `<PackageReference Include="HigginsSoft.Math" />` 
 
-Instructions for other package managers are availabe on the nuget package page.
+Instructions for other package managers are availabe on the [HigginsSoft.Math NuGet package](https://www.nuget.org/packages/HigginsSoft.Math/) page.
 
 # Introduction
 
