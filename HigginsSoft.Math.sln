@@ -1,0 +1,76 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.33516.290
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{98101100-8357-4130-90F1-A0B438E6ED47}"
+	ProjectSection(SolutionItems) = preProject
+		docs\Primes.md = docs\Primes.md
+		docs\PrimesGeneratorMod6.md = docs\PrimesGeneratorMod6.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{51BC2819-A9C1-465B-8572-895B50B7B9B2}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HigginsSoft.Math.CLI", "src\HigginsSoft.Math.CLI\HigginsSoft.Math.CLI.csproj", "{46A66DF4-E093-48D7-9D2B-3DF68DD1B3F7}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HigginsSoft.Math.Demos", "src\HigginsSoft.Math.Demos\HigginsSoft.Math.Demos.csproj", "{ED2BE587-7FD8-454F-87CA-D6C2CD6FE85A}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HigginsSoft.Math.Lib", "src\HigginsSoft.Math.Lib\HigginsSoft.Math.Lib.csproj", "{1B3716F2-D03C-4D71-B159-0446C1B5C4BE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{CEF1B2F7-5BAC-4451-A453-73C71A7E222A}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HigginsSoft.Math.Lib.Tests", "tests\HigginsSoft.Math.LibTests\HigginsSoft.Math.Lib.Tests.csproj", "{1FE5D3F2-B394-454F-92AA-71CD8FC7B83F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "files", "files", "{CE99DB4A-3E67-41D2-912C-3087BE4AFF96}"
+	ProjectSection(SolutionItems) = preProject
+		HigginsSoft.Math.sln.licenseheader = HigginsSoft.Math.sln.licenseheader
+		LICENSE = LICENSE
+		README.md = README.md
+		version.json = version.json
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{F5842704-65E6-4E45-AFBC-EA93ADCDBA50}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{64CC7115-24BD-4C8E-A31C-6421F4B439DC}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\pre-release.yml = .github\workflows\pre-release.yml
+		.github\workflows\release.yml = .github\workflows\release.yml
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{46A66DF4-E093-48D7-9D2B-3DF68DD1B3F7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{46A66DF4-E093-48D7-9D2B-3DF68DD1B3F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{46A66DF4-E093-48D7-9D2B-3DF68DD1B3F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{46A66DF4-E093-48D7-9D2B-3DF68DD1B3F7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ED2BE587-7FD8-454F-87CA-D6C2CD6FE85A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ED2BE587-7FD8-454F-87CA-D6C2CD6FE85A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ED2BE587-7FD8-454F-87CA-D6C2CD6FE85A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ED2BE587-7FD8-454F-87CA-D6C2CD6FE85A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1B3716F2-D03C-4D71-B159-0446C1B5C4BE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1B3716F2-D03C-4D71-B159-0446C1B5C4BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1B3716F2-D03C-4D71-B159-0446C1B5C4BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1B3716F2-D03C-4D71-B159-0446C1B5C4BE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1FE5D3F2-B394-454F-92AA-71CD8FC7B83F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1FE5D3F2-B394-454F-92AA-71CD8FC7B83F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1FE5D3F2-B394-454F-92AA-71CD8FC7B83F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1FE5D3F2-B394-454F-92AA-71CD8FC7B83F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{46A66DF4-E093-48D7-9D2B-3DF68DD1B3F7} = {51BC2819-A9C1-465B-8572-895B50B7B9B2}
+		{ED2BE587-7FD8-454F-87CA-D6C2CD6FE85A} = {51BC2819-A9C1-465B-8572-895B50B7B9B2}
+		{1B3716F2-D03C-4D71-B159-0446C1B5C4BE} = {51BC2819-A9C1-465B-8572-895B50B7B9B2}
+		{1FE5D3F2-B394-454F-92AA-71CD8FC7B83F} = {CEF1B2F7-5BAC-4451-A453-73C71A7E222A}
+		{64CC7115-24BD-4C8E-A31C-6421F4B439DC} = {F5842704-65E6-4E45-AFBC-EA93ADCDBA50}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6EA3AC23-3EF3-4369-9D3D-913A004050BF}
+	EndGlobalSection
+EndGlobal
