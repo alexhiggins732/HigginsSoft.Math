@@ -35,7 +35,7 @@ namespace HigginsSoft.Math.Lib
         private static readonly GmpInt s_one_neg = new GmpInt(-1);
 
         private static readonly GmpInt s_two = new GmpInt(2);
-        private static readonly GmpInt s_three= new GmpInt(3);
+        private static readonly GmpInt s_three = new GmpInt(3);
         private static readonly GmpInt s_five = new GmpInt(5);
         private static readonly GmpInt s_ten = new GmpInt(10);
 
@@ -77,9 +77,17 @@ namespace HigginsSoft.Math.Lib
         }
 
         public GmpInt(int value)
-
         {
-            gmp_lib.mpz_init_set_si(Data, value);
+            if (value > -1)
+            {
+                gmp_lib.mpz_init_set_si(Data, value);
+            }
+            else
+            {
+                //linux bug fix. gmp_lib initializes negative values a uint even when call set_si.
+                gmp_lib.mpz_init_set_si(Data, -value);
+                gmp_lib.mpz_neg(Data, Data);
+            }
         }
 
         public GmpInt(uint value)
@@ -238,7 +246,18 @@ namespace HigginsSoft.Math.Lib
             => gmp_lib.mpz_cmp(this.Data, other.Data);
 
         public int CompareTo(int other)
-           => gmp_lib.mpz_cmp_si(this.Data, other);
+        {
+            if (other > -1)
+            {
+                return gmp_lib.mpz_cmp_si(this.Data, other);
+            }
+            else
+            {
+                //Linux bug, signed ints are converted to uint.
+                return gmp_lib.mpz_cmp(this.Data, (GmpInt)other);
+            }
+        }
+
 
         public int CompareTo(uint other)
             => gmp_lib.mpz_cmp_ui(this.Data, other);

@@ -26,6 +26,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "files", "files", "{CE99DB4A
 		HigginsSoft.Math.sln.licenseheader = HigginsSoft.Math.sln.licenseheader
 		LICENSE = LICENSE
 		README.md = README.md
+		testenvironments.json = testenvironments.json
 		version.json = version.json
 	EndProjectSection
 EndProject

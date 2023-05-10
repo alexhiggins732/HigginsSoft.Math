@@ -62,7 +62,15 @@ namespace HigginsSoft.Math.Lib
 
         public GmpFloat(int value)
         {
-            gmp_lib.mpf_init_set_si(Data, value);
+            if (value > -1)
+            {
+                gmp_lib.mpf_init_set_si(Data, value);
+            }
+            else
+            {
+                gmp_lib.mpf_init_set_si(Data, -value);
+                gmp_lib.mpf_neg(Data, Data);
+            }
         }
 
         public GmpFloat(uint value)
@@ -174,8 +182,17 @@ namespace HigginsSoft.Math.Lib
             => gmp_lib.mpf_cmp(this.Data, other.Data);
 
         public int CompareTo(int other)
-           => gmp_lib.mpf_cmp_si(this.Data, other);
-
+        {
+            if (other > -1)
+            {
+                return gmp_lib.mpf_cmp_si(this.Data, other);
+            }
+            else
+            {
+                // linux bug. Negative ints are converted to uint.
+                return gmp_lib.mpf_cmp(this.Data, ((GmpFloat)other).Data);
+            }
+        }
         public int CompareTo(uint other)
             => gmp_lib.mpf_cmp_ui(this.Data, other);
 

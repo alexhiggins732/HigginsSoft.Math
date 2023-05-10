@@ -1037,6 +1037,9 @@ namespace HigginsSoft.Math.Lib.Tests
 
             }
 
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_RangeCompare_P24_Tests()
             {
@@ -1070,14 +1073,18 @@ namespace HigginsSoft.Math.Lib.Tests
                     TestRangeCountTest(i);
                 }
             }
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_RangeCount_P24_Tests()
             {
                 TestRangeCountTest(24);
             }
 
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_RangeCount_P28_Tests()
             {

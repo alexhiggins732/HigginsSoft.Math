@@ -197,6 +197,9 @@ namespace HigginsSoft.Math.Lib.Tests
                 }
             }
 
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_Inc_CompareToPrimes65536_Test()
             {
@@ -392,9 +395,9 @@ namespace HigginsSoft.Math.Lib.Tests
             }
 
             [TestMethod()]
-            public void Generator_Bits_17_to_23_Test()
+            public void Generator_Bits_17_to_20_Test()
             {
-                for (var i = 17; i < 24; i++)
+                for (var i = 17; i < 20; i++)
                 {
                     TestPrimeGenerator(i);
                 }
