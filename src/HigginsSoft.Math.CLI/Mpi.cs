@@ -100,8 +100,8 @@ namespace HigginsSoft.Math.CLI
 
                             commandArgs = commandArgs.Select(x => x.Replace(",", "").Trim()).ToArray();
                             if (args.Length == 5
-                                && int.TryParse(commandArgs[0], out int start)
-                                 && int.TryParse(commandArgs[1], out int end)
+                                && uint.TryParse(commandArgs[0], out uint start)
+                                 && uint.TryParse(commandArgs[1], out uint end)
                                 )
                             {
                                 RunRangeThreads(numThreads, start, end);
@@ -126,22 +126,22 @@ namespace HigginsSoft.Math.CLI
 
             }
 
-            private static void RunRangeThreads(int numThreads, int start, int end)
+            private static void RunRangeThreads(int numThreads, uint start, uint end)
             {
                 var sieveSize = end - start;
 
                 var exeName = Process.GetCurrentProcess().ProcessName;
                 var exeFileName = $"{exeName}.exe";
 
-                int rangeSize = (end - start) / numThreads;
-                int[] threadStarts = Enumerable.Range(0, numThreads)
-                                               .Select(i => i * rangeSize + start)
+                uint rangeSize = (uint)((end - start) / numThreads);
+                uint[] threadStarts = Enumerable.Range(0, numThreads)
+                                               .Select(i => (uint)i * rangeSize + start)
                                                .ToArray();
                 // Each thread starts at threadStarts[i] and ends at threadStarts[i+1]-1 (except for the last thread)
                 for (int i = 0; i < numThreads; i++)
                 {
-                    int threadStart = threadStarts[i];
-                    int threadEnd = (i < numThreads - 1) ? threadStarts[i + 1] - 1 : end;
+                    uint threadStart = threadStarts[i];
+                    uint threadEnd = (i < numThreads - 1) ? threadStarts[i + 1] - 1 : end;
                     // TODO: Launch thread with start=threadStart and end=threadEnd
                 }
 
@@ -210,8 +210,14 @@ namespace HigginsSoft.Math.CLI
                     sum += resultCount;
                     Logger.WriteLine($"Result {i} {string.Join(", ", resultCount)}");
                 }
-                Console.WriteLine($"Total {sum}");
-                Console.WriteLine($"[{DateTime.Now}] Finished in {sw.Elapsed}");
+                Console.WriteLine($"[{DateTime.Now}] Completed {startInfos.Length} processes in {sw.Elapsed}");
+                Console.WriteLine();
+                Console.WriteLine("".PadLeft(Console.BufferWidth, '='));
+                Console.WriteLine($"Prime Count: {sum} - Range {startInfos.First().Start.ToString("N0")} to {startInfos.Last().End.ToString("N0")} ");
+                Console.WriteLine();
+                Console.WriteLine("".PadLeft(Console.BufferWidth, '='));
+                Console.WriteLine();
+               
             }
 
             public static void RunRangeThread(string[] args)
@@ -223,8 +229,8 @@ namespace HigginsSoft.Math.CLI
                 {
                     if (
                         int.TryParse(args[1], out var clientIndex)
-                        && int.TryParse(args[4], out var startIndex)
-                        && int.TryParse(args[5], out var endIndex)
+                        && uint.TryParse(args[4], out var startIndex)
+                        && uint.TryParse(args[5], out var endIndex)
                         )
                     {
                         pipeName = args[2];
@@ -281,13 +287,13 @@ namespace HigginsSoft.Math.CLI
             {
                 get => $"[{pipeName}]"; set { Logger.Id = pipeName = value; }
             }
-            private static void LaunchSieve(int startIndex, int endIndex, string pipeName)
+            private static void LaunchSieve(uint startIndex, uint endIndex, string pipeName)
             {
 
 
                 var count = 0;
 
-                var gen = new PrimeGeneratorUnsafe(startIndex, endIndex);
+                var gen = new PrimeGeneratorUnsafeUint(startIndex, endIndex);
                 Logger.DebugLine($"Created generator({startIndex}, {endIndex})");
                 var iter = gen.GetEnumerator();
                 while (iter.MoveNext())
@@ -383,13 +389,13 @@ namespace HigginsSoft.Math.CLI
             private class ThreadArgument
             {
                 public int Index { get; set; }
-                public int Start { get; set; }
-                public int End { get; set; }
+                public uint Start { get; set; }
+                public uint End { get; set; }
                 public string Name { get; set; }
                 public string Exe { get; set; }
                 public string Command { get; set; }
                 public string Args => $"thread {Index} {Name} {Command} {Start} {End}";
-                public ThreadArgument(int index, int start, int end, string name, string exe, string command)
+                public ThreadArgument(int index, uint start, uint end, string name, string exe, string command)
                 {
                     Index = index;
                     Start = start;

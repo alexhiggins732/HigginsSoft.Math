@@ -94,7 +94,13 @@ While the `GmpInt` and `GmpFloat` types offer a fully managed native DotNet expe
 
 A `PrimeGenerator` can be used to generate a list of primes. The default constructor will generate all primes starting from 2. You can also use the constructor overload to specify a starting and/or maximum prime.
 
-The generator is able to produce all primes up to 2^31 in .5 seconds when ran in parallel mode using [HigginsSoft.DotMpi](https://github.com/alexhiggins732/DotMpi) to launch multi-processor sieving threads.
+The generator is able to produce all primes up to 2^31 in ~.5 seconds when ran in parallel mode using [HigginsSoft.DotMpi](https://github.com/alexhiggins732/DotMpi) to launch multi-processor sieving threads.
+![HigginsSoft.Math Prime Generator](https://raw.githubusercontent.com/alexhiggins732/HigginsSoft.Math/main/docs/images/Sieve2p32-16threads.png)
+
+Using the `uint` data type has a sligh performance hit but the generator can produce all primes up to 2^32 in a little over 1 second.
+
+![HigginsSoft.Math Prime Generator](https://raw.githubusercontent.com/alexhiggins732/HigginsSoft.Math/main/docs/images/Sieve2p32-16threads.png)
+
 
 ## Roadmap
 

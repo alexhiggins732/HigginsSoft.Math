@@ -89,6 +89,10 @@ namespace HigginsSoft.Math.Lib
     public class PrimeData
     {
         public const int MaxIntPrime = 2147483647;
+        public const uint MaxUintPrime = 4294967291;
+        public const long MaxLongPrime = long.MaxValue;
+        public const ulong MaxULongPrime = ulong.MaxValue;
+
         public static Dictionary<int, PrimeData> Counts = (new PrimeData[]
         {
             new(1,1, 2,3),

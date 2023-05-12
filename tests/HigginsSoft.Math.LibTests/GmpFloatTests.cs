@@ -115,6 +115,7 @@ namespace HigginsSoft.Math.Lib.Tests.GmpFloatTests
 
             a = int.MinValue;
             Assert.IsTrue(a == int.MinValue);
+            var aint = (int)a;
             Assert.IsTrue((int)a == int.MinValue);
 
             a = int.MaxValue;

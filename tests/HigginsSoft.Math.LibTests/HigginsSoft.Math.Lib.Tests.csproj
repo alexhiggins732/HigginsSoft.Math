@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\DotMpi\src\DotMpi\DotMpi.csproj" />
     <ProjectReference Include="..\..\src\HigginsSoft.Math.Lib\HigginsSoft.Math.Lib.csproj" />
   </ItemGroup>
 
