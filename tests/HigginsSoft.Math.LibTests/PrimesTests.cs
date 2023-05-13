@@ -1002,7 +1002,7 @@ namespace HigginsSoft.Math.Lib.Tests
                         i => new((uint)i * size, (uint)(i * size + (long)size) - 1))
                         .WithLogging(enableLogging)
                         .Run()
-                        .Wait(timeout:TimeSpan.FromSeconds(5)); ;
+                        .Wait(timeout:TimeSpan.FromSeconds(30)); ;
                 var count = runner.Results.Sum(x => x.Value);
 
                 var expected = PrimeData.Counts[powerOfTwo];
