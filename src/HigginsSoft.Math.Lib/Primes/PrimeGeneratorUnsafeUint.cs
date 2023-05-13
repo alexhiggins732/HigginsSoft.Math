@@ -22,13 +22,14 @@ using System.Runtime.CompilerServices;
 
 namespace HigginsSoft.Math.Lib
 {
-    public class PrimeGeneratorUnsafe : IPrimeGenerator
+    public class PrimeGeneratorUnsafeUint : IPrimeGenerator<uint>
     {
         /// todo: calculate initial sieve with small primes already crossed of for each window.
         //static readonly int[] arr = Enumerable.Repeat(-1, 342 * 2).ToArray();
         //static readonly int[] arr = Enumerable.Repeat(-1, 1000 * 2).ToArray();
         //static readonly int[] arr = Enumerable.Repeat(-1, 5 * 2 * 7 * 2 * 11 * 2).ToArray();
-        static readonly int[] arr = PrimeGeneratorPreSieve.Wheel11.Concat(PrimeGeneratorPreSieve.Wheel11).Select(x => (int)x).ToArray();
+
+        static readonly int[] arr = PrimeGeneratorPreSieve.Wheel11.Concat(PrimeGeneratorPreSieve.Wheel11).ToArray();
 
         private int[] sieve = null!;
         private int[] sievePrimes = new int[6542];
@@ -36,20 +37,22 @@ namespace HigginsSoft.Math.Lib
         private int[] highindices = new int[6542];
 
         internal int BitLength;
-        private int _current = -1;
-        private int _previous = -1;
+        private uint _current = 0;
+        private uint _previous = 0;
         int bitIndex = -1;
-        int value;
+        uint value;
 
-        public int Current => _current;
-        public int Previous => _previous;
+        public uint Current => _current;
+        public uint Previous => _previous;
 
         private int window;
         private int windowBits;
-        private int maxPrime;
+        private uint maxPrime;
+        private uint startValue;
+        private uint endValue;
         private int maxSievePrime;
 
-        public int MaxPrime => maxPrime;
+        public uint MaxPrime => maxPrime;
 
         public int CurrentWindow => Window;
         private int Window { get => window; set => windowBits = (window = value) * BitLength; }
@@ -60,7 +63,7 @@ namespace HigginsSoft.Math.Lib
 
         Action incNext = null!;
 
-        public PrimeGeneratorUnsafe() : this(PrimeData.MaxIntPrime) { }
+        public PrimeGeneratorUnsafeUint() : this(PrimeData.MaxUintPrime) { }
 
 
         bool logOffsets = bool.Parse(bool.TrueString);
@@ -69,10 +72,11 @@ namespace HigginsSoft.Math.Lib
         /// </summary>
         /// <param name="startValue"></param>
         /// <param name="maxPrime"></param>
-        public PrimeGeneratorUnsafe(int startValue, int endValue)
+        public PrimeGeneratorUnsafeUint(uint startValue, uint endValue)
             : this(endValue)
         {
-
+            this.startValue = startValue;
+            this.endValue = endValue;
             if (endValue < startValue)
             {
                 throw new ArgumentException($"End value ({endValue}) must be greater than start value ({startValue})");
@@ -94,7 +98,7 @@ namespace HigginsSoft.Math.Lib
             {
                 startPrime = MathUtil.GetNextPrime(startPrime);
             }
-
+            this.startValue = startValue;
             if (startValue <= 2) return;
             if (startValue == 3) { incNext(); return; }
             if (startValue == 5) { incNext(); incNext(); return; }
@@ -140,7 +144,7 @@ namespace HigginsSoft.Math.Lib
 
 
         }
-        public PrimeGeneratorUnsafe(int maxPrime = PrimeData.MaxIntPrime)
+        public PrimeGeneratorUnsafeUint(uint maxPrime = PrimeData.MaxUintPrime)
         {
             this.maxPrime = maxPrime;
             maxSievePrime = (int)System.Math.Ceiling(System.Math.Sqrt(maxPrime));
@@ -294,72 +298,6 @@ namespace HigginsSoft.Math.Lib
                 mask = 0;
             }
 
-
-
-            //index++;
-
-            //int wordIndex = index >> 5; // index / 32
-            //int wordOffset = index & 31; // index % 32
-
-            //uint word = (uint)sieve[wordIndex];
-            //word >>= wordOffset;
-
-            //if (word == 0)
-            //{
-            //    index += 32-wordOffset;
-            //    if (index == bitLength)
-            //    {
-            //        sieveNextWindow();
-            //    }
-            //    word = (uint)sieve[++wordIndex];
-            //    while (word == 0)
-            //    {
-            //        index += 32;
-            //        if (index==bitLength)
-            //        {
-            //            sieveNextWindow();
-            //        }
-            //        word = (uint)sieve[++wordIndex];
-            //    }
-            //}
-            //while ((word & 1) == 0)
-            //{
-            //    index++;
-            //    word >>= 1;
-
-            //}
-            /* TODO: optimze read by elimating word look and mask on each step
-            index++;
-            
-            
-            int word = sieve[bitMask];
-           
-            int bitCount = index & 31;
-            word >>= index & 31;
-            while (index < bitLength)
-            {
-     
-                for (; word != 0 && (bitMask = (word & 1)) == 0; bitCount++)
-                {
-                    word >>= 1;
-                    index++;
-                }
-                if (bitMask == 1)
-                {
-                    break;
-                }
-                index += (32-bitCount);
-                if (index == bitLength)
-                {
-                    sieveNextWindow();
-                }
-                bitCount = 0;
-                bitMask = index >> 5;
-                word = sieve[bitMask];
-
-            }
-           */
-
             value = GetBitWindowValue(index);
             //value = 5 + ((index >> 1) * 6) + (2 * (index & 1)) + windowBits;
 
@@ -369,6 +307,7 @@ namespace HigginsSoft.Math.Lib
 
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void readSieve()
         {
             readNextPrime();
@@ -644,7 +583,7 @@ namespace HigginsSoft.Math.Lib
             return true;
 
         }
-        int calcAbsFromOffset(int offsetValue, int step, int windowSize)
+        int calcAbsFromOffset(uint offsetValue, int step, int windowSize)
         {
             int offset = GetBitIndex(offsetValue);
 
@@ -878,6 +817,11 @@ namespace HigginsSoft.Math.Lib
             ref int value = ref lowindices[0];      //does seem to effect time, but better not to allocate
             //var sievePrimes = this.sievePrimes;     //local variable without ref gives sligh performance increase
             int primecount = this.primecount;
+            if (primecount == -1)
+            {
+                return false;
+
+            }
             unsafe
             {
                 //fixed (int* lowindices = this.lowindices)
@@ -887,8 +831,6 @@ namespace HigginsSoft.Math.Lib
                     int* sievePrime = sievePrimes;
                     //int* low = lowindices;
                     //int* high = highindices;
-                    int* lastPrime = sievePrime + primecount;
-
                     for (var i = 0; i <= primecount; i++, sievePrime++)
                     {
                         value = ref lowindices[i];
@@ -1016,8 +958,9 @@ namespace HigginsSoft.Math.Lib
 
             if (value <= maxSievePrime)
             {
-                int prime = _current;
-                var x = new SievePrime(prime, bitIndex, this);
+                int prime = (int)_current;
+                SievePrime x = null!;
+                x = new SievePrime(prime, bitIndex, this);
                 if (value < 13)
                 {
                     x.SieveTo(BitLength);
@@ -1105,13 +1048,26 @@ namespace HigginsSoft.Math.Lib
             }
         }
 
-
-        public IEnumerator<int> GetEnumerator()
+        public IEnumerator<uint> GetEnumerator()
+            => GetEnumerator(false);
+        public IEnumerator<uint> GetEnumerator(bool useIntGenerator)
         {
-            while (value < maxPrime)
+            if (useIntGenerator && maxPrime <= PrimeData.MaxIntPrime)
             {
-                incNext();
-                yield return value;
+                var gen = new PrimeGeneratorUnsafe((int)this.startValue, (int)maxPrime);
+                var iter = gen.GetEnumerator();
+                while (iter.MoveNext())
+                {
+                    yield return (uint)iter.Current;
+                }
+            }
+            else
+            {
+                while (value < maxPrime)
+                {
+                    incNext();
+                    yield return value;
+                }
             }
         }
 
@@ -1123,7 +1079,7 @@ namespace HigginsSoft.Math.Lib
         //Return the bit array index of the value n,
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int GetBitIndex(int value) => (value / 3) - 1;
+        public int GetBitIndex(uint value) => (int)(value / 3) - 1;
         /*{
             int index = (value / 6) << 1;
             var res = (value % 6);
@@ -1133,7 +1089,7 @@ namespace HigginsSoft.Math.Lib
             return index;
         }*/
 
-        public int GetBitIndexForCurrentWindow(int value)
+        public int GetBitIndexForCurrentWindow(uint value)
         {
             int index = GetBitIndex(value);
             index = index - windowBits;
@@ -1142,22 +1098,23 @@ namespace HigginsSoft.Math.Lib
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         //Return the value represented by bitindex
-        public int GetBitWindowValue(int index)
+        public uint GetBitWindowValue(int index)
             => GetBitValue(index + windowBits);
 
 
         //Return the value represented by bitindex
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int GetBitValue(int index)
+        public uint GetBitValue(int index)
         {
             //index = 5 + ((index >> 1) * 6) + (2 * (index & 1));
             //index = (((index + 2) * 3) + -1) - (index & 1);
             var m = index & 1;
-            index += 2;
-            index *= 3;
-            index -= 1;
-            index -= m;
-            return index;
+            long result = index;
+            result += 2;
+            result *= 3;
+            result -= 1;
+            result -= m;
+            return (uint)result;
         }
 
         private class SievePrime
@@ -1165,14 +1122,14 @@ namespace HigginsSoft.Math.Lib
             internal int lowBitIndex;
             internal int highBitIndex;
             private int step;
-            private PrimeGeneratorUnsafe sieve;
+            private PrimeGeneratorUnsafeUint sieve;
 
             public int Value { get; }
             public int LowBitIndex { get => lowBitIndex; set => lowBitIndex = value; }
             public int HighBitIndex { get => highBitIndex; set => highBitIndex = value; }
             public int Step => step;
 
-            public SievePrime(int current, int bitIndex, PrimeGeneratorUnsafe sieve)
+            public SievePrime(int current, int bitIndex, PrimeGeneratorUnsafeUint sieve)
             {
                 Value = current;
                 this.sieve = sieve;
@@ -1181,20 +1138,20 @@ namespace HigginsSoft.Math.Lib
                 var intersect = current * 6;
                 var low = intersect - current;
                 var high = intersect + current;
-                var sq = current * current;
+                var sq = (long)current * current;
 
 
                 //while (low < sq)
                 //{
                 //    low += intersect;
                 //}
-                low = calculate(low, intersect, sq);
+                uint lowIntersect = calculate(low, intersect, sq);
 
                 //while (high < sq)
                 //{
                 //    high += intersect;
                 //}
-                high = calculate(high, intersect, sq);
+                uint highIntersect = calculate(high, intersect, sq);
                 //if (low > high)
                 //{
                 //    sq = low;
@@ -1202,8 +1159,8 @@ namespace HigginsSoft.Math.Lib
                 //    high = sq;
                 //}
 
-                lowBitIndex = sieve.GetBitIndexForCurrentWindow(low);
-                highBitIndex = sieve.GetBitIndexForCurrentWindow(high);
+                lowBitIndex = sieve.GetBitIndexForCurrentWindow(lowIntersect);
+                highBitIndex = sieve.GetBitIndexForCurrentWindow(highIntersect);
 
                 //var lowTest = calculate(low, intersect, sq);
                 //if (lowTest != low)
@@ -1222,17 +1179,20 @@ namespace HigginsSoft.Math.Lib
 
             }
 
-            public int calculate(int value, int intersect, int sq)
+            public uint calculate(int value, int intersect, long sq)
             {
-                int delta = intersect;
+                uint delta = (uint)intersect;
 
                 // calculate the number of steps to reach the first value >= sq
                 int steps = (int)System.Math.Ceiling((double)(sq - value) / delta);
 
                 // calculate the next value
-                int nextValue = value + (steps * delta);
-
-                return nextValue;
+                long nextValue = value + (steps * delta);
+                if (nextValue > uint.MaxValue)
+                {
+                    throw new OverflowException("Cannot set max value to greater than uint.MaxValue");
+                }
+                return (uint)nextValue;
             }
 
 

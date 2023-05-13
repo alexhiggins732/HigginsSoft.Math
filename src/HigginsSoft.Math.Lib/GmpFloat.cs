@@ -62,13 +62,14 @@ namespace HigginsSoft.Math.Lib
 
         public GmpFloat(int value)
         {
-            if (value > -1)
+            if (value >-1)
             {
                 gmp_lib.mpf_init_set_si(Data, value);
             }
             else
             {
-                gmp_lib.mpf_init_set_si(Data, -value);
+                //linux bug fix. gmp_lib initializes negative values a uint even when call set_si.
+                gmp_lib.mpf_init_set_ui(Data, (uint)-value);
                 gmp_lib.mpf_neg(Data, Data);
             }
         }
@@ -395,6 +396,14 @@ namespace HigginsSoft.Math.Lib
 
         public static explicit operator int(GmpFloat value)
         {
+            // handle linux bug
+            if (value.Sign < 0)
+                if (value < (int)short.MinValue)
+                {
+                    var a = +value;
+                    var result = gmp_lib.mpf_get_ui(a.Data);
+                    return (int)result;
+                }
             return gmp_lib.mpf_get_si(value.Data);
         }
 

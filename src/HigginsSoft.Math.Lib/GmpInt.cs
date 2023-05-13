@@ -85,7 +85,7 @@ namespace HigginsSoft.Math.Lib
             else
             {
                 //linux bug fix. gmp_lib initializes negative values a uint even when call set_si.
-                gmp_lib.mpz_init_set_si(Data, -value);
+                gmp_lib.mpz_init_set_ui(Data, (uint)-value);
                 gmp_lib.mpz_neg(Data, Data);
             }
         }
@@ -461,6 +461,14 @@ namespace HigginsSoft.Math.Lib
 
         public static explicit operator int(GmpInt value)
         {
+
+            if (value.Sign < 0)
+                if (value < (int)short.MinValue)
+                {
+                    var a = +value;
+                    var result = gmp_lib.mpz_get_ui(a.Data);
+                    return (int)result;
+                }
             return gmp_lib.mpz_get_si(value.Data);
         }
 

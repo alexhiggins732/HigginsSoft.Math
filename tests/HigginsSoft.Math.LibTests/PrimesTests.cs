@@ -17,10 +17,13 @@
 
 //some tests take several seconds and up to a minute to complete.
 // These tests are disabled using SKIP_LONG_TESTS to keep unit testing short, and enable efficient Live Unit Testing
+using DotMpi;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
 using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.Reflection;
 
 namespace HigginsSoft.Math.Lib.Tests
 {
@@ -29,6 +32,23 @@ namespace HigginsSoft.Math.Lib.Tests
         public const string RUN_LONG_TESTS = nameof(RUN_LONG_TESTS);
     }
 
+    public class StaticMethods
+    {
+        public static int CountRange32(uint start, uint end)
+        {
+            Console.WriteLine($"Counting range: {start} - {end}");
+            int count = 0;
+            var gen = new PrimeGeneratorUnsafeUint(start, end);
+            var iter = gen.GetEnumerator(true);
+
+            while (iter.MoveNext())
+            {
+                count++;
+            }
+            return count;
+        }
+
+    }
     namespace PrimeGeneratorTests
     {
         [TestClass()]
@@ -867,6 +887,275 @@ namespace HigginsSoft.Math.Lib.Tests
     namespace PrimeGeneratorTests
     {
         [TestClass]
+        public class PrimeGeneratorUnsafeUintTests
+        {
+            [TestMethod()]
+            public void Generator_GetEnumerator_TestToN()
+            {
+                var testPrimes = new[] { 2, 3, 5, 7, 65537, 262147, 1048583 };
+                foreach (var prime in testPrimes)
+                {
+                    var gen = new PrimeGeneratorUnsafeUint((uint)prime);
+                    var iter = gen.GetEnumerator();
+                    while (iter.MoveNext()) ;
+                    Assert.AreEqual((uint)prime, iter.Current);
+                }
+
+            }
+
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
+            [TestMethod()]
+            public void Generator_GetEnumerator_Count32()
+            {
+                var gen = new PrimeGeneratorUnsafeUint();
+                var iter = gen.GetEnumerator();
+                int count = 0;
+                while (iter.MoveNext())
+                {
+                    count++;
+                }
+                var data = PrimeData.Counts[32];
+                Assert.AreEqual(data.Count, count);
+
+            }
+
+            [TestMethod()]
+            public void Generator_GetEnumerator_CountRange28()
+            {
+                uint mp28 = 1 << 28;
+                int count = StaticMethods.CountRange32(mp28, mp28 * 2);
+                Assert.AreEqual(13561907, count);
+            }
+
+            [TestMethod()]
+            public void Generator_GetEnumerator_Count28()
+            {
+                int count = StaticMethods.CountRange32(0u, (uint)1 << 28);
+                Assert.AreEqual(14630843, count);
+            }
+
+
+            [TestMethod()]
+            public void Generator_GetEnumerator_Count28_MpiSingleCore()
+            {
+                //Func<uint, uint, int> target = StaticMethods.CountRange32;
+                //var func = Mpi.ParallelFor(0, 1, target, i => new(1 << 16, 1 << 20));
+                //func.WithLogging().Run().Wait();
+                TestPrimeGeneratorMpi(28, 1, true, true);
+            }
+
+
+
+            static string HelloWord(uint start, uint end)
+            {
+                var result = "hello world {start} - {end}";
+                Console.WriteLine($"Returing result: {result}");
+                return result;
+            }
+
+            [TestMethod]
+            public void Generator_CountLast31Range()
+            {
+                var gen = new PrimeGeneratorUnsafeUint(1879048192, 2147483647);
+                var count = 0;
+                var iter = gen.GetEnumerator();
+                while (iter.MoveNext())
+                {
+                    count++;
+                }
+                Assert.AreEqual(12530588, count);
+            }
+
+            static int CountRangeLinq(uint start, uint end)
+                => new PrimeGeneratorUnsafeUint(start, end).Count();
+
+            static int CountRange(uint start, uint end)
+            {
+                var gen = new PrimeGeneratorUnsafeUint(start, end);
+                int count = 0;
+                var iter = gen.GetEnumerator();
+                while (iter.MoveNext())
+                    count++;
+                return count;
+            }
+
+
+            private void TestPrimeGeneratorMpi(int powerOfTwo, int threadCount = 4, bool useLinq = false, bool enableLogging = false)
+            {
+                if (powerOfTwo > 32 || powerOfTwo < 2)
+                {
+                    throw new ArgumentException($"{powerOfTwo} must be between 2 and 31");
+                }
+                var max = 1ul << powerOfTwo;
+                if (max < (ulong)threadCount * 2)
+                {
+                    throw new ArgumentException($"@^{powerOfTwo} must be greater than 2 * thread count to give each process work.");
+                }
+                var size = (uint)(max / (ulong)threadCount);
+                Func<uint, uint, int> target = useLinq ? CountRangeLinq : CountRange;
+
+
+                var runner = Mpi.ParallelFor(threadCount,
+                        target,
+                        i => new((uint)i * size, (uint)(i * size + (long)size) - 1))
+                        .WithLogging(enableLogging)
+                        .Run()
+                        .Wait(timeout:TimeSpan.FromSeconds(30)); ;
+                var count = runner.Results.Sum(x => x.Value);
+
+                var expected = PrimeData.Counts[powerOfTwo];
+
+                if (expected.Count != count)
+                {
+                    var faultedTaskCount = runner.Tasks.Where(x => x.IsFaulted).Count();
+                    Console.WriteLine($"Found {faultedTaskCount} faulted tasks");
+                    var runningProcCount = runner.procs.Where(x => !x.HasExited).Count();
+                    Console.WriteLine($"Found {runningProcCount} running processes");
+                    var faultedProcCount = runner.procs.Where(x => x.ExitCode != 0).Count();
+                    Console.WriteLine($"Found {runningProcCount} running processes");
+                    runner.SerializedResults.OrderBy(x=> x.Key).ToList().ForEach(x =>
+                    {
+                        Console.WriteLine($"Result: {x.Key}  - {JsonConvert.SerializeObject(x.Value)}");
+                    });
+                }
+
+                if (runner.HasError)
+                {
+                    var agg = new AggregateException(runner.ErrorData.Select(x => x.Value.ToException()));
+                    throw agg;
+                }
+
+                Assert.AreEqual(expected.Count, count, $"2^{powerOfTwo} Count Failed.");
+            }
+
+
+            [TestMethod()]
+            public void Parallel_24_Generator_MaxCores_Test()
+            {
+                TestPrimeGeneratorMpi(24, Environment.ProcessorCount, enableLogging: true);
+            }
+
+            [TestMethod()]
+            public void Parallel_28_Generator_MaxCores_Test()
+            {
+                TestPrimeGeneratorMpi(28, Environment.ProcessorCount, enableLogging: true); ;
+            }
+
+            [TestMethod()]
+            public void Parallel_28_Generator_MaxCores_LinqCount_Test()
+            {
+                TestPrimeGeneratorMpi(28, Environment.ProcessorCount, true);
+            }
+
+            [TestMethod()]
+            public void Parallel_31_Generator_MaxCores_Test()
+            {
+                TestPrimeGeneratorMpi(31, Environment.ProcessorCount);
+            }
+
+
+            [TestMethod()]
+            public void Parallel_31_Generator_MaxCores_LinqCount_Test()
+            {
+                TestPrimeGeneratorMpi(31, Environment.ProcessorCount, true);
+            }
+
+
+
+            [TestMethod()]
+            public void Parallel_32_Generator_MaxCores_Test()
+            {
+                TestPrimeGeneratorMpi(32, Environment.ProcessorCount, false, false);
+            }
+
+
+            [TestMethod()]
+            public void Parallel_32_Generator_MaxCores_LinqCount_Test()
+            {
+                TestPrimeGeneratorMpi(32, Environment.ProcessorCount, true, true);
+            }
+
+
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
+            [TestMethod()]
+            public void Generator_GetEnumerator_Count32_Paralllel()
+            {
+                uint start = 1 << 28;
+                uint steps = 16;
+                //StaticMethods.CountRange32(50u, 100u);
+
+                ulong end = start + (ulong)start * steps;
+                Console.WriteLine($"Sieving {start} - {end}");
+                Func<uint, uint, int> target = StaticMethods.CountRange32;
+                var runner = Mpi.
+                    ParallelFor(
+                        (int)steps,
+                        target,
+                        i => new((uint)i * start, ((uint)i * start) + (start - 1))).Build();
+
+                runner.FunctionResultReturned += (sender, e) =>
+                {
+                    Console.WriteLine($" {e.ThreadIndex} Returned {e.Result} from ( {string.Join(", ", e.ArgProvider.ToArray())})");
+                };
+
+                var results = runner.Run()
+                        .Wait();
+
+                //0 Returned 14630843 from primes(0, 268435455, 1)
+                //1 Returned 13561907 from primes(268435456, 536870911, 1)
+                //2 Returned 13212389 from primes(536870912, 805306367, 1)
+                //3 Returned 12994889 from primes(805306368, 1073741823, 1)
+                //4 Returned 12837115 from primes(1073741824, 1342177279, 1)
+                //5 Returned 12715271 from primes(1342177280, 1610612735, 1)
+                //6 Returned 12614563 from primes(1610612736, 1879048191, 1)
+                //7 Returned 12530588 from primes(1879048192, 2147483647, 1)
+                //8 Returned 12457225 from primes(2147483648, 2415919103, 1)
+                //9 Returned 12394552 from primes(2415919104, 2684354559, 1)
+                //10 Returned 12336924 from primes(2684354560, 2952790015, 1)
+                //11 Returned 12284250 from primes(2952790016, 3221225471, 1)
+                //12 Returned 12238363 from primes(3221225472, 3489660927, 1)
+                //13 Returned 12197217 from primes(3489660928, 3758096383, 1)
+                //14 Returned 12155063 from primes(3758096384, 4026531839, 1)
+                //15 Returned 12119062 from primes(4026531840, 4294967295, 1)
+                var expectedResult = new[] {
+                    14630843, //0 Returned 14630843 from primes(0, 268435455, 1)
+                    13561907, //1 Returned 13561907 from primes(268435456, 536870911, 1)
+                    13212389, //2 Returned 13212389 from primes(536870912, 805306367, 1)
+                    12994889, //3 Returned 12994889 from primes(805306368, 1073741823, 1)
+                    12837115, //4 Returned 12837115 from primes(1073741824, 1342177279, 1)
+                    12715271, //5 Returned 12715271 from primes(1342177280, 1610612735, 1)
+                    12614563, //6 Returned 12614563 from primes(1610612736, 1879048191, 1)
+                    12530588, //7 Returned 12530588 from primes(1879048192, 2147483647, 1)
+                    12457225, //8 Returned 12457225 from primes(2147483648, 2415919103, 1)
+                    12394552, //9 Returned 12394552 from primes(2415919104, 2684354559, 1)
+                    12336924, //10 Returned 12336924 from primes(2684354560, 2952790015, 1)
+                    12284250, //11 Returned 12284250 from primes(2952790016, 3221225471, 1)
+                    12238363, //12 Returned 12238363 from primes(3221225472, 3489660927, 1)
+                    12197217, //13 Returned 12197217 from primes(3489660928, 3758096383, 1)
+                    12155063, //14 Returned 12155063 from primes(3758096384, 4026531839, 1)
+                    12119062, //15 Returned 12119062 from primes(4026531840, 4294967295, 1)
+                };
+                for (var i = 0; i < expectedResult.Length; i++)
+                {
+                    var result = results.Results[i];
+                    var expected = expectedResult[i];
+                    Assert.AreEqual(expected, result, $"Thread {i} returned wrong count");
+                }
+
+
+                var count = results.Results.Sum(x => x.Value);
+                Assert.AreEqual(203280221, count, "Sum count wrong");
+
+            }
+
+        }
+
+
+        [TestClass]
         public class PrimeGeneratorUnsafeTests
         {
 
@@ -903,10 +1192,47 @@ namespace HigginsSoft.Math.Lib.Tests
 
                 Assert.AreEqual(expected.Count, count, $"2^{powerOfTwo} Count Failed: Count: {count}, Max Prime: {previousPrime}, Next Prime: {currentPrime}");
                 Assert.AreEqual((int)expected.MaxPrime, currentPrime, $"2^{powerOfTwo} Max Prime Failed - Count: {count}, Max Prime: {previousPrime}, Next Prime: {currentPrime}");
-
-
-
             }
+            static int CountRange(int start, int end)
+            {
+                var gen = new PrimeGeneratorUnsafe(start, end);
+                var count = 0;
+                var iter = gen.GetEnumerator();
+                while (iter.MoveNext())
+                    count++;
+                return count;
+            }
+
+            static int CountRangeLinq(int start, int end)
+                 => new PrimeGeneratorUnsafe(start, end).Count();
+
+
+            private void TestPrimeGeneratorMpi(int powerOfTwo, int threadCount = 4, bool useLinq = false)
+            {
+                if (powerOfTwo > 31 || powerOfTwo < 2)
+                {
+                    throw new ArgumentException($"{powerOfTwo} must be between 2 and 31");
+                }
+                var max = 1u << powerOfTwo;
+                if (max < threadCount * 2)
+                {
+                    throw new ArgumentException($"@^{powerOfTwo} must be greater than 2 * thread count to give each process work.");
+                }
+                var size = (int)(max / threadCount);
+                Func<int, int, int> target = useLinq ? CountRangeLinq : CountRange;
+                var runner = Mpi.ParallelFor(threadCount,
+                        target,
+                        i => new(i * size, (int)(i * size + (long)size) - 1))
+                        .Run()
+                        .Wait(); ;
+                var count = runner.Results.Sum(x => x.Value);
+
+                var expected = PrimeData.Counts[powerOfTwo];
+
+
+                Assert.AreEqual(expected.Count, count, $"2^{powerOfTwo} Count Failed.");
+            }
+
 
             [TestMethod()]
             public void Generator_GetEnumerator_TestToN()
@@ -1005,7 +1331,7 @@ namespace HigginsSoft.Math.Lib.Tests
             [TestMethod()]
             public void Generator_Range_Small_Tests()
             {
-            
+
                 TestRange(0, 2, 1);
                 TestRange(0, 3, 2);
                 TestRange(0, 5, 3);
@@ -1091,6 +1417,9 @@ namespace HigginsSoft.Math.Lib.Tests
                 TestRangeCountTest(28);
             }
 
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_RangeCount_P31_Tests()
             {
@@ -1247,6 +1576,37 @@ namespace HigginsSoft.Math.Lib.Tests
             public void Generator_Bits_31_Test()
             {
                 TestPrimeGenerator(31);
+            }
+
+            [TestMethod()]
+            public void Parallel_24_Generator_MaxCores_Test()
+            {
+                TestPrimeGeneratorMpi(24, Environment.ProcessorCount);
+            }
+
+            [TestMethod()]
+            public void Parallel_28_Generator_MaxCores_Test()
+            {
+                TestPrimeGeneratorMpi(28, Environment.ProcessorCount);
+            }
+
+            [TestMethod()]
+            public void Parallel_28_Generator_MaxCores_LinqCount_Test()
+            {
+                TestPrimeGeneratorMpi(28, Environment.ProcessorCount, true);
+            }
+
+            [TestMethod()]
+            public void Parallel_31_Generator_MaxCores_Test()
+            {
+                TestPrimeGeneratorMpi(31, Environment.ProcessorCount);
+            }
+
+
+            [TestMethod()]
+            public void Parallel_31_Generator_MaxCores_LinqCount_Test()
+            {
+                TestPrimeGeneratorMpi(31, Environment.ProcessorCount, true);
             }
 
 #if SKIP_LONG_TESTS
