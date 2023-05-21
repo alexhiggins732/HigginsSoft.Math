@@ -463,11 +463,11 @@ namespace HigginsSoft.Math.Lib
         {
 
             if (value.Sign < 0)
-                if (value < (int)short.MinValue)
+                if (value < 0)
                 {
                     var a = +value;
                     var result = gmp_lib.mpz_get_ui(a.Data);
-                    return (int)result;
+                    return -(int)result;
                 }
             return gmp_lib.mpz_get_si(value.Data);
         }
