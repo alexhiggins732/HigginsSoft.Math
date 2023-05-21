@@ -62,7 +62,7 @@ namespace HigginsSoft.Math.Lib
 
         public GmpFloat(int value)
         {
-            if (value >-1)
+            if (value > -1)
             {
                 gmp_lib.mpf_init_set_si(Data, value);
             }
@@ -134,6 +134,8 @@ namespace HigginsSoft.Math.Lib
             return ToString(10);
         }
 
+        public string ToExponentialString() => Data.ToString();
+
         public string ToString(int @base)
         {
             if (Data.Pointer == IntPtr.Zero) return "uninitialized";
@@ -203,14 +205,21 @@ namespace HigginsSoft.Math.Lib
         public int CompareTo(ulong other)
            => CompareTo((GmpFloat)other);
 
-        public int CompareTo(decimal other)
-            => CompareTo((GmpFloat)other);
+        public int CompareTo(float other)
+            => gmp_lib.mpf_cmp_d(this.Data, other);
 
         public int CompareTo(double other)
             => gmp_lib.mpf_cmp_d(this.Data, other);
 
+        public int CompareTo(decimal other)
+            => CompareTo((GmpFloat)other);
+
         public int CompareTo(BigInteger other)
             => CompareTo((GmpFloat)other);
+
+        public int CompareTo(GmpInt other)
+            => CompareTo((GmpFloat)other);
+
 
         #endregion
 
@@ -234,11 +243,17 @@ namespace HigginsSoft.Math.Lib
 
         public bool Equals(uint other) => this == other;
 
-        public bool Equals(double other) => this == other;
-
         public bool Equals(long other) => this.Equals((GmpFloat)other);
 
         public bool Equals(ulong other) => this.Equals((GmpFloat)other);
+
+        public bool Equals(float other) => this.Equals((GmpFloat)other);
+
+        public bool Equals(double other) => this == other;
+
+        public bool Equals(BigInteger other) => this.Equals((GmpFloat)other);
+
+        public bool Equals(GmpInt other) => this.Equals((GmpFloat)other);
 
 
         public Byte[] Bytes()
@@ -358,16 +373,20 @@ namespace HigginsSoft.Math.Lib
             return new GmpFloat(value);
         }
 
-        public static implicit operator GmpFloat(mpf_t value)
+        public static explicit operator GmpFloat(GmpInt value)
         {
             return new GmpFloat(value);
         }
 
-        public static explicit operator mpf_t(GmpFloat value)
+        public static explicit operator GmpFloat(mpz_t value)
         {
-            return value.Clone().Data;
+            return new GmpFloat(value);
         }
 
+        public static implicit operator GmpFloat(mpf_t value)
+        {
+            return new GmpFloat(value);
+        }
 
         public static implicit operator string(GmpFloat value)
         {
@@ -430,14 +449,6 @@ namespace HigginsSoft.Math.Lib
             return new GmpInt(value);
         }
 
-        public static explicit operator GmpFloat(GmpInt value)
-        {
-            return new GmpFloat(value);
-        }
-
-
-
-
         public static explicit operator BigInteger(GmpFloat value)
         {
             if (value.IsZero) return BigInteger.Zero;
@@ -461,6 +472,18 @@ namespace HigginsSoft.Math.Lib
             if (value.IsZero) return 0M;
             return (decimal)(BigInteger)value;
         }
+
+        public static explicit operator mpf_t(GmpFloat value)
+        {
+            return value.Clone().Data;
+        }
+
+        public static explicit operator mpz_t(GmpFloat value)
+        {
+            return ((GmpInt)value).Clone().Data;
+        }
+
+
 
 
         public static GmpFloat operator &(GmpFloat left, GmpFloat right)
@@ -542,12 +565,16 @@ namespace HigginsSoft.Math.Lib
 
         public static GmpFloat operator ++(GmpFloat value)
         {
-            return value + GmpFloat.One;
+            var result = new GmpFloat();
+            gmp_lib.mpf_add_ui(result.Data, value.Data, 1);
+            return result;
         }
 
         public static GmpFloat operator --(GmpFloat value)
         {
-            return value - GmpFloat.One;
+            var result = new GmpFloat();
+            gmp_lib.mpf_sub_ui(result.Data, value.Data, 1);
+            return result;
         }
 
 
@@ -561,10 +588,22 @@ namespace HigginsSoft.Math.Lib
             return result;
         }
 
+        public static GmpFloat operator +(GmpFloat left, uint right)
+        {
+            if (right == 0) return left.Clone();
+            if (left.IsZero) return right;
+
+            var result = new GmpFloat();
+            gmp_lib.mpf_add_ui(result.Data, left.Data, right);
+            return result;
+        }
+
+        public static GmpFloat operator +(uint right, GmpFloat left)
+            => left + right;
+
+
         public static GmpFloat operator -(GmpFloat left, GmpFloat right)
         {
-
-
             if (right.IsZero) return left.Clone();
             if (left.IsZero) return -right;
 
@@ -572,6 +611,24 @@ namespace HigginsSoft.Math.Lib
             gmp_lib.mpf_sub(result.Data, left.Data, right.Data);
             return result;
         }
+
+        public static GmpFloat operator -(GmpFloat left, uint right)
+        {
+            if (right == 0) return left.Clone();
+            var result = new GmpFloat();
+            gmp_lib.mpf_sub_ui(result.Data, left.Data, right);
+            return result;
+        }
+
+        public static GmpFloat operator -(uint left, GmpFloat right)
+        {
+            if (right.IsZero) return left;
+
+            var result = new GmpFloat();
+            gmp_lib.mpf_ui_sub(result.Data, left, right.Data);
+            return result;
+        }
+
 
         public static GmpFloat operator *(GmpFloat left, GmpFloat right)
         {
@@ -584,13 +641,47 @@ namespace HigginsSoft.Math.Lib
             return result;
         }
 
+        public static GmpFloat operator *(GmpFloat left, uint right)
+        {
+            if (right == 0) return Zero.Clone();
+            if (left.IsZero) return Zero.Clone();
+
+            var result = new GmpFloat();
+            gmp_lib.mpf_mul_ui(result.Data, left.Data, right);
+            return result;
+        }
+
+        public static GmpFloat operator *(uint left, GmpFloat right)
+            => right * left;
+
+
+        public static GmpFloat operator /(GmpFloat dividend, uint divisor)
+        {
+            if (divisor == 1) return dividend.Clone();
+
+            var result = new GmpFloat();
+            gmp_lib.mpf_div_ui(result.Data, dividend.Data, divisor);
+            return result;
+        }
+
+        public static GmpFloat operator /(uint dividend, GmpFloat divisor)
+            => (GmpFloat)dividend / divisor;
+
+        public static GmpFloat operator /(GmpFloat dividend, GmpInt divisor)
+            => dividend / (GmpFloat)divisor;
+
+        public static GmpFloat operator /(GmpInt dividend, GmpFloat divisor)
+            => (GmpFloat)dividend / divisor;
+
         public static GmpFloat operator /(GmpFloat dividend, GmpFloat divisor)
         {
+            if (divisor.IsOne) return dividend.Clone();
             var result = new GmpFloat();
             gmp_lib.mpf_div(result.Data, dividend.Data, divisor.Data);
             return result;
         }
 
+        // Modulus operate does not exist
         public static GmpFloat operator %(GmpFloat dividend, GmpFloat divisor)
         {
             var result = GmpFloat.Zero.Clone();
@@ -625,55 +716,113 @@ namespace HigginsSoft.Math.Lib
         }
 
 
-        public static bool operator <(GmpFloat left, int right)
+        public static bool operator <(GmpFloat left, Int32 right)
         {
             return left.CompareTo(right) < 0;
         }
-        public static bool operator <=(GmpFloat left, int right)
+        public static bool operator <=(GmpFloat left, Int32 right)
         {
             return left.CompareTo(right) <= 0;
         }
-        public static bool operator >(GmpFloat left, int right)
+        public static bool operator >(GmpFloat left, Int32 right)
         {
             return left.CompareTo(right) > 0;
         }
-        public static bool operator >=(GmpFloat left, int right)
+        public static bool operator >=(GmpFloat left, Int32 right)
         {
             return left.CompareTo(right) >= 0;
         }
-        public static bool operator ==(GmpFloat left, int right)
+        public static bool operator ==(GmpFloat left, Int32 right)
         {
             return left.CompareTo(right) == 0;
         }
-        public static bool operator !=(GmpFloat left, int right)
+        public static bool operator !=(GmpFloat left, Int32 right)
         {
             return left.CompareTo(right) != 0;
         }
 
-        public static bool operator <(GmpFloat left, uint right)
+
+
+        public static bool operator <(Int32 left, GmpFloat right)
+        {
+            return right.CompareTo(left) > 0;
+        }
+        public static bool operator <=(Int32 left, GmpFloat right)
+        {
+            return right.CompareTo(left) >= 0;
+        }
+        public static bool operator >(Int32 left, GmpFloat right)
+        {
+            return right.CompareTo(left) < 0;
+        }
+        public static bool operator >=(Int32 left, GmpFloat right)
+        {
+            return right.CompareTo(left) <= 0;
+        }
+        public static bool operator ==(Int32 left, GmpFloat right)
+        {
+            return right.CompareTo(left) == 0;
+        }
+        public static bool operator !=(Int32 left, GmpFloat right)
+        {
+            return right.CompareTo(left) != 0;
+        }
+
+
+
+        public static bool operator <(GmpFloat left, UInt32 right)
         {
             return left.CompareTo(right) < 0;
         }
-        public static bool operator <=(GmpFloat left, uint right)
+        public static bool operator <=(GmpFloat left, UInt32 right)
         {
             return left.CompareTo(right) <= 0;
         }
-        public static bool operator >(GmpFloat left, uint right)
+        public static bool operator >(GmpFloat left, UInt32 right)
         {
             return left.CompareTo(right) > 0;
         }
-        public static bool operator >=(GmpFloat left, uint right)
+        public static bool operator >=(GmpFloat left, UInt32 right)
         {
             return left.CompareTo(right) >= 0;
         }
-        public static bool operator ==(GmpFloat left, uint right)
+        public static bool operator ==(GmpFloat left, UInt32 right)
         {
             return left.CompareTo(right) == 0;
         }
-        public static bool operator !=(GmpFloat left, uint right)
+        public static bool operator !=(GmpFloat left, UInt32 right)
         {
             return left.CompareTo(right) != 0;
         }
+
+
+
+        public static bool operator <(UInt32 left, GmpFloat right)
+        {
+            return right.CompareTo(left) > 0;
+        }
+        public static bool operator <=(UInt32 left, GmpFloat right)
+        {
+            return right.CompareTo(left) >= 0;
+        }
+        public static bool operator >(UInt32 left, GmpFloat right)
+        {
+            return right.CompareTo(left) < 0;
+        }
+        public static bool operator >=(UInt32 left, GmpFloat right)
+        {
+            return right.CompareTo(left) <= 0;
+        }
+        public static bool operator ==(UInt32 left, GmpFloat right)
+        {
+            return right.CompareTo(left) == 0;
+        }
+        public static bool operator !=(UInt32 left, GmpFloat right)
+        {
+            return right.CompareTo(left) != 0;
+        }
+
+
 
 
         public static bool operator <(GmpFloat left, Int64 right)
@@ -957,6 +1106,61 @@ namespace HigginsSoft.Math.Lib
             return right.CompareTo(left) != 0;
         }
 
+
+
+        public static bool operator <(GmpFloat left, GmpInt right)
+        {
+            return left.CompareTo(right) < 0;
+        }
+        public static bool operator <=(GmpFloat left, GmpInt right)
+        {
+            return left.CompareTo(right) <= 0;
+        }
+        public static bool operator >(GmpFloat left, GmpInt right)
+        {
+            return left.CompareTo(right) > 0;
+        }
+        public static bool operator >=(GmpFloat left, GmpInt right)
+        {
+            return left.CompareTo(right) >= 0;
+        }
+        public static bool operator ==(GmpFloat left, GmpInt right)
+        {
+            return left.CompareTo(right) == 0;
+        }
+        public static bool operator !=(GmpFloat left, GmpInt right)
+        {
+            return left.CompareTo(right) != 0;
+        }
+
+
+
+        public static bool operator <(GmpInt left, GmpFloat right)
+        {
+            return right.CompareTo(left) > 0;
+        }
+        public static bool operator <=(GmpInt left, GmpFloat right)
+        {
+            return right.CompareTo(left) >= 0;
+        }
+        public static bool operator >(GmpInt left, GmpFloat right)
+        {
+            return right.CompareTo(left) < 0;
+        }
+        public static bool operator >=(GmpInt left, GmpFloat right)
+        {
+            return right.CompareTo(left) <= 0;
+        }
+        public static bool operator ==(GmpInt left, GmpFloat right)
+        {
+            return right.CompareTo(left) == 0;
+        }
+        public static bool operator !=(GmpInt left, GmpFloat right)
+        {
+            return right.CompareTo(left) != 0;
+        }
+
+
         #endregion
 
         #endregion
@@ -995,6 +1199,13 @@ namespace HigginsSoft.Math.Lib
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        internal GmpFloat Abs()
+        {
+            GmpFloat z = new();
+            gmp_lib.mpf_abs(z.Data, this.Data);
+            return z;
         }
 
         #endregion

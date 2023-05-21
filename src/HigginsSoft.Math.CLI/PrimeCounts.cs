@@ -108,7 +108,7 @@ namespace HigginsSoft.Math.CLI
         {
             ProcessorCount processorCount = (ProcessorCount)threadCount;
             var expected = PrimeData.Counts[powerOfTwo];
-            TestPrimeGeneratorParallel(powerOfTwo, expected.MaxPrime, processorCount, out int count, out int previousPrime, out int currentPrime);
+            TestPrimeGeneratorParallel(powerOfTwo, (long)expected.MaxPrime, processorCount, out int count, out int previousPrime, out int currentPrime);
         }
 
         private void TestPrimeGenerator(int bits, long max, ProcessorCount threadCount, out int count, out int previousPrime, out int currentPrime)
@@ -135,7 +135,7 @@ namespace HigginsSoft.Math.CLI
         {
             ProcessorCount processorCount = (ProcessorCount)threadCount;
             var expected = PrimeData.Counts[powerOfTwo];
-            TestPrimeGenerator(powerOfTwo, expected.MaxPrime, processorCount, out int count, out int previousPrime, out int currentPrime);
+            TestPrimeGenerator(powerOfTwo, (long)expected.MaxPrime, processorCount, out int count, out int previousPrime, out int currentPrime);
         }
 
 
@@ -163,7 +163,7 @@ namespace HigginsSoft.Math.CLI
         {
             ProcessorCount processorCount = (ProcessorCount)threadCount;
             var expected = PrimeData.Counts[powerOfTwo];
-            TestPrimeGeneratorRef(powerOfTwo, expected.MaxPrime, processorCount, out int count, out int previousPrime, out int currentPrime);
+            TestPrimeGeneratorRef(powerOfTwo, (long)expected.MaxPrime, processorCount, out int count, out int previousPrime, out int currentPrime);
         }
 
         private void TestPrimeGeneratorUnsafe(int bits, long max, ProcessorCount threadCount, out int count, out int previousPrime, out int currentPrime)
@@ -190,7 +190,7 @@ namespace HigginsSoft.Math.CLI
         {
             ProcessorCount processorCount = (ProcessorCount)threadCount;
             var expected = PrimeData.Counts[powerOfTwo];
-            TestPrimeGeneratorUnsafe(powerOfTwo, expected.MaxPrime, processorCount, out int count, out int previousPrime, out int currentPrime);
+            TestPrimeGeneratorUnsafe(powerOfTwo, (long)expected.MaxPrime, processorCount, out int count, out int previousPrime, out int currentPrime);
         }
 
         private void TestPrimeGeneratorUnsafeRange(int start, int end, out int count, out int previousPrime, out int currentPrime)

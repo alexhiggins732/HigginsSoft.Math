@@ -187,11 +187,17 @@ namespace HigginsSoft.Math.Lib
 
         public static GmpInt GetPreviousPrime(GmpInt value)
         {
-            
+            if (value == 3)
+                return 2;
+            else if (value < 3)
+                return 0;
             GmpInt z = value;
             if (z.IsEven)
             {
                 z -= 1;
+            } else
+            {
+                z -= 2;
             }
 
             //TODO: only test candidates that +/-1 mod 6

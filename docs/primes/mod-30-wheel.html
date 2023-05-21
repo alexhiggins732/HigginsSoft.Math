@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Number Table</title>
+    <style>
+        .mod2 {
+            border: 2px solid blue;
+        }
+
+        .mod3 {
+            border: 2px solid green;
+        }
+
+        .mod5 {
+            border: 3px solid red;
+        }
+
+        .mod2,
+        .mod3,
+        .mod5 {
+            background-color: gray;
+            color: white;
+        }
+
+        .legend {
+            margin-bottom: 10px;
+        }
+
+        .legend div {
+            display: inline-block;
+            margin-right: 10px;
+            padding: 5px;
+            font-weight: bold;
+        }
+
+        .legend .mod2 {
+            color: white;
+            background-color: blue;
+        }
+
+        .legend .mod3 {
+            color: white;
+            background-color: green;
+        }
+
+        .legend .mod5 {
+            color: white;
+            background-color: red;
+        }
+
+        table td {
+            text-align: center;
+            margin: 0px;
+            border-bottom: 1px solid #cdcdcd;
+            border-left: 1px solid #cdcdcd;
+            font-size: 10pt;
+            padding: 0px;
+            margin: 0px
+        }
+
+        table td {
+            min-width: 35px;
+            max-width: 0px;
+            overflow: hidden;
+        }
+
+        table tr,
+        table td,
+        table div {
+            ;
+            overflow: hidden;
+            min-height: 20px;
+            max-height: 0px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .strikethrough {
+            text-decoration: line-through;
+        }
+    </style>
+	<script>
+	function isprime(i) {
+		if (i < 2) return false;
+		if ((i & 1) == 0) return i == 2;
+		var primes = [3, 5, 7, 11, 13, 17, 19, 23, 27];
+		for (var j = 0; j < primes.length; j++) {
+			var p = primes[j];
+			if (i % p == 0) return i == p;
+		}
+		return true;
+	}
+
+
+	function countTrialDivideSteps() {
+		var primes = [2, 3, 5, 7, 11, 13];
+
+		var max = 0;
+		var limit = 30030;
+		var fact = 30030;
+		limit = fact;
+		//2,3,5,7,11,13,19,23
+		var counts = [];
+		for (var i = 2; i < limit; i++) {
+			var steps = 0;
+			for (var j = 0; j < primes.length; j++, steps++) {
+				if (i % primes[j] == 0) {
+					break;
+				}
+			}
+			counts.push(steps);
+			max = steps > max ? steps : max;
+		}
+		console.log("max tdiv steps: " + max);
+		var average = counts.reduce((sum, num) => sum + num, 0) / counts.length;
+		console.log("average: " + average);
+	}
+
+	function countGcdSteps() {
+		var max = 0;
+		var limit = 65536;
+		var fact = 223092870;
+		limit = fact;
+		//2,3,5,7,11,13,19,23
+		var counts = [];
+		for (var i = 0; i < limit; i++) {
+			var b = fact;
+			var a = i;
+			var j = 0;
+			while (b !== 0) {
+				var temp = b;
+				b = a % b;
+				a = temp;
+				j++;
+			}
+			counts.push(j);
+			max = j > max ? j : max;
+		}
+		console.log("max gcd steps " + fact + " = " + max);
+		var average = counts.reduce((sum, num) => sum + num, 0) / counts.length;
+		console.log("average: " + average);
+	}
+
+	function gcd(a, b) {
+		while (b !== 0) {
+			var temp = b;
+			b = a % b;
+			a = temp;
+		}
+		return a;
+	}
+
+	function primorialCheck() {
+		for (var i = 1; i <= 900; i++) {
+			var res = i % 30;
+			var n = gcd(res, 30);
+
+			if (n == 1) {
+				if (gcd(n, 2) != 1)
+					console.log("Failed for 2: " + i);
+				if (gcd(n, 3) != 1)
+					console.log("Failed for 3: " + i);
+				if (gcd(n, 5) != 1)
+					console.log("Failed for 3: " + i);
+			}
+
+		}
+		console.log("primorialCheck done!");
+	}
+
+
+	var primes = [2, 3, 5, 7, 11, 13, 17, 19, 23];
+
+	function getWheel(n) {
+
+		if (n < 2) return 2;
+		var wheel = 2 * 3;;
+		if (n <= wheel) return wheel;
+		wheel *= 5;
+		if (n <= wheel) return wheel;
+		wheel *= 7;
+		if (n <= wheel) return wheel;
+		wheel *= 11;
+		if (n <= wheel) return wheel;
+		wheel *= 13;
+		if (n <= wheel) return wheel;
+		wheel *= 17;
+		if (n <= wheel) return wheel;
+		wheel *= 19;
+		if (n <= wheel) return wheel;
+		wheel *= 23;
+		if (n <= wheel) return wheel;
+	}
+
+	function FactorialCheck(n) {
+		var p = [];
+		var wheel = 1;
+		var test = 1;
+
+		for (var i = 0; i < primes.length && (test = wheel * primes[i]) < n; i++) {
+			p.push(i);
+			wheel = test;
+		}
+		console.log("Wheel: " + wheel);
+		var res = n % wheel;
+		var result = gcd(res, wheel) == 1;
+		if (result == 1) {
+			if (gcd(result, 2) != 1)
+				console.log("Failed for 2: " + i);
+			if (gcd(result, 3) != 1)
+				console.log("Failed for 3: " + i);
+			if (gcd(result, 5) != 1)
+				console.log("Failed for 3: " + i);
+		}
+
+	}
+
+	function generateTable(className, callback) {
+		var table = document.createElement("table");
+		table.setAttribute("cellpadding", "0");
+		table.setAttribute("cellspacing", "0");
+		table.classList.add(className);
+		// Add header row
+		var headerRow = document.createElement("tr");
+		for (var i = 1; i <= 30; i++) {
+			var th = document.createElement("th");
+			th.textContent = i;
+			headerRow.appendChild(th);
+		}
+		table.appendChild(headerRow);
+
+		// Add data rows
+		for (var i = 1; i <= 30; i++) {
+			var row = document.createElement("tr");
+			for (var j = 1; j <= 30; j++) {
+				var cell = document.createElement("td");
+				var value = callback(i, j);
+
+				var div = document.createElement("div");
+				div.classList.add("coprime");
+				div.textContent = value;
+				// Create nested divs based on divisibility
+				if (value % 2 === 0) {
+					var outer = document.createElement("div");
+					outer.classList.add("mod2");
+					outer.appendChild(div);
+					div.classList.remove("coprime");
+					div = outer;
+				}
+				if (value % 3 === 0) {
+					var outer = document.createElement("div");
+					outer.classList.add("mod3");
+					outer.appendChild(div);
+					div.classList.remove("coprime");
+					div = outer;
+				}
+				if (value % 5 === 0) {
+					var outer = document.createElement("div");
+					outer.classList.add("mod5");
+					outer.appendChild(div);
+					div.classList.remove("coprime");
+					div = outer;
+				}
+				if (div.classList.contains("coprime")) {
+					if (!isprime(value)) {
+						div.classList.add("strikethrough");
+					}
+				}
+				cell.appendChild(div);
+				row.appendChild(cell);
+			}
+			table.appendChild(row);
+		}
+
+		document.body.appendChild(table);
+	}
+
+	function generateTables() {
+		primorialCheck();
+		generateTable('multiply', (i, j) => i * j);
+		generateTable('values', (i, j) => (i - 1) * 30 + j);
+
+
+		const productsRadio = document.querySelector('input[value="products"]');
+		const valuesRadio = document.querySelector('input[value="values"]');
+		const tableMultiply = document.querySelector('table.multiply');
+		const tableValues = document.querySelector('table.values');
+
+		productsRadio.addEventListener('change', function () {
+			console.log('productsRadio.changed');
+			if (productsRadio.checked) {
+				tableMultiply.classList.remove('hidden');
+				tableValues.classList.add('hidden');
+			}
+		});
+
+		valuesRadio.addEventListener('change', function () {
+			if (valuesRadio.checked) {
+				tableMultiply.classList.add('hidden');
+				tableValues.classList.remove('hidden');
+			}
+		});
+
+		tableMultiply.classList.add('hidden');
+
+	}
+	</script>
+</head>
+
+<body onload="generateTables()">
+    Residue classes wheel mod 30
+    <div class="legend">
+        <div class="mod2">0 mod 2</div>
+        <div class="mod3">0 mod 3</div>
+        <div class="mod5">0 mod 5</div>
+        <div>
+			<input type="radio" name="displayOption" value="values" checked> Show Values
+			<input type="radio" name="displayOption" value="products"> Show Products
+        </div>
+    </div>
+
+</body>
+
+</html>
