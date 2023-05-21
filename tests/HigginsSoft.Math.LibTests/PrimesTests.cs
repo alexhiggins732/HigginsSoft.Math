@@ -20,6 +20,7 @@
 using DotMpi;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Diagnostics;
 using System.Drawing;
@@ -54,6 +55,155 @@ namespace HigginsSoft.Math.Lib.Tests
         [TestClass()]
         public class PrimesTests
         {
+            [TestMethod]
+            public void TestBitLength()
+            {
+                var expected = 0;
+
+
+                var actual = MathLib.BitLength(0);
+                Assert.AreEqual(actual, expected);
+
+
+                expected++;
+                for (var i = 1; i <= 256; i++)
+                {
+                    if (i >= 1 << expected)
+                        expected++;
+                    actual = MathLib.BitLength(i);
+                    Assert.AreEqual(actual, expected, $"BitLength test failed for {i}");
+
+                }
+            }
+
+            [TestMethod]
+            public void TestIsPowerOfTwo()
+            {
+                for (var i = 0; i < 15; i++)
+                {
+                    var powerOf2 = MathLib.IsPowerOfTwo(i, out int exponent);
+                    var expected = i == 1 || i == 2 || i == 4 || i == 8;
+                    Assert.AreEqual(expected, powerOf2);
+                    if (i == 2)
+                    {
+                        Assert.AreEqual(1, exponent);
+                    }
+                    else if (i == 4)
+                    {
+                        Assert.AreEqual(2, exponent);
+                    }
+                    else if (i == 8)
+                    {
+                        Assert.AreEqual(3, exponent);
+                    }
+                    else
+                    {
+                        Assert.AreEqual(0, exponent);
+                    }
+
+                }
+            }
+
+
+            [TestMethod]
+            public void TestPrimeDataDensity()
+            {
+
+                var counts = PrimeData.Counts90;
+                foreach(var bit in counts.Keys.ToList().OrderBy(x=> x))
+                {
+                    var data = counts[bit];
+                    GmpFloat n = (GmpFloat)(((GmpInt) 1) << bit);
+                    GmpFloat count = (GmpFloat)data.Count;
+                    var density = count / n;
+                    var d = (double)density;
+                    var ds = density.ToExponentialString();
+                    Console.WriteLine($"{bit}\t{d}");
+
+                }
+            }
+
+            [TestMethod]
+            public void TestPrimeData()
+            {
+
+                //var sb = new System.Text.StringBuilder();
+                for (var i = 33; i <= 64; i++)
+                {
+                    GmpInt value = GmpInt.One << i;
+                    var previous = MathUtil.GetPreviousPrime(value);
+                    var next = MathUtil.GetNextPrime(value);
+
+                    //sb.AppendLine($"                new({i},-1, {previous}, {next} ),");
+
+                    var data = PrimeData.Counts64[i];
+                    Assert.AreEqual(data.MaxPrime, previous);
+                    Assert.AreEqual(data.NextPrime, next);
+                }
+
+                //var sb = new System.Text.StringBuilder();
+                for (var i = 65; i <= 90; i++)
+                {
+                    GmpInt value = GmpInt.One << i;
+                    var previous = MathUtil.GetPreviousPrime(value);
+                    var next = MathUtil.GetNextPrime(value);
+
+                    //sb.AppendLine($"{previous}\t{next}");
+
+                    var data = PrimeData.Counts90[i];
+                    Assert.AreEqual(data.MaxPrime, previous);
+                    Assert.AreEqual(data.NextPrime, next);
+
+
+                }
+                //var ct= sb.ToString();
+            }
+
+
+            [TestMethod]
+            public void TestRangeCount()
+            {
+                for (var start = 0; start <= 64; start++)
+                {
+                    for (var end = start + 1; end <= 64; end++)
+                    {
+                        var actual = Primes.Count(start, end);
+                        var expected = new PrimeGeneratorUnsafe(start, end).Count();
+                        if (actual != expected)
+                        {
+                            Assert.AreEqual(expected, actual, $"Count failed for range {start} - {end}");
+                        }
+                       
+                    }
+                }
+            }
+
+
+            [TestMethod]
+            public void TestCount()
+            {
+                var actual = Primes.Count(-1);
+                var expected = 0;
+                Assert.AreEqual(expected, actual);
+
+                actual = Primes.Count(0);
+                expected = 0;
+                Assert.AreEqual(expected, actual);
+
+                actual = Primes.Count(1);
+                expected = 0;
+                Assert.AreEqual(expected, actual);
+
+
+                for (var i = 2; i < 256; i++)
+                {
+                    actual = Primes.Count(i);
+                    expected = new PrimeGeneratorUnsafe(i).Count();
+                    Assert.AreEqual(expected, actual, $"Count failed for i = {i}");
+                }
+            }
+
+
             [TestMethod()]
             public void Primes_16_CountTest()
             {
@@ -1002,7 +1152,7 @@ namespace HigginsSoft.Math.Lib.Tests
                         i => new((uint)i * size, (uint)(i * size + (long)size) - 1))
                         .WithLogging(enableLogging)
                         .Run()
-                        .Wait(timeout:TimeSpan.FromSeconds(30)); ;
+                        .Wait(timeout: TimeSpan.FromSeconds(30)); ;
                 var count = runner.Results.Sum(x => x.Value);
 
                 var expected = PrimeData.Counts[powerOfTwo];
@@ -1015,7 +1165,7 @@ namespace HigginsSoft.Math.Lib.Tests
                     Console.WriteLine($"Found {runningProcCount} running processes");
                     var faultedProcCount = runner.procs.Where(x => x.ExitCode != 0).Count();
                     Console.WriteLine($"Found {runningProcCount} running processes");
-                    runner.SerializedResults.OrderBy(x=> x.Key).ToList().ForEach(x =>
+                    runner.SerializedResults.OrderBy(x => x.Key).ToList().ForEach(x =>
                     {
                         Console.WriteLine($"Result: {x.Key}  - {JsonConvert.SerializeObject(x.Value)}");
                     });

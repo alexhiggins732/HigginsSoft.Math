@@ -30,6 +30,9 @@ namespace HigginsSoft.Math.Lib
         //static readonly int[] arr = Enumerable.Repeat(-1, 5 * 2 * 7 * 2 * 11 * 2).ToArray();
         static readonly int[] arr = PrimeGeneratorPreSieve.Wheel11.Concat(PrimeGeneratorPreSieve.Wheel11).Select(x => (int)x).ToArray();
 
+        //TODO enable public access to WindowSize for calculating parallel seive jobs.
+        //public const int WindowSize = 6000;
+
         private int[] sieve = null!;
         private int[] sievePrimes = new int[6542];
         private int[] lowindices = new int[6542];
@@ -86,24 +89,28 @@ namespace HigginsSoft.Math.Lib
             }
             // calculate window and bit index to sieve from
             var startPrime = startValue < 2 ? 2 : startValue;
+            int maxValuePrime;
             if (MathUtil.IsProbablePrime(startPrime))
             {
-                startPrime = MathUtil.GetPreviousPrime(startPrime);
+                maxValuePrime = MathUtil.GetPreviousPrime(startPrime);
             }
             else
             {
                 startPrime = MathUtil.GetNextPrime(startPrime);
+                maxValuePrime = MathUtil.GetPreviousPrime(startPrime);
             }
 
-            if (startValue <= 2) return;
-            if (startValue == 3) { incNext(); return; }
-            if (startValue == 5) { incNext(); incNext(); return; }
+            if (startPrime <= 2 ) return;
+            if (startPrime == 3) { incNext(); return; }
+            if (startPrime == 5) { incNext(); incNext(); return; }
             // sieve the factor base
+
             while (!_sievedFactorBase)
             {
-                incNext();
+                 incNext();
+                if (value == maxValuePrime) break;
             }
-
+      
 
 
 
@@ -134,14 +141,24 @@ namespace HigginsSoft.Math.Lib
             if (windowBitIndex > 1)
             {
                 bitIndex = windowBitIndex - 1;
-                return;
             }
-
-
-
+            if (value >= startPrime)
+            {
+                bitIndex--;
+                value--;
+            }
+            if (startPrime > maxPrime)
+            {
+                value = maxPrime;
+            }
         }
+
         public PrimeGeneratorUnsafe(int maxPrime = PrimeData.MaxIntPrime)
         {
+            if (!MathUtil.IsProbablePrime(maxPrime))
+            {
+                maxPrime = MathUtil.GetPreviousPrime(maxPrime);
+            }
             this.maxPrime = maxPrime;
             maxSievePrime = (int)System.Math.Ceiling(System.Math.Sqrt(maxPrime));
             value = 0;
@@ -887,7 +904,6 @@ namespace HigginsSoft.Math.Lib
                     int* sievePrime = sievePrimes;
                     //int* low = lowindices;
                     //int* high = highindices;
-                    int* lastPrime = sievePrime + primecount;
 
                     for (var i = 0; i <= primecount; i++, sievePrime++)
                     {

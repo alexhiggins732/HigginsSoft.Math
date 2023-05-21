@@ -8,6 +8,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="InlinePrimeCheck.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.13.5" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\HigginsSoft.Math.Lib\HigginsSoft.Math.Lib.csproj" />
   </ItemGroup>
 

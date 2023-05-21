@@ -12,6 +12,7 @@
 
 */
 
+using BenchmarkDotNet.Running;
 using HigginsSoft.Math.Lib;
 using System.Reflection;
 
@@ -21,7 +22,35 @@ namespace HigginsSoft.Math.Demos
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello, World!");
+            // run benchmarks:  dotnet run -c Release [argument]
+            if (args.Length == 1)
+            {
+                switch (args[0])
+                {
+                    case "loop":
+                        var summary = BenchmarkRunner.Run<LoopBenchmark>();
+                        break;
+                    case "printresidues":
+                        PrimeResidueClasses.PrintResidueClasses(); break;
+                    case "factorial":
+                        PrimeResidueClasses.ShowProductFactorial(); break;
+                    case "factorialfactor":
+                        PrimeResidueClasses.ProductFactorialFactor();
+                        break;
+                    case "primeinline":
+                        //var summary2 = BenchmarkRunner.Run<InlinePrimeCheck>();
+                        break;
+                    case "timeprimechecker":
+                        var summary1 = BenchmarkRunner.Run<PrimeCheckerBenchmarks>();
+                        //PrimeChecker.TestDiv();
+                        break;
+                    case "primechecker":
+                        //var summary1 = BenchmarkRunner.Run<PrimeChecker>();
+                        PrimeCheckerBenchmarks.TestLoopDiv();
+                        break;
+                }
+
+            }
         }
     }
 

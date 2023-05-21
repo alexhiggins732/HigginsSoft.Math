@@ -15,14 +15,157 @@
 
 using MathGmp.Native;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
+using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
 
 namespace HigginsSoft.Math.Lib
 {
-    public class Primes
+    public partial class Primes
     {
+
+
+        public static readonly int[] IntFactorPrimes = PrimeData.IntFactorPrimes;
+        public static readonly int[] UintFactorPrimes = PrimeData.UintFactorPrimes;
+
+        /// <summary>
+        /// Returns the number of primes less than max value
+        /// </summary>
+        /// <param name="max"></param>
+        /// <returns></returns>
+        public static int Count(int max)
+        {
+            // TODO: Implement range: Range(start, nextPower2(start) + (counts[previousPowerOf2(end)] - counts[nextPower2(start)]) + range(previousPowerOf2(end), end);
+            if (max < 2) return 0;
+            GmpInt a = max;
+            var bits = a.BitLength;
+            var data = PrimeData.Counts[bits - 1];
+            var count = data.Count;
+            if (!a.IsPowerOfTwo)
+            {
+                if (max <= data.NextPrime)
+                {
+                    if (max == data.NextPrime)
+                        count += 1;
+                }
+                else
+                {
+                    var nextData = PrimeData.Counts[bits];
+                    if (max >= nextData.MaxPrime)
+                    {
+                        count = nextData.Count;
+                    }
+                    else
+                    {
+                        var start = (int)data.NextPrime;
+                        //TODO: Determine number of windows and launch parallel count.
+                        //var sieveSize = max - start;
+                        //var windowSize = PrimeGeneratorUnsafe.WindowSize;
+                        //var windows = Math.Ceiling(sieveSize / windowSize);
+
+
+                        //if (windows > 1)
+                        //{
+                        //    // sieve start window on 1 thread.
+                        //    // sieve end window on another thread
+                        //    // sieve windows 1..n-1 using parallel.
+                        //    or just luanch parallel 
+                        //}
+                        var rangeCount = new PrimeGeneratorUnsafe(start, max).Count();
+                        count += rangeCount;
+                    }
+                }
+            }
+            return count;
+        }
+
+        public static int Count(int start, int end)
+        {
+            if (end <= start)
+            {
+                throw new ArgumentOutOfRangeException(nameof(end), "End must be greater than start");
+            }
+            if (start <= 2) return Count(end);
+            if (end < 2) return 0;
+            if (end < 2) end = 2;
+
+
+
+            var startBits = MathLib.BitLength(start);
+            // start between 2^startBits and 2^(startBits+1)
+            var endBits = MathLib.BitLength(end);
+            // end between 2^endBits and 2^(endBits+1)
+
+            var startPowerOfTwo = MathLib.IsPowerOfTwo(start, out int startExponent);
+            var startData = PrimeData.Counts[startBits - 1];
+            //numprimes less than this bitrange = startData.Count;
+            // count from startData.N= to Start-1;
+
+            var nextPowerOf2 = startData.N << 1;
+            var limit = end < nextPowerOf2 ? end : nextPowerOf2;
+            int count = 0;
+            int n = 0;
+            PrimeData next = next = PrimeData.Counts[startBits];
+            n = next.N;
+            if (startPowerOfTwo && nextPowerOf2 <= end)
+            {
+
+
+                count = next.Count - startData.Count;
+                startBits++;
+            }
+            else
+            {
+                count = new PrimeGeneratorUnsafe(start, limit).Count();
+                n = limit;
+                startBits++;
+            }
+
+            // limit==end means all primes read.
+            if (limit != end)
+            {
+                var endData = PrimeData.Counts[endBits - 1];
+                while (n < endData.N)
+                {
+                    var temp = PrimeData.Counts[startBits++];
+                    var range = temp.Count - next.Count;
+                    count += range;
+                    next = temp;
+                    n = next.N;
+
+                }
+                if (n < end)
+                {
+
+                    if (end == endData.NextPrime)
+                    {
+                        count++;
+                    }
+                    else
+                    {
+                        var nextData = PrimeData.Counts[endBits];
+                        if (end == nextData.MaxPrime)
+                        {
+                            count += nextData.Count - endData.Count;
+                        }
+                        else
+                        {
+                            var endCount = new PrimeGeneratorUnsafe(endData.N, end).Count();
+                            count += endCount;
+                        }
+                    }
+                }
+
+            }
+
+            return count;
+
+
+        }
+
         public static int[] Primes16 => new[] { 2, 3, 5, 7, 11, 13 };
         public static int[] Primes256 =>
             Primes16.Concat(
@@ -50,21 +193,10 @@ namespace HigginsSoft.Math.Lib
                 )
             .ToArray();
 
-        public static bool IsPrime(int n)
-        {
-            if (n <= 1) return false;
-            if ((n & 1) == 0) return n == 2;
-            if ((n % 3) == 0) return n == 3;
-            int max = (int)System.Math.Sqrt(n);
-            for (int i = 5; i <= max; i += 6)
-            {
-                if (n % i == 0 || n % (i + 2) == 0) return false;
-            }
 
-            return true;
-        }
+
+
     }
-
     public class Factorization
     {
         public List<Factor> Factors = new();
@@ -84,67 +216,5 @@ namespace HigginsSoft.Math.Lib
 
         public GmpInt Value { get; private set; }
         public int Count { get; set; }
-    }
-
-    public class PrimeData
-    {
-        public const int MaxIntPrime = 2147483647;
-        public const uint MaxUintPrime = 4294967291;
-        public const long MaxLongPrime = long.MaxValue;
-        public const ulong MaxULongPrime = ulong.MaxValue;
-
-        public static Dictionary<int, PrimeData> Counts = (new PrimeData[]
-        {
-            new(1,1, 2,3),
-            new(2,2, 3,5),
-            new(3,4, 7,11),
-            new(4,6, 13,17),
-            new(5,11, 31,37),
-            new(6,18, 61,67),
-            new(7,31, 127,131),
-            new(8,54, 251,257),
-            new(9,97, 509,521),
-            new(10,172, 1021,1031),
-            new(11,309, 2039,2053),
-            new(12,564, 4093,4099),
-            new(13,1028, 8191,8209),
-            new(14,1900, 16381,16411),
-            new(15,3512, 32749,32771),
-            new(16,6542, 65521,65537),
-            new(17,12251, 131071,131101),
-            new(18,23000, 262139,262147),
-            new(19,43390, 524287,524309),
-            new(20,82025, 1048573,1048583),
-            new(21,155611, 2097143,2097169),
-            new(22,295947, 4194301,4194319),
-            new(23,564163, 8388593,8388617),
-            new(24,1077871, 16777213,16777259),
-            new(25,2063689, 33554393,33554467),
-            new(26,3957809, 67108859,67108879),
-            new(27,7603553, 134217689,134217757),
-            new(28,14630843, 268435399,268435459),
-            new(29,28192750, 536870909,536870923),
-            new(30,54400028, 1073741789,1073741827),
-            new(31,105097565, 2147483647,2147483659),
-            new(32,203280221, 4294967291,4294967311),
-
-
-
-        }).ToDictionary(x => x.Bits, x => x);
-
-        public PrimeData(int bit, int count, long maxPrime, long nextPrime)
-        {
-            Bits = bit;
-            N = 1 << bit;
-            Count = count;
-            MaxPrime = maxPrime;
-            NextPrime = nextPrime;
-        }
-
-        public int N { get; }
-        public int Bits { get; }
-        public int Count { get; }
-        public long MaxPrime { get; }
-        public long NextPrime { get; }
     }
 }

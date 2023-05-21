@@ -622,16 +622,43 @@ namespace HigginsSoft.Math.Lib
             return result;
         }
 
+        public static GmpInt operator +(GmpInt left, uint right)
+        {
+            if (right == 0) return left.Clone();
+            if (left.IsZero) return right;
+
+            var result = new GmpInt();
+            gmp_lib.mpz_add_ui(result.Data, left.Data, right);
+            return result;
+        }
+
+        public static GmpInt operator +(uint left, GmpInt right)
+            => right + left;
+
         public static GmpInt operator -(GmpInt left, GmpInt right)
         {
-
-
             if (right.IsZero) return left.Clone();
             if (left.IsZero) return -right;
 
             var result = new GmpInt();
             gmp_lib.mpz_sub(result.Data, left.Data, right.Data);
             return result;
+        }
+
+        public static GmpInt operator -(GmpInt left, uint right)
+        {
+            if (right == 0) return left.Clone();
+            if (left.IsZero) return -right;
+            var result = new GmpInt();
+            gmp_lib.mpz_sub_ui(result.Data, left.Data, right);
+            return result;
+        }
+
+        public static GmpInt operator -(uint left, GmpInt right)
+        {
+            if (right.IsZero) return left;
+            if (left == 0) return -right.Clone();
+            return -(right - left);
         }
 
         public static GmpInt operator *(GmpInt left, GmpInt right)
@@ -644,6 +671,33 @@ namespace HigginsSoft.Math.Lib
             return result;
         }
 
+        public static GmpInt operator *(GmpInt left, int right)
+        {
+            if (right == 0) return Zero.Clone();
+            if (left.IsZero) return Zero.Clone();
+
+            var result = new GmpInt();
+            gmp_lib.mpz_mul_si(result.Data, left.Data, right);
+            return result;
+        }
+
+        public static GmpInt operator *(int left, GmpInt right)
+            => right * left;
+
+        public static GmpInt operator *(GmpInt left, uint right)
+        {
+            if (right == 0) return Zero.Clone();
+            if (left.IsZero) return Zero.Clone();
+
+            var result = new GmpInt();
+            gmp_lib.mpz_mul_ui(result.Data, left.Data, right);
+            return result;
+        }
+
+        public static GmpInt operator *(uint left, GmpInt right)
+            => right * left;
+
+
         public static GmpInt operator /(GmpInt dividend, GmpInt divisor)
         {
             var result = new GmpInt();
@@ -651,10 +705,37 @@ namespace HigginsSoft.Math.Lib
             return result;
         }
 
+
+        public static GmpInt operator /(GmpInt dividend, int divisor)
+        {
+            if (divisor < 0) return dividend / (GmpInt)divisor;
+            return dividend / (uint)divisor;
+        }
+
+        public static GmpInt operator /(GmpInt dividend, uint divisor)
+        {
+            var result = new GmpInt();
+            gmp_lib.mpz_divexact_ui(result.Data, dividend.Data, divisor);
+            return result;
+        }
+
         public static GmpInt operator %(GmpInt dividend, GmpInt divisor)
         {
             var result = new GmpInt();
             gmp_lib.mpz_mod(result.Data, dividend.Data, divisor.Data);
+            return result;
+        }
+
+        public static GmpInt operator %(GmpInt dividend, int divisor)
+        {
+            if (divisor < 0) return dividend % (GmpInt)divisor;
+            return dividend % (uint)divisor;
+        }
+
+        public static GmpInt operator %(GmpInt dividend, uint divisor)
+        {
+            var result = new GmpInt();
+            gmp_lib.mpz_mod_ui(result.Data, dividend.Data, divisor);
             return result;
         }
 
@@ -686,29 +767,109 @@ namespace HigginsSoft.Math.Lib
         }
 
 
-        public static bool operator <(GmpInt left, int right)
+        public static bool operator <(GmpInt left, Int32 right)
         {
             return left.CompareTo(right) < 0;
         }
-        public static bool operator <=(GmpInt left, int right)
+        public static bool operator <=(GmpInt left, Int32 right)
         {
             return left.CompareTo(right) <= 0;
         }
-        public static bool operator >(GmpInt left, int right)
+        public static bool operator >(GmpInt left, Int32 right)
         {
             return left.CompareTo(right) > 0;
         }
-        public static bool operator >=(GmpInt left, int right)
+        public static bool operator >=(GmpInt left, Int32 right)
         {
             return left.CompareTo(right) >= 0;
         }
-        public static bool operator ==(GmpInt left, int right)
+        public static bool operator ==(GmpInt left, Int32 right)
         {
             return left.CompareTo(right) == 0;
         }
-        public static bool operator !=(GmpInt left, int right)
+        public static bool operator !=(GmpInt left, Int32 right)
         {
             return left.CompareTo(right) != 0;
+        }
+
+
+
+        public static bool operator <(Int32 left, GmpInt right)
+        {
+            return right.CompareTo(left) > 0;
+        }
+        public static bool operator <=(Int32 left, GmpInt right)
+        {
+            return right.CompareTo(left) >= 0;
+        }
+        public static bool operator >(Int32 left, GmpInt right)
+        {
+            return right.CompareTo(left) < 0;
+        }
+        public static bool operator >=(Int32 left, GmpInt right)
+        {
+            return right.CompareTo(left) <= 0;
+        }
+        public static bool operator ==(Int32 left, GmpInt right)
+        {
+            return right.CompareTo(left) == 0;
+        }
+        public static bool operator !=(Int32 left, GmpInt right)
+        {
+            return right.CompareTo(left) != 0;
+        }
+
+
+        public static bool operator <(GmpInt left, UInt32 right)
+        {
+            return left.CompareTo(right) < 0;
+        }
+        public static bool operator <=(GmpInt left, UInt32 right)
+        {
+            return left.CompareTo(right) <= 0;
+        }
+        public static bool operator >(GmpInt left, UInt32 right)
+        {
+            return left.CompareTo(right) > 0;
+        }
+        public static bool operator >=(GmpInt left, UInt32 right)
+        {
+            return left.CompareTo(right) >= 0;
+        }
+        public static bool operator ==(GmpInt left, UInt32 right)
+        {
+            return left.CompareTo(right) == 0;
+        }
+        public static bool operator !=(GmpInt left, UInt32 right)
+        {
+            return left.CompareTo(right) != 0;
+        }
+
+
+
+        public static bool operator <(UInt32 left, GmpInt right)
+        {
+            return right.CompareTo(left) > 0;
+        }
+        public static bool operator <=(UInt32 left, GmpInt right)
+        {
+            return right.CompareTo(left) >= 0;
+        }
+        public static bool operator >(UInt32 left, GmpInt right)
+        {
+            return right.CompareTo(left) < 0;
+        }
+        public static bool operator >=(UInt32 left, GmpInt right)
+        {
+            return right.CompareTo(left) <= 0;
+        }
+        public static bool operator ==(UInt32 left, GmpInt right)
+        {
+            return right.CompareTo(left) == 0;
+        }
+        public static bool operator !=(UInt32 left, GmpInt right)
+        {
+            return right.CompareTo(left) != 0;
         }
 
 
