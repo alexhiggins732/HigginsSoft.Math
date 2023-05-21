@@ -40,6 +40,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "images", "images", "{A0B80C36-61B8-4A29-85BF-8FEF5978572A}"
 	ProjectSection(SolutionItems) = preProject
+		docs\images\Sieve2p31-16threads.png = docs\images\Sieve2p31-16threads.png
 		docs\images\Sieve2p32-16threads.png = docs\images\Sieve2p32-16threads.png
 	EndProjectSection
 EndProject
