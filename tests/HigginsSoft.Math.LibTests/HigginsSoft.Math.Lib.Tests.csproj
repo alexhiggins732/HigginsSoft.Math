@@ -23,6 +23,8 @@
 
 	<ItemGroup>
 
+		<ProjectReference Include="..\..\src\HigginsSoft.Math.Demos\HigginsSoft.Math.Demos.csproj" />
+
 		<ProjectReference Include="..\..\src\HigginsSoft.Math.Lib\HigginsSoft.Math.Lib.csproj" />
 	</ItemGroup>
 

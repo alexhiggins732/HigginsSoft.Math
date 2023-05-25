@@ -116,6 +116,8 @@ namespace HigginsSoft.Math.Lib
             AndT = op.AndT;
             OrT = op.OrT;
             XorT = op.XorT;
+
+            Power = op.Power;
         }
 
         public static Func<int, T> ConvertFromInt { get; } = null!;
@@ -150,6 +152,7 @@ namespace HigginsSoft.Math.Lib
         public static Func<T, T, T> MultiplyT { get; } = null!;
         public static Func<GmpInt, T, GmpInt> Mod { get; } = null!;
         public static Func<T, T, T> ModT { get; } = null!;
+        public static Func<T, T, T> Power { get; } = null!;
 
         public static Func<GmpInt, T, GmpInt> LeftShift { get; } = null!;
         public static Func<GmpInt, T, GmpInt> RightShift { get; } = null!;
@@ -233,6 +236,7 @@ namespace HigginsSoft.Math.Lib
 
         public Func<T, GmpInt> Neg { get; protected set; } = null!;
         public Func<T, T> NegT { get; protected set; } = null!;
+        public Func<T, T, T> Power { get; protected set; } = null!;
     }
 
     public class IntOps : OpFactory<int>
@@ -297,6 +301,8 @@ namespace HigginsSoft.Math.Lib
             AndT = (a, b) => a & b;
             OrT = (a, b) => a | b;
             XorT = (a, b) => a ^ b;
+
+            Power = (a, b) => (int)System.Math.Pow(a, b);
         }
 
 
@@ -366,6 +372,8 @@ namespace HigginsSoft.Math.Lib
             AndT = (a, b) => a & b;
             OrT = (a, b) => a | b;
             XorT = (a, b) => a ^ b;
+
+            Power = (a, b) => (uint)System.Math.Pow(a, b);
         }
 
 
@@ -433,6 +441,8 @@ namespace HigginsSoft.Math.Lib
             AndT = (a, b) => a & b;
             OrT = (a, b) => a | b;
             XorT = (a, b) => a ^ b;
+
+            Power = (a, b) => (long)System.Math.Pow(a, b);
         }
 
 
@@ -500,6 +510,8 @@ namespace HigginsSoft.Math.Lib
             AndT = (a, b) => a & b;
             OrT = (a, b) => a | b;
             XorT = (a, b) => a ^ b;
+
+            Power = (a, b) => (ulong)System.Math.Pow(a, b);
         }
 
 
@@ -568,6 +580,8 @@ namespace HigginsSoft.Math.Lib
             AndT = (a, b) => FromGmpInt((GmpInt)a & (GmpInt)b);
             OrT = (a, b) => FromGmpInt((GmpInt)a |(GmpInt)b);
             XorT = (a, b) => FromGmpInt((GmpInt)a ^ (GmpInt)b);
+
+            Power = (a, b) => (float)System.Math.Pow(a, b);
         }
 
 
@@ -635,6 +649,8 @@ namespace HigginsSoft.Math.Lib
             AndT = (a, b) => FromGmpInt((GmpInt)a & (GmpInt)b);
             OrT = (a, b) => FromGmpInt((GmpInt)a | (GmpInt)b);
             XorT = (a, b) => FromGmpInt((GmpInt)a ^ (GmpInt)b);
+
+            Power = (a, b) => System.Math.Pow(a, b);
         }
     }
 
@@ -702,6 +718,8 @@ namespace HigginsSoft.Math.Lib
             AndT = (a, b) => FromGmpInt((GmpInt)a & (GmpInt)b);
             OrT = (a, b) => FromGmpInt((GmpInt)a | (GmpInt)b);
             XorT = (a, b) => FromGmpInt((GmpInt)a ^ (GmpInt)b);
+
+            Power = (a, b) => (decimal)System.Math.Pow((double)a, (int)b);
         }
     }
 
@@ -769,6 +787,7 @@ namespace HigginsSoft.Math.Lib
             OrT = (a, b) => a | b;
             XorT = (a, b) => a ^ b;
 
+            Power = (a, b) => BigInteger.Pow(a, (int)b);
 
         }
     }
@@ -836,6 +855,8 @@ namespace HigginsSoft.Math.Lib
             AndT = (a, b) => a & b;
             OrT = (a, b) => a | b;
             XorT = (a, b) => a ^ b;
+
+            Power = (a, b) => a.Power((int)b);
         }
     }
 

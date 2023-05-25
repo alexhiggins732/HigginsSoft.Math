@@ -19,9 +19,6 @@ namespace HigginsSoft.Math.Lib
 {
     public static partial class MathLib
     {
-    }
-    public static partial class MathLib
-    {
         public static long PowerMod(
             long @base, 
             int exponent,
@@ -107,5 +104,7 @@ namespace HigginsSoft.Math.Lib
            GmpInt modulus
            )
             => @base.PowerMod(exponent, modulus);
+
+
     }
 }

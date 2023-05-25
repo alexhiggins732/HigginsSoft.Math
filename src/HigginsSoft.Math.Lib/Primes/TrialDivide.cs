@@ -12,6 +12,7 @@
 
 */
 
+using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace HigginsSoft.Math.Lib
@@ -20,11 +21,51 @@ namespace HigginsSoft.Math.Lib
     {
         #region Trial Divide Int
 
+        //use the first 1028 primes for trial division in a primality check
+        const int probable_prime_tdiv_limit = 4099; 
 
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsPrime(int i) => TrialDivide(i);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsPrime(uint i) => TrialDivide(i);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsPrime(long i) => TrialDivide(i);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsPrime(ulong i) => TrialDivide(i);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsPrime(BigInteger i)
+        {
+            if (i <= 2) return i == 2;
+            var bitLength = i.GetBitLength();
+            if (bitLength < 65)
+            {
+                if (bitLength < 32) return IsPrime((int)i);
+                if (bitLength < 33) return IsPrime((uint)i);
+                if (bitLength < 64) return IsPrime((long)i);
+                return IsPrime((uint)i);
+            }
+            var result = TrialDivide(i, probable_prime_tdiv_limit, out _);
+            return result || ((GmpInt)i).IsProbablyPrimeRabinMiller(20);
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsPrime(GmpInt i)
+        {
+            if (i <= 2) return i == 2;
+            var bitLength = i.BitLength;
+            if (bitLength < 65)
+            {
+                if (bitLength < 32) return IsPrime((int)i);
+                if (bitLength < 33) return IsPrime((uint)i);
+                if (bitLength < 64) return IsPrime((long)i);
+                return IsPrime((uint)i);
+            }
+            var result = TrialDivide(i, probable_prime_tdiv_limit, out _);
+            return result || i.IsProbablyPrimeRabinMiller();
+
+        }
+
+
         /// <summary>
         /// Tests if a number <paramref name="n"/> is prime using trial division.
         /// </summary>
@@ -66,7 +107,8 @@ namespace HigginsSoft.Math.Lib
         public static bool TrialDivide(int n, IEnumerable<int> candidates, out int factor)
         {
             factor = 1;
-            if (n <= 1) return false;
+            if (n < 2) return false;
+            if (n == 2) return (factor = n) == 2;
             var root = (int)System.Math.Sqrt(n);
             foreach (var p in candidates)
             {
@@ -96,6 +138,7 @@ namespace HigginsSoft.Math.Lib
         {
             factor = 1;
             if (n <= 1) return false;
+            if (n == 2) return (factor = n) == 2;
             var arr = IntFactorPrimes;
             var root = (int)System.Math.Sqrt(n);
             var limit = MathLib.Min(maxPrime, root);
@@ -157,6 +200,7 @@ namespace HigginsSoft.Math.Lib
         {
             factor = 1;
             if (n <= 1) return false;
+            if (n == 2) return (factor = n) == 2;
             var root = (int)System.Math.Sqrt(n);
             foreach (var p in candidates)
             {
@@ -186,6 +230,7 @@ namespace HigginsSoft.Math.Lib
         {
             factor = 1;
             if (n <= 1) return false;
+            if (n == 2) return (factor = n) == 2;
             var arr = UintFactorPrimes;
             var root = (int)System.Math.Sqrt(n);
             var limit = MathLib.Min(maxPrime, root);
@@ -248,6 +293,7 @@ namespace HigginsSoft.Math.Lib
         {
             factor = 1;
             if (n <= 1) return false;
+            if (n == 2) return (factor = n) == 2;
             var root = (int)System.Math.Sqrt(n);
             foreach (var p in candidates)
             {
@@ -277,7 +323,7 @@ namespace HigginsSoft.Math.Lib
         {
             factor = 1;
             if (n <= 1) return false;
-
+            if (n == 2) return (factor = n) == 2;
             var root = (uint)System.Math.Sqrt(n);
             var limit = MathLib.Min(maxPrime, root);
             var candidates = new PrimeGeneratorUnsafeUint(limit);
@@ -339,6 +385,7 @@ namespace HigginsSoft.Math.Lib
         {
             factor = 1;
             if (n <= 1) return false;
+            if (n == 2) return (factor = n) == 2;
             var root = (int)System.Math.Sqrt(n);
             foreach (var p in candidates)
             {
@@ -368,7 +415,7 @@ namespace HigginsSoft.Math.Lib
         {
             factor = 1;
             if (n <= 1) return false;
-
+            if (n == 2) return (factor = n) == 2;
             var root = (uint)System.Math.Sqrt(n);
             var limit = MathLib.Min(maxPrime, root);
             var candidates = new PrimeGeneratorUnsafeUint(limit);
@@ -439,6 +486,7 @@ namespace HigginsSoft.Math.Lib
         public static bool TrialDivide(GmpInt n, IEnumerable<int> candidates, out GmpInt factor)
         {
             factor = 1;
+            if (n == 2) return (factor = n) == 2;
             if (n <= 1) return false;
             GmpInt root = n.Sqrt();
             if (root == 1)
@@ -475,6 +523,7 @@ namespace HigginsSoft.Math.Lib
         {
             factor = 1;
             if (n <= 1) return false;
+            if (n == 2) return (factor = n) == 2;
             GmpInt root = n.Sqrt();
             if (root == 1)
             {

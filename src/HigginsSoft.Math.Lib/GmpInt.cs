@@ -23,7 +23,11 @@ using System.Runtime.InteropServices;
 
 namespace HigginsSoft.Math.Lib
 {
-    public partial class GmpInt : IDisposable, ICloneable
+    public partial class GmpInt : IDisposable,
+        ICloneable,
+        IComparable,
+        IComparable<GmpInt>,
+        IEquatable<GmpInt>
     {
 
         public readonly mpz_t Data = new();
@@ -241,9 +245,17 @@ namespace HigginsSoft.Math.Lib
             return new GmpInt(this);
         }
 
+        public int CompareTo(object? other)
+        {
+            if (other == null)
+                return 1;
+            if (other is GmpIntConvertible convertible)
+                return CompareTo(convertible);
+            throw new ArgumentException("Object must be a GmpInt or GmpIntConvertible", nameof(other));
+        }
 
-        public int CompareTo(GmpInt other)
-            => gmp_lib.mpz_cmp(this.Data, other.Data);
+        public int CompareTo(GmpInt? other)
+            => other is null ? 1 : gmp_lib.mpz_cmp(this.Data, other.Data);
 
         public int CompareTo(int other)
         {
@@ -288,9 +300,9 @@ namespace HigginsSoft.Math.Lib
             return Equals(other);
         }
 
-        public bool Equals(GmpInt other)
+        public bool Equals(GmpInt? other)
         {
-
+            if (other is null) return false;
             if (Sign != other.Sign) return false;
             if (BitCount != other.BitCount) return false;
             return this == other;
@@ -463,12 +475,11 @@ namespace HigginsSoft.Math.Lib
         {
 
             if (value.Sign < 0)
-                if (value < (int)short.MinValue)
-                {
-                    var a = +value;
-                    var result = gmp_lib.mpz_get_ui(a.Data);
-                    return (int)result;
-                }
+            {
+                var a = +value;
+                var result = gmp_lib.mpz_get_ui(a.Data);
+                return -(int)result;
+            }
             return gmp_lib.mpz_get_si(value.Data);
         }
 

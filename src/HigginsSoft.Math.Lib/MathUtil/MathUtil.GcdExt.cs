@@ -88,7 +88,34 @@ namespace HigginsSoft.Math.Lib
         }
 
 
+        public static int ModInverse(int a, int b)
+        {
+            int m0 = b, m1=a;
+            int y = 0, x = 1;
 
+            if (b == 1)
+                return 0;
+
+            while (b>0 && a > 1)
+            {
+                int q = a / b;
+                int t = b;
+
+                b = a % b;
+
+                a = t;
+                t = y;
+                y = x - q * y;
+                x = t;
+
+            }
+            if (b == 0 && (x==1 || x==-1))
+                x = m1;
+            if (x < 0)
+                x += m0;
+
+            return x;
+        }
         public static GcdExtResult<int> GcdExtInt(int a, int b)
         {
             int r0 = a;
@@ -195,7 +222,8 @@ namespace HigginsSoft.Math.Lib
             if (z.IsEven)
             {
                 z -= 1;
-            } else
+            }
+            else
             {
                 z -= 2;
             }
@@ -271,7 +299,7 @@ namespace HigginsSoft.Math.Lib
         public static implicit operator GmpIntConvertible(double i) => new GmpIntConvertible((GmpInt)i);
         public static implicit operator GmpIntConvertible(decimal i) => new GmpIntConvertible((GmpInt)i);
         public static implicit operator GmpIntConvertible(BigInteger i) => new GmpIntConvertible(i);
-        public static explicit operator GmpIntConvertible(GmpInt i) => new GmpIntConvertible(i);
+        public static implicit operator GmpIntConvertible(GmpInt i) => new GmpIntConvertible(i);
         public static explicit operator GmpIntConvertible(GmpFloat i) => new GmpIntConvertible((GmpInt)i);
 
         public static implicit operator GmpInt(GmpIntConvertible i) => i.Value.Clone();

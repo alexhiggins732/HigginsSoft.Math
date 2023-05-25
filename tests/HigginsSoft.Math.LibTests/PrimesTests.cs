@@ -219,6 +219,9 @@ namespace HigginsSoft.Math.Lib.Tests
                 Assert.AreEqual(54, a.Length);
             }
 
+#if SKIP_LONG_TESTS
+            [Ignore("Slow initial generator to be removed or replaced to use prime generator")]
+#endif
             [TestMethod()]
             public void Primes_65536_CountTest()
             {
@@ -1071,6 +1074,9 @@ namespace HigginsSoft.Math.Lib.Tests
 
             }
 
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_GetEnumerator_CountRange28()
             {
@@ -1078,7 +1084,9 @@ namespace HigginsSoft.Math.Lib.Tests
                 int count = StaticMethods.CountRange32(mp28, mp28 * 2);
                 Assert.AreEqual(13561907, count);
             }
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_GetEnumerator_Count28()
             {
@@ -1086,7 +1094,9 @@ namespace HigginsSoft.Math.Lib.Tests
                 Assert.AreEqual(14630843, count);
             }
 
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_GetEnumerator_Count28_MpiSingleCore()
             {
@@ -1104,6 +1114,7 @@ namespace HigginsSoft.Math.Lib.Tests
                 Console.WriteLine($"Returing result: {result}");
                 return result;
             }
+
 
             [TestMethod]
             public void Generator_CountLast31Range()
@@ -1180,32 +1191,44 @@ namespace HigginsSoft.Math.Lib.Tests
                 Assert.AreEqual(expected.Count, count, $"2^{powerOfTwo} Count Failed.");
             }
 
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Parallel_24_Generator_MaxCores_Test()
             {
                 TestPrimeGeneratorMpi(24, Environment.ProcessorCount, enableLogging: true);
             }
 
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Parallel_28_Generator_MaxCores_Test()
             {
                 TestPrimeGeneratorMpi(28, Environment.ProcessorCount, enableLogging: true); ;
             }
 
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Parallel_28_Generator_MaxCores_LinqCount_Test()
             {
                 TestPrimeGeneratorMpi(28, Environment.ProcessorCount, true);
             }
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Parallel_31_Generator_MaxCores_Test()
             {
                 TestPrimeGeneratorMpi(31, Environment.ProcessorCount);
             }
 
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Parallel_31_Generator_MaxCores_LinqCount_Test()
             {
@@ -1213,14 +1236,18 @@ namespace HigginsSoft.Math.Lib.Tests
             }
 
 
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Parallel_32_Generator_MaxCores_Test()
             {
                 TestPrimeGeneratorMpi(32, Environment.ProcessorCount, false, false);
             }
 
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Parallel_32_Generator_MaxCores_LinqCount_Test()
             {
@@ -1734,25 +1761,36 @@ namespace HigginsSoft.Math.Lib.Tests
                 TestPrimeGeneratorMpi(24, Environment.ProcessorCount);
             }
 
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Parallel_28_Generator_MaxCores_Test()
             {
                 TestPrimeGeneratorMpi(28, Environment.ProcessorCount);
             }
 
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Parallel_28_Generator_MaxCores_LinqCount_Test()
             {
                 TestPrimeGeneratorMpi(28, Environment.ProcessorCount, true);
             }
 
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Parallel_31_Generator_MaxCores_Test()
             {
                 TestPrimeGeneratorMpi(31, Environment.ProcessorCount);
             }
 
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Parallel_31_Generator_MaxCores_LinqCount_Test()
             {

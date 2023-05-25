@@ -569,6 +569,33 @@ namespace HigginsSoft.Math.Lib
             return mpz_perfect_square_p(this) != 0;
         }
 
+        public bool IsPerfectSquare(out mpz_t root)
+            => IsPerfectSquare(this, out root);
+
+        public bool IsPerfectSquare(out GmpInt root)
+        {
+            var result = IsPerfectSquare(this, out mpz_t sqrt);
+            root = sqrt;
+            return result;
+        }
+
+        public static bool IsPerfectSquare(mpz_t value, out mpz_t root)
+        {
+            var z = newz();
+            var sign = mpz_sgn(value);
+            if (sign < 1) {
+                root = z; 
+                return false;
+            }
+           
+            var remainder = newz();
+            mpz_rootrem(z, remainder, value, 2);
+            sign = mpz_sgn(remainder);
+            mpz_clear(remainder);
+            root = z;
+            return sign == 0;
+        }
+
         public bool IsPerfectPower()
         {
             // There is a known issue with this function for negative inputs in GMP 4.2.4.
@@ -580,7 +607,7 @@ namespace HigginsSoft.Math.Lib
 
         #region Number Theoretic Functions
 
-        public bool IsProbablyPrimeRabinMiller(int repetitions)
+        public bool IsProbablyPrimeRabinMiller(int repetitions = 20)
         {
             int result = mpz_probab_prime_p(this, repetitions);
 
@@ -698,6 +725,19 @@ namespace HigginsSoft.Math.Lib
             var z = newz();
             mpz_lcm_ui(z, y, x);
             return z;
+        }
+
+        public static int LegendreSymbol(int x, int primeY)
+        {
+
+            if ((GmpInt)primeY == 2) return 0;
+            return mpz_jacobi((GmpInt)x, (GmpInt)primeY);
+        }
+
+        public static int LegendreSymbol(GmpInt x, GmpInt primeY)
+        {
+            if (primeY == 2) return 0;
+            return mpz_jacobi(x.Data, primeY.Data);
         }
 
         public static int LegendreSymbol(mpz_t x, mpz_t primeY)

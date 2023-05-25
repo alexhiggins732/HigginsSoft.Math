@@ -197,24 +197,4 @@ namespace HigginsSoft.Math.Lib
 
 
     }
-    public class Factorization
-    {
-        public List<Factor> Factors = new();
-
-        public void Add(mpz_t root, int count)
-        {
-            Factors.Add(new(root, count));
-        }
-    }
-    public class Factor
-    {
-        public Factor(mpz_t value, int count)
-        {
-            Value = value;
-            Count = count;
-        }
-
-        public GmpInt Value { get; private set; }
-        public int Count { get; set; }
-    }
 }

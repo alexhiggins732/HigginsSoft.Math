@@ -13,7 +13,6 @@
 */
 
 using BenchmarkDotNet.Running;
-using HigginsSoft.Math.Lib;
 using System.Reflection;
 
 namespace HigginsSoft.Math.Demos
@@ -51,26 +50,6 @@ namespace HigginsSoft.Math.Demos
                 }
 
             }
-        }
-    }
-
-    public class Qs16
-    {
-        public Factorization Factor(ushort value)
-        {
-            GmpInt z = value;
-            Factorization result = new();
-
-            var root = GmpInt.Sqrt(value, out bool isexact);
-            if (isexact)
-            {
-                result.Add(root, 2);
-            }
-            else
-            {
-
-            }
-            return result;
         }
     }
 }

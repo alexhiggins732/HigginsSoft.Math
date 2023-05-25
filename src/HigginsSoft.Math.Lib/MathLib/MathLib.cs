@@ -135,63 +135,6 @@ namespace HigginsSoft.Math.Lib
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static double Sinh(double d) => System.Math.Sinh(d);
 
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static double Sqrt(double d) => System.Math.Sqrt(d);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsPerfectSquare(int n)
-            => IsPerfectSquare(n, out _);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsPerfectSquare(int n, out int sqrt)
-        {
-            sqrt = (int)System.Math.Sqrt(n);
-            return sqrt * sqrt == n;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsPerfectSquare(uint n)
-            => IsPerfectSquare(n, out _);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsPerfectSquare(uint n, out int sqrt)
-        {
-            sqrt = (int)System.Math.Sqrt(n);
-            return sqrt * sqrt == n;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsPerfectSquare(long n)
-            => IsPerfectSquare(n, out _);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsPerfectSquare(long n, out uint sqrt)
-        {
-            sqrt = (uint)System.Math.Sqrt(n);
-            return sqrt * sqrt == n;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsPerfectSquare(ulong n)
-            => IsPerfectSquare(n, out _);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsPerfectSquare(ulong n, out uint sqrt)
-        {
-            sqrt = (uint)System.Math.Sqrt(n);
-            return sqrt * sqrt == n;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsPerfectSquare(BigInteger n)
-            => IsPerfectSquare((GmpInt)n);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsPerfectSquare(GmpInt n)
-            => n.IsPerfectSquare();
-
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static double Tan(double d) => System.Math.Tan(d);
 
@@ -247,6 +190,21 @@ namespace HigginsSoft.Math.Lib
             }
             return bits;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int PopCount(int value)
+        {
+
+            int count = 0;
+            while (value != 0)
+            {
+                count += value & 1;
+                value >>= 1;
+            }
+            return count;
+
+        }
+
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int Min(int a, int b) => a < b ? a : b;
