@@ -727,6 +727,64 @@ namespace HigginsSoft.Math.Lib.Tests.GmpFloatTests
             }
         }
 
+        [TestMethod]
+        public void AlgebraicPolyEvalTest()
+        {
+            BigInteger a = 1;
+            BigInteger b = 3;
+            int[] poly = { 62, 10, 1, 2 };
+
+            //Algebraic(BigInteger a, BigInteger b, Polynomial poly)
+
+
+            decimal aD = (decimal)a;
+            decimal bD = (decimal)b;
+            decimal ab = (-aD) / bD;
+
+            int num = poly.Length - 1;
+            decimal num2 = (decimal)poly[num];
+            while (--num >= 0)
+            {
+                num2 *= (decimal)ab;
+                num2 += (decimal)poly[num];
+            }
+
+            decimal leftd = num2;
+            BigInteger rightd = BigInteger.Pow(BigInteger.Negate(b), poly.Length);
+            var productB = leftd * leftd;
+            var productBRounded = MathLib.Round(productB);
+            BigInteger resultb = (BigInteger)productBRounded;
+
+
+            var aG = (GmpFloat)a;
+            var bG = (GmpFloat)b;
+            var abG = (-aG) / bG;
+
+            int numg = poly.Length - 1;
+            var num2g = (GmpFloat)poly[numg];
+            while (--numg >= 0)
+            {
+                num2g *= abG;
+                num2g += (GmpFloat)poly[numg];
+            }
+
+            var leftg = num2;
+            var rightg = GmpInt.Power(GmpInt.Negate(b), poly.Length);
+            var productg = leftd * leftd;
+            var resultg = MathLib.Round(productg);
+
+            var gAsD = (decimal)resultg;
+            Assert.AreEqual(productBRounded, gAsD);
+
+            var resultz = (GmpInt)resultg;
+            var zAsB = (BigInteger)resultz;
+
+            Assert.AreEqual(resultb, zAsB);
+
+
+
+        }
+
 
     }
 

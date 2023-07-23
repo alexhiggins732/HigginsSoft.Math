@@ -73,13 +73,18 @@ namespace HigginsSoft.Math.Lib
         {
             return -this;
         }
+        public static GmpInt Negate(GmpInt value)
+        {
+            GmpInt result = 0;
+            mpz_neg(result.Data, value.Data);
+            return result;
+        }
 
         public static mpz_t Negate(mpz_t value)
         {
-            //var z = newz();
-            //mpz_neg(z, value);
-            //return z;
-            return run(value, mpz_neg);
+            var z = newz();
+            mpz_neg(z, value);
+            return z;
         }
 
         public mpz_t Complement()
@@ -379,6 +384,19 @@ namespace HigginsSoft.Math.Lib
             return z;
 
 
+        }
+
+        public static mpz_t Power(GmpInt src, int exponent)
+        {
+            var result = src.Power(exponent);
+            return result;
+        }
+
+        public static mpz_t Power(mpz_t src, int exponent)
+        {
+            var z = newz();
+            mpz_pow_ui(z, src, (uint)exponent);
+            return z;
         }
 
         public mpz_t Power(int exponent)

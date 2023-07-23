@@ -146,7 +146,7 @@ namespace HigginsSoft.Math.Lib
             var stringValue = s.ToString();
             if (exp > 1)
             {
-                stringValue= stringValue.PadRight(exp, '0');
+                stringValue = stringValue.PadRight(exp, '0');
             }
             if (stringValue.IndexOf('.') == -1)
             {
@@ -1172,7 +1172,39 @@ namespace HigginsSoft.Math.Lib
             return right.CompareTo(left) != 0;
         }
 
+        public static GmpFloat Ceiling(GmpFloat value)
+        {
+            var result = newf();
+            gmp_lib.mpf_ceil(result, value.Data);
+            return (GmpFloat)result;
+        }
 
+        public static GmpFloat Floor(GmpFloat value)
+        {
+            var result = newf();
+            gmp_lib.mpf_floor(result, value.Data);
+            return (GmpFloat)result;
+        }
+        public static GmpFloat Round(GmpFloat value)
+        {
+            GmpFloat result = 0;
+            gmp_lib.mpf_floor(result.Data, value.Data   );
+            var diff = value - result;
+            if (diff >= .5)
+                result += 1.0;
+            return result;
+        }
+
+
+
+
+
+        public static mpf_t newf()
+        {
+            mpf_t result = new();
+            gmp_lib.mpf_init(result);
+            return result;
+        }
         #endregion
 
         #endregion

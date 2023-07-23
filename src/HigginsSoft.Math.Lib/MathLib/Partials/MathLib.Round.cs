@@ -195,6 +195,14 @@ namespace HigginsSoft.Math.Lib
             return value;
         }
 
+        public static GmpFloat Round(GmpFloat a)
+            => GmpFloat.Round(a);
+
+        public static GmpFloat Ceil(GmpFloat a)
+                => GmpFloat.Ceiling(a);
+
+        public static GmpFloat Floor(GmpFloat a)
+              => GmpFloat.Floor(a);
     }
 
 }
