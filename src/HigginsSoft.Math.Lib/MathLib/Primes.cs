@@ -14,6 +14,7 @@
 
 
 
+using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace HigginsSoft.Math.Lib
@@ -35,5 +36,10 @@ namespace HigginsSoft.Math.Lib
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsPrime(ulong n)
            => Primes.IsPrime(n);
+
+        public static bool IsPrime(BigInteger n)
+            => Primes.IsPrime(n);
+        public static bool IsPrime(GmpInt n)
+            => Primes.IsPrime(n);
     }
 }

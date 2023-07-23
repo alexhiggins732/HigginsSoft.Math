@@ -10,80 +10,80 @@ using System.Threading.Tasks;
 
 namespace HigginsSoft.Math.Demos
 {
-    public class PrimeResidueClass
+    public class PrimeClass
     {
         public int Prime;
-        public List<int> Residues = new();
-        public PrimeResidueClass? PreviousResidue = null;
+        public List<int> s = new();
+        public PrimeClass? Previous = null;
 
-        public PrimeResidueClass(int prime, IEnumerable<int> residues)
+        public PrimeClass(int prime, IEnumerable<int> s)
         {
             Prime = prime;
-            Residues = residues.ToList();
+            s = s.ToList();
         }
 
-        public PrimeResidueClass(int prime, PrimeResidueClass previousClass)
+        public PrimeClass(int prime, PrimeClass previousClass)
         {
             Prime = prime;
-            PreviousResidue = previousClass;
+            Previous = previousClass;
         }
 
         private int? factorial;
         public int Factorial => factorial.HasValue ? factorial.Value :
-                (factorial = (PreviousResidue is null ? Prime : Prime * PreviousResidue.Factorial)).Value;
+                (factorial = (Previous is null ? Prime : Prime * Previous.Factorial)).Value;
 
-        public List<int> ClassPrimes => PreviousResidue is null ?
+        public List<int> ClassPrimes => Previous is null ?
                 (new[] { Prime }).ToList() :
-                PreviousResidue.ClassPrimes.Concat(new[] { Prime }).ToList();
+                Previous.ClassPrimes.Concat(new[] { Prime }).ToList();
 
 
     }
-    public partial class PrimeResidueClasses
+    public partial class PrimeClasses
     {
 
         // 1 classes
-        private static PrimeResidueClass Mod_2 = new(2, new[] { 1 });
+        private static PrimeClass Mod_2 = new(2, new[] { 1 });
 
         // 2 classes
-        private static PrimeResidueClass Mod_6 => CalculateResidues(Mod_2, 3);
+        private static PrimeClass Mod_6 => Calculates(Mod_2, 3);
 
         // 8 classes
-        private static PrimeResidueClass Mod_30 => CalculateResidues(Mod_6, 5);
+        private static PrimeClass Mod_30 => Calculates(Mod_6, 5);
 
         // 48 classes
-        private static PrimeResidueClass Mod_210 => CalculateResidues(Mod_30, 7);
+        private static PrimeClass Mod_210 => Calculates(Mod_30, 7);
 
         // 480 classes
-        private static PrimeResidueClass Mod_2_310 => CalculateResidues(Mod_210, 11);
+        private static PrimeClass Mod_2_310 => Calculates(Mod_210, 11);
 
         // 5,760 classes
-        private static PrimeResidueClass Mod_30_030 => CalculateResidues(Mod_2_310, 13);
+        private static PrimeClass Mod_30_030 => Calculates(Mod_2_310, 13);
 
         // 92,160 classes
-        private static PrimeResidueClass Mod_510_510 => CalculateResidues(Mod_30_030, 17);
+        private static PrimeClass Mod_510_510 => Calculates(Mod_30_030, 17);
 
         // 1,658,880 classes
-        private static PrimeResidueClass Mod_59_699_690 => CalculateResidues(Mod_510_510, 19);
+        private static PrimeClass Mod_59_699_690 => Calculates(Mod_510_510, 19);
 
         // 36,495,360 classes
-        private static PrimeResidueClass Mod_223_092_870 => CalculateResidues(Mod_59_699_690, 23);
+        private static PrimeClass Mod_223_092_870 => Calculates(Mod_59_699_690, 23);
 
 
-        private static PrimeResidueClass CalculateResidues(PrimeResidueClass previousClass, int prime)
+        private static PrimeClass Calculates(PrimeClass previousClass, int prime)
         {
-            var residueClass = new PrimeResidueClass(prime, previousClass);
-            var limit = residueClass.Factorial;
-            var factors = residueClass.ClassPrimes;
-            var residues = new List<int>();
+            var Class = new PrimeClass(prime, previousClass);
+            var limit = Class.Factorial;
+            var factors = Class.ClassPrimes;
+            var s = new List<int>();
             for (var i = 0; i < limit; i++)
             {
                 if (!factors.Any(p => i % p == 0))
                 {
-                    residues.Add(i);
+                    s.Add(i);
                 }
             }
-            residueClass.Residues = residues;
-            return residueClass;
+            Class.s = s;
+            return Class;
 
         }
 
@@ -247,10 +247,10 @@ namespace HigginsSoft.Math.Demos
             p = factors[--i];
 
             //check res is coprime to the wheel:
-            //  1. Compute the residue n % factorial
-            //  2. If the residue is zero it not coprime.
-            //  3. If the residue is a prime used to compute the wheel it is not coprime.
-            //  4. If the residue is coprime:
+            //  1. Compute the  n % factorial
+            //  2. If the  is zero it not coprime.
+            //  3. If the  is a prime used to compute the wheel it is not coprime.
+            //  4. If the  is coprime:
             //      A. If the factorial is 1, return true
             //      B. Reduce the wheel to previous factorial and go to 1.
             while (result && f > 1)
@@ -319,38 +319,38 @@ namespace HigginsSoft.Math.Demos
             return true;
         }
 
-        public static void PrintResidueClasses()
+        public static void PrintClasses()
         {
             var sw = Stopwatch.StartNew();
-            Console.WriteLine($"{nameof(Mod_6)}.Count = {Mod_6.Residues.Count.ToString("N0")} ");
-            Console.WriteLine($"{nameof(Mod_30)}.Count = {Mod_30.Residues.Count.ToString("N0")} ");
-            Console.WriteLine($"{nameof(Mod_210)}.Count =  {Mod_210.Residues.Count.ToString("N0")} ");
-            Console.WriteLine($"{nameof(Mod_2_310)}.Count = {Mod_2_310.Residues.Count.ToString("N0")} ");
-            Console.WriteLine($"{nameof(Mod_30_030)}.Count = {Mod_30_030.Residues.Count.ToString("N0")} ");
-            Console.WriteLine($"{nameof(Mod_510_510)}.Count = {Mod_510_510.Residues.Count.ToString("N0")} ");
-            Console.WriteLine($"{nameof(Mod_59_699_690)}.Count = {Mod_59_699_690.Residues.Count.ToString("N0")} ");
-            //Console.WriteLine($"{nameof(Mod_223_092_870)}.Count = {Mod_223_092_870.Residues.Count.ToString("N0")} ");
+            Console.WriteLine($"{nameof(Mod_6)}.Count = {Mod_6.s.Count.ToString("N0")} ");
+            Console.WriteLine($"{nameof(Mod_30)}.Count = {Mod_30.s.Count.ToString("N0")} ");
+            Console.WriteLine($"{nameof(Mod_210)}.Count =  {Mod_210.s.Count.ToString("N0")} ");
+            Console.WriteLine($"{nameof(Mod_2_310)}.Count = {Mod_2_310.s.Count.ToString("N0")} ");
+            Console.WriteLine($"{nameof(Mod_30_030)}.Count = {Mod_30_030.s.Count.ToString("N0")} ");
+            Console.WriteLine($"{nameof(Mod_510_510)}.Count = {Mod_510_510.s.Count.ToString("N0")} ");
+            Console.WriteLine($"{nameof(Mod_59_699_690)}.Count = {Mod_59_699_690.s.Count.ToString("N0")} ");
+            //Console.WriteLine($"{nameof(Mod_223_092_870)}.Count = {Mod_223_092_870.s.Count.ToString("N0")} ");
             sw.Stop();
-            Console.WriteLine($"Counted residue classes in {sw.Elapsed}");
+            Console.WriteLine($"Counted  classes in {sw.Elapsed}");
             Console.WriteLine();
 
             sw.Restart();
-            Console.WriteLine($"{nameof(Mod_6)} {Mod_6.Residues.Count} = {string.Join(", ", Mod_6.Residues)}");
+            Console.WriteLine($"{nameof(Mod_6)} {Mod_6.s.Count} = {string.Join(", ", Mod_6.s)}");
             Console.WriteLine();
             Console.WriteLine();
-            Console.WriteLine($"{nameof(Mod_30)} {Mod_30.Residues.Count} =  {string.Join(", ", Mod_30.Residues)}");
+            Console.WriteLine($"{nameof(Mod_30)} {Mod_30.s.Count} =  {string.Join(", ", Mod_30.s)}");
             Console.WriteLine();
             Console.WriteLine();
-            Console.WriteLine($"{nameof(Mod_210)}  {Mod_210.Residues.Count} = {string.Join(", ", Mod_210.Residues)}");
+            Console.WriteLine($"{nameof(Mod_210)}  {Mod_210.s.Count} = {string.Join(", ", Mod_210.s)}");
             Console.WriteLine();
             Console.WriteLine();
-            Console.WriteLine($"{nameof(Mod_2_310)} {Mod_2_310.Residues.Count} = {string.Join(", ", Mod_2_310.Residues)}");
+            Console.WriteLine($"{nameof(Mod_2_310)} {Mod_2_310.s.Count} = {string.Join(", ", Mod_2_310.s)}");
             Console.WriteLine();
             Console.WriteLine();
-            //Console.WriteLine($"{nameof(Mod_30_030)} {Mod_30_030.Residues.Count} = {string.Join(", ", Mod_30_030.Residues)}");
-            //Console.WriteLine($"{nameof(Mod_510_510)}{Mod_510_510.Residues.Count} =  {string.Join(", ", Mod_510_510.Residues)}");
+            //Console.WriteLine($"{nameof(Mod_30_030)} {Mod_30_030.s.Count} = {string.Join(", ", Mod_30_030.s)}");
+            //Console.WriteLine($"{nameof(Mod_510_510)}{Mod_510_510.s.Count} =  {string.Join(", ", Mod_510_510.s)}");
             sw.Stop();
-            Console.WriteLine($"Printed residue classes in {sw.Elapsed}");
+            Console.WriteLine($"Printed  classes in {sw.Elapsed}");
             Console.WriteLine();
 
         }

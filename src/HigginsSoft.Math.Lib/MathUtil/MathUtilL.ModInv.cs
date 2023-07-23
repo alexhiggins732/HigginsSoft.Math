@@ -18,9 +18,18 @@ namespace HigginsSoft.Math.Lib
     {
         public static GmpInt ModInv(GmpIntConvertible a, GmpIntConvertible b)
         {
-            var gcdResult = GcdExt(a.Value, b.Value);
-            var result = (gcdResult.Gcd.IsOne) ? gcdResult.S % b : a;
-            return result;
+            var res = GcdExt(a.Value, b.Value);
+            var gcd = res.Gcd;
+            if (gcd.IsOne) return a;
+            return res.S % b;
+        }
+
+        public static int ModInv(int a, int b)
+        {
+            var res = GcdExtInt(a, b);
+            var gcd = res.Gcd;
+            if (gcd == 1) return a;
+            return res.S % b;
         }
 
 

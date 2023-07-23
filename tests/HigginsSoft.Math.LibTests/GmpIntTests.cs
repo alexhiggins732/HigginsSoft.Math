@@ -21,19 +21,20 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Numerics;
 using MathGmp.Native;
+using System.Security.Cryptography;
 
 namespace HigginsSoft.Math.Lib.Tests.GmpIntTests
 {
 
-   
+
     [TestClass()]
     public class GmpIntTests
     {
-   
+
         [TestMethod()]
         public void GmpMinMaxCastTests()
         {
- 
+
 
             GmpInt a = 0;
 
@@ -188,8 +189,28 @@ namespace HigginsSoft.Math.Lib.Tests.GmpIntTests
             Assert.IsTrue(GmpInt.One == (double)1);
             Assert.IsTrue(GmpInt.One == (decimal)1);
             Assert.IsTrue(GmpInt.One == (BigInteger)1);
-            ;
+
         }
+
+        [TestMethod]
+        public void RsaTest()
+        {
+            GmpInt rsa;
+            bool isPrp;
+            rsa= MathLib.Rsa(65);
+            isPrp = rsa.IsProbablePrime();
+            Assert.AreEqual(false, isPrp);
+
+            rsa = MathLib.Rsa(40);
+            isPrp = rsa.IsProbablePrime();
+            Assert.AreEqual(false, isPrp);
+
+            rsa = MathLib.Rsa(36);
+            isPrp = rsa.IsProbablePrime();
+            Assert.AreEqual(false, isPrp);
+
+        }
+
 
         [TestMethod()]
         public void GmpIntUlongTest()

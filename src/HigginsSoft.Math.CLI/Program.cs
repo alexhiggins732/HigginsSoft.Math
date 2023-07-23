@@ -12,6 +12,8 @@
 
 */
 
+using BenchmarkDotNet.Reports;
+using BenchmarkDotNet.Running;
 using HigginsSoft.Math.Lib;
 using System.Numerics;
 using static System.Net.Mime.MediaTypeNames;
@@ -26,10 +28,11 @@ namespace HigginsSoft.Math.CLI
     {
         static void Main(string[] args)
         {
-            Action RunTest = () => TestPrimeCounts();
+
             if (args.Length > 0)
             {
-
+                Action RunTest = () => TestPrimeCounts();
+                Summary summary;
                 switch (args[0])
                 {
                     case "threads":
@@ -44,10 +47,21 @@ namespace HigginsSoft.Math.CLI
                     case "range":
                         RunTest = TestPrimeRangeCounts;
                         break;
-
+                    case "mpibench":
+                        summary = BenchmarkRunner.Run<MpiBenchmark>();
+                        RunTest = () => { }; 
+                        break;
+                    case "mpibenchthread":
+                        //summary = BenchmarkRunner.Run<MpiBenchmarkThread>();
+                        RunTest = () => { };
+                        break;
+                    case "mpibenchrun":
+                        RunTest = MpiBenchmark.Run;
+                        break;
                 }
+                RunTest();
             }
-            RunTest();
+ 
             //Console.WriteLine($"[{DateTime.Now}] Finished.");
         }
 

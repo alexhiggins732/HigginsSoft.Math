@@ -42,9 +42,86 @@ namespace HigginsSoft.Math.Lib
         public static void Gcd(GmpInt result, GmpInt a, GmpInt b)
         {
             //Gcd(result.Data, a.Data, b.Data);
-            gmp_lib.mpz_gcd(result.Data, a, b);
-          
+            gmp_lib.mpz_gcd(result.Data, a.Data, b);
+
         }
+
+        public static void Gcd(GmpInt result, GmpInt a, int b)
+        {
+            //Gcd(result.Data, a.Data, b.Data);
+            if (b > -1)
+            {
+                Gcd(result, a, (uint)b);
+            }
+            else
+            {
+                GmpInt t = b;
+                gmp_lib.mpz_gcd(result.Data, a.Data, t);
+                gmp_lib.mpz_clear(t.Data);
+            }
+        }
+
+        /// <summary>
+        /// Set <paramref name="result"/> to the greatest common divisor of <paramref name="a"/> and <paramref name="b"/> , 
+        /// </summary>
+        /// <param name="result"></param>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        public static void Gcd(GmpInt result, GmpInt a, uint b)
+        {
+            //Gcd(result.Data, a.Data, b);
+            gmp_lib.mpz_gcd_ui(result.Data, a.Data, b);
+        }
+
+        public static void Gcd(GmpInt result, GmpInt a, long b)
+        {
+            //Gcd(result.Data, a.Data, b);
+            if (b > -1 && b <= uint.MaxValue)
+            {
+                gmp_lib.mpz_gcd_ui(result.Data, a.Data, (uint)b);
+            }
+            else
+            {
+                GmpInt t = b;
+                gmp_lib.mpz_gcd(result.Data, a.Data, t);
+                gmp_lib.mpz_clear(t);
+            }
+        }
+
+        public static void Gcd(GmpInt result, GmpInt a, ulong b)
+        {
+            //Gcd(result.Data, a.Data, b);
+            if (b <= uint.MaxValue)
+            {
+                gmp_lib.mpz_gcd_ui(result.Data, a.Data, (uint)b);
+            }
+            else
+            {
+                GmpInt t = b;
+                gmp_lib.mpz_gcd(result.Data, a.Data, t);
+                gmp_lib.mpz_clear(t);
+            }
+        }
+
+
+        public static void Gcd(GmpInt result, GmpInt a, BigInteger b)
+        {
+            //Gcd(result.Data, a.Data, b);
+            if (b <= uint.MaxValue)
+            {
+                gmp_lib.mpz_gcd_ui(result.Data, a, (uint)b);
+            }
+            else
+            {
+                GmpInt t = b;
+                gmp_lib.mpz_gcd(result.Data, a, t);
+                gmp_lib.mpz_clear(t);
+            }
+        }
+
+
+
+
 
         ///// <summary>
         ///// Set <paramref name="result"/> to the the greatest common divisor of <paramref name="a"/> and <paramref name="b"/> , 
@@ -69,17 +146,6 @@ namespace HigginsSoft.Math.Lib
             return result;
         }
 
-        /// <summary>
-        /// Set <paramref name="result"/> to the greatest common divisor of <paramref name="a"/> and <paramref name="b"/> , 
-        /// </summary>
-        /// <param name="result"></param>
-        /// <param name="a"></param>
-        /// <param name="b"></param>
-        public static void Gcd(GmpInt result, GmpInt a, uint b)
-        {
-            //Gcd(result.Data, a.Data, b);
-            gmp_lib.mpz_gcd_ui(result.Data, a, b);
-        }
 
 
         ///// <summary>
@@ -200,12 +266,50 @@ namespace HigginsSoft.Math.Lib
         /// <param name="b"></param>
         public static BigInteger Gcd(BigInteger a, BigInteger b)
         {
-            if (b == 0)
-            {
-                return a;
-            }
-            return Gcd(b, a % b);
+            return BigInteger.GreatestCommonDivisor(a, b);
         }
+
+        public static BigInteger Gcd(BigInteger a, long b)
+        {
+            return BigInteger.GreatestCommonDivisor(a, b);
+        }
+
+        public static BigInteger Gcd(BigInteger a, int b)
+        {
+            return BigInteger.GreatestCommonDivisor(a, b);
+        }
+
+        public static BigInteger Gcd(BigInteger a, uint b)
+        {
+            return BigInteger.GreatestCommonDivisor(a, b);
+        }
+
+        public static BigInteger Gcd(BigInteger a, ulong b)
+        {
+            return BigInteger.GreatestCommonDivisor(a, b);
+        }
+
+
+        public static BigInteger Gcd(long a, BigInteger b)
+        {
+            return BigInteger.GreatestCommonDivisor(a, b);
+        }
+
+        public static BigInteger Gcd(int a, BigInteger b)
+        {
+            return BigInteger.GreatestCommonDivisor(a, b);
+        }
+
+        public static BigInteger Gcd(uint a, BigInteger b)
+        {
+            return BigInteger.GreatestCommonDivisor(a, b);
+        }
+
+        public static BigInteger Gcd(ulong a, BigInteger b)
+        {
+            return BigInteger.GreatestCommonDivisor(a, b);
+        }
+
 
         /// <summary>
         /// Returns the greatest common divisor of <paramref name="a"/> and <paramref name="b"/> , 
@@ -213,7 +317,12 @@ namespace HigginsSoft.Math.Lib
         /// <param name="a"></param>
         /// <param name="b"></param>
         public static GmpInt Gcd(GmpInt a, int b)
-            => Gcd(a, (GmpInt)b);
+        {
+            if (b > -1) return Gcd(a, (uint)b);
+            GmpInt result = 0;
+            Gcd(result, a, b);
+            return result;
+        }
 
 
         /// <summary>
@@ -222,7 +331,18 @@ namespace HigginsSoft.Math.Lib
         /// <param name="a"></param>
         /// <param name="b"></param>
         public static GmpInt Gcd(GmpInt a, long b)
-            => Gcd(a, (GmpInt)b);
+        {
+            if (b > -1 && b <= uint.MaxValue)
+                return Gcd(a, (uint)b);
+            else
+            {
+                GmpInt t = b;
+                var result = Gcd(a, t);
+                gmp_lib.mpz_clear(t);
+                return result;
+            }
+        }
+
 
         /// <summary>
         /// Returns the greatest common divisor of <paramref name="a"/> and <paramref name="b"/> , 
@@ -230,7 +350,16 @@ namespace HigginsSoft.Math.Lib
         /// <param name="a"></param>
         /// <param name="b"></param>
         public static GmpInt Gcd(GmpInt a, ulong b)
-            => Gcd(a, (GmpInt)b);
+        {
+            if (b <= uint.MaxValue)
+            {
+                return Gcd(a, (uint)b);
+            }
+            GmpInt result = 0;
+            Gcd(result, a, b);
+            return result;
+        }
+
 
         /// <summary>
         /// Returns the greatest common divisor of <paramref name="a"/> and <paramref name="b"/> , 
@@ -238,7 +367,14 @@ namespace HigginsSoft.Math.Lib
         /// <param name="a"></param>
         /// <param name="b"></param>
         public static GmpInt Gcd(GmpInt a, float b)
-            => Gcd(a, (GmpInt)b);
+        {
+            GmpInt result = 0;
+            GmpInt t = (GmpInt)b;
+            Gcd(result, a, t);
+            gmp_lib.mpz_clear(t);
+            return result;
+        }
+
 
         /// <summary>
         /// Returns the greatest common divisor of <paramref name="a"/> and <paramref name="b"/> , 
@@ -246,7 +382,14 @@ namespace HigginsSoft.Math.Lib
         /// <param name="a"></param>
         /// <param name="b"></param>
         public static GmpInt Gcd(GmpInt a, double b)
-            => Gcd(a, (GmpInt)b);
+        {
+            GmpInt result = 0;
+            GmpInt t = (GmpInt)b;
+            Gcd(result, a, t);
+            gmp_lib.mpz_clear(t);
+            return result;
+        }
+
 
         /// <summary>
         /// Returns the greatest common divisor of <paramref name="a"/> and <paramref name="b"/> , 
@@ -254,7 +397,14 @@ namespace HigginsSoft.Math.Lib
         /// <param name="a"></param>
         /// <param name="b"></param>
         public static GmpInt Gcd(GmpInt a, decimal b)
-            => Gcd(a, (GmpInt)b);
+        {
+            GmpInt result = 0;
+            GmpInt t = (GmpInt)b;
+            Gcd(result, a, t);
+            gmp_lib.mpz_clear(t);
+            return result;
+        }
+
 
         /// <summary>
         /// Returns the greatest common divisor of <paramref name="a"/> and <paramref name="b"/> , 
@@ -262,7 +412,14 @@ namespace HigginsSoft.Math.Lib
         /// <param name="a"></param>
         /// <param name="b"></param>
         public static GmpInt Gcd(GmpInt a, BigInteger b)
-            => Gcd(a, (GmpInt)b);
+        {
+            GmpInt result = 0;
+            GmpInt t = (GmpInt)b;
+            Gcd(result, a, t);
+            gmp_lib.mpz_clear(t);
+            return result;
+        }
+
 
         /// <summary>
         /// Returns the greatest common divisor of <paramref name="a"/> and <paramref name="b"/> , 
@@ -270,8 +427,10 @@ namespace HigginsSoft.Math.Lib
         /// <param name="a"></param>
         /// <param name="b"></param>
         public static GmpInt Gcd(int a, GmpInt b)
-            => Gcd((GmpInt)b, a);
+            => Gcd(b, a);
 
+        public static GmpInt Gcd(uint a, GmpInt b)
+            => Gcd(b, a);
 
         /// <summary>
         /// Returns the greatest common divisor of <paramref name="a"/> and <paramref name="b"/> , 
@@ -279,7 +438,7 @@ namespace HigginsSoft.Math.Lib
         /// <param name="a"></param>
         /// <param name="b"></param>
         public static GmpInt Gcd(long a, GmpInt b)
-            => Gcd((GmpInt)b, a);
+            => Gcd(b, a);
 
         /// <summary>
         /// Returns the greatest common divisor of <paramref name="a"/> and <paramref name="b"/> , 
@@ -287,7 +446,7 @@ namespace HigginsSoft.Math.Lib
         /// <param name="a"></param>
         /// <param name="b"></param>
         public static GmpInt Gcd(ulong a, GmpInt b)
-            => Gcd((GmpInt)b, a);
+            => Gcd(b, a);
 
         /// <summary>
         /// Returns the greatest common divisor of <paramref name="a"/> and <paramref name="b"/> , 
@@ -295,7 +454,7 @@ namespace HigginsSoft.Math.Lib
         /// <param name="a"></param>
         /// <param name="b"></param>
         public static GmpInt Gcd(float a, GmpInt b)
-            => Gcd((GmpInt)b, a);
+            => Gcd(b, a);
 
         /// <summary>
         /// Returns the greatest common divisor of <paramref name="a"/> and <paramref name="b"/> , 
@@ -303,7 +462,7 @@ namespace HigginsSoft.Math.Lib
         /// <param name="a"></param>
         /// <param name="b"></param>
         public static GmpInt Gcd(double a, GmpInt b)
-            => Gcd((GmpInt)b, a);
+            => Gcd(b, a);
 
         /// <summary>
         /// Returns the greatest common divisor of <paramref name="a"/> and <paramref name="b"/> , 
@@ -311,7 +470,7 @@ namespace HigginsSoft.Math.Lib
         /// <param name="a"></param>
         /// <param name="b"></param>
         public static GmpInt Gcd(decimal a, GmpInt b)
-            => Gcd((GmpInt)b, a);
+            => Gcd(b, a);
 
         /// <summary>
         /// Returns the greatest common divisor of <paramref name="a"/> and <paramref name="b"/> , 
@@ -319,7 +478,7 @@ namespace HigginsSoft.Math.Lib
         /// <param name="a"></param>
         /// <param name="b"></param>
         public static GmpInt Gcd(BigInteger a, GmpInt b)
-            => Gcd((GmpInt)b, a);
+            => Gcd(b, a);
 
 
 
