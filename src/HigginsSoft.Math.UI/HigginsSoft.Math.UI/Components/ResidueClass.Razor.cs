@@ -6,7 +6,7 @@ using static HigginsSoft.Math.Lib.s;
 
 namespace HigginsSoft.Math.UI.Components
 {
-    public partial class Class
+    public partial class ResidueClass
     {
 
         [Parameter]
@@ -42,7 +42,7 @@ namespace HigginsSoft.Math.UI.Components
             {
                 string bp = "";
             }
-            var  = Value.;
+            var res  = Value.Res;
             long t;
             var C = N;
             for (var p = 1; p < C; p++)
@@ -52,7 +52,7 @@ namespace HigginsSoft.Math.UI.Components
                 {
                     t += p;
                     if (t > C) t -= C;
-                    if (t == )
+                    if (t == res)
                     {
                         solutions.Add(new(p, q));
                     }
