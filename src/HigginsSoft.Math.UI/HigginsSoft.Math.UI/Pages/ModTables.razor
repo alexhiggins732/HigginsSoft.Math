@@ -1,0 +1,93 @@
+﻿@page "/modtables"
+
+<PageTitle>Mod Tables</PageTitle>
+
+<style>
+
+    .p, .q {
+        background-color: #cdcdcd;
+    }
+
+    .match {
+        background-color: #C6EFCE;
+    }
+
+    td {
+        border: 1px solid #dedede;
+    }
+
+    .modtable {
+        overflow: scroll;
+        clear:both;
+    }
+    .solutions div{
+        float:left;
+        border: 1px solid #dedede;
+        margin-right:5px;
+    }
+</style>
+<div>
+<MudTextField @bind-Value="NString" Label="N" HelperText="Enter a value for N" Variant="Variant.Text" />
+<MudTextField @bind-Value="String" Label="" HelperText="Enter a target  value" Variant="Variant.Text" />
+<MudButton Variant="Variant.Filled" OnClick="@(e=> ShowSolutions())">Show Solutions</MudButton>
+</div>
+@{
+    if (N != 0)
+    {
+        if (solutions.Count != 0)
+        {
+
+            <div>@solutions.Count solutions n mod @N == @:</div>
+            <div class="solutions">
+
+                @foreach (var solution in solutions)
+                {
+                    <div>@solution.p - @solution.q</div>
+                }
+
+
+            </div>
+        }
+        <div class="modtable">
+            <table>
+                @for (var row = 0; row < N; row++)
+                {
+                    if (row == 0)
+                    {
+                        <tr>
+                            <td>-</td>
+                            @for (var col = 1; col < N; col++)
+                            {
+                                <td><span class="p">@col</span></td>
+                            }
+                        </tr>
+                    }
+                    else
+                    {
+                        <tr>
+                            <td><span class="q">@row</span></td>
+                            @for (var col = 1; col < N; col++)
+                            {
+                                var value = row * col % N;
+                                if ( > 0 && value == )
+                                {
+                                    <td class="match">@value</td>
+                                }
+                                else
+                                {
+                                    <td> @value</td>
+                                }
+
+                            }
+                        </tr>
+                    }
+
+
+
+                }
+            </table>
+        </div>
+
+
+    }
+}

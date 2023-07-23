@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+	  <TargetFramework>net6.0</TargetFramework>
+	  <Nullable>enable</Nullable>
+	  <ImplicitUsings>enable</ImplicitUsings>
+	  <UserSecretsId>e5b68c26-d37d-4235-9b2c-b8574f3fd675</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MudBlazor" Version="6.0.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\HigginsSoft.Math.Lib\HigginsSoft.Math.Lib.csproj" />
+  </ItemGroup>
+
+</Project>

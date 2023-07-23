@@ -18,9 +18,14 @@ using static MathGmp.Native.gmp_lib;
 using System.Runtime.CompilerServices;
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.InteropServices;
+using static HigginsSoft.Math.Lib.MathLib;
 
 namespace HigginsSoft.Math.Lib
 {
+
+
+
     public partial class GmpInt
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -569,6 +574,34 @@ namespace HigginsSoft.Math.Lib
             return mpz_perfect_square_p(this) != 0;
         }
 
+        public bool IsPerfectSquare(out mpz_t root)
+            => IsPerfectSquare(this, out root);
+
+        public bool IsPerfectSquare(out GmpInt root)
+        {
+            var result = IsPerfectSquare(this, out mpz_t sqrt);
+            root = sqrt;
+            return result;
+        }
+
+        public static bool IsPerfectSquare(mpz_t value, out mpz_t root)
+        {
+            var z = newz();
+            var sign = mpz_sgn(value);
+            if (sign < 1)
+            {
+                root = z;
+                return false;
+            }
+
+            var remainder = newz();
+            mpz_rootrem(z, remainder, value, 2);
+            sign = mpz_sgn(remainder);
+            mpz_clear(remainder);
+            root = z;
+            return sign == 0;
+        }
+
         public bool IsPerfectPower()
         {
             // There is a known issue with this function for negative inputs in GMP 4.2.4.
@@ -580,11 +613,703 @@ namespace HigginsSoft.Math.Lib
 
         #region Number Theoretic Functions
 
-        public bool IsProbablyPrimeRabinMiller(int repetitions)
+        public bool IsProbablyPrimeRabinMiller(int num_witnesses = 20)
         {
-            int result = mpz_probab_prime_p(this, repetitions);
+            int result = mpz_probab_prime_p(this, num_witnesses);
 
             return result != 0;
+        }
+
+        public bool IsProbablePrime(int num_witnesses = 20)
+            => IsProbablePrime(this.Data, num_witnesses);
+        //from yafu.
+        public static bool IsProbablePrime(mpz_t n, int num_witnesses = 20)
+        {
+            int i = mpz_probab_prime_p(n, num_witnesses);
+            return ((i == 1) || (i == 2)) && mpz_strongbpsw_prp(n) == 1;
+        }
+
+        public static PrimalityType is_mpz_prp(mpz_t n, int num_witnesses)
+        {
+            int i = mpz_probab_prime_p(n, num_witnesses);
+            if (i == 1) return PrimalityType.Prime;
+            else if (i == 2 && mpz_strongbpsw_prp(n) == 1)
+                return PrimalityType.ProbablePrime;
+            return PrimalityType.Composite;
+        }
+
+        /* ****************************************************************************************
+         * mpz_strongbpsw_prp:
+         * A "strong Baillie-Pomerance-Selfridge-Wagstaff pseudoprime" is a composite n such that
+         * n is a strong pseudoprime to the base 2 and
+         * n is a strong Lucas pseudoprime using the Selfridge parameters.
+         * ****************************************************************************************/
+        public static int mpz_strongbpsw_prp(mpz_t n)
+        {
+            int ret = 0;
+            mpz_t two = new();
+
+            mpz_init_set_ui(two, 2);
+
+            ret = mpz_sprp(n, two);
+            mpz_clear(two);
+
+            /* with a base of 2,  mpz_sprp won't return PRP_ERROR */
+            /* so, only check for PRP_COMPOSITE or PRP_PRIME here */
+            if ((ret == PRP_COMPOSITE) || (ret == PRP_PRIME))
+                return ret;
+
+            return mpz_strongselfridge_prp(n);
+
+        }/* method mpz_strongbpsw_prp */
+
+
+        /* *********************************************************************************************************
+         * mpz_strongselfridge_prp:
+         * A "strong Lucas-Selfridge pseudoprime" n is a "strong Lucas pseudoprime" using Selfridge parameters of:
+         * Find the first element D in the sequence {5, -7, 9, -11, 13, ...} such that Jacobi(D,n) = -1
+         * Then use P=1 and Q=(1-D)/4 in the strong Lucase pseudoprime test.
+         * Make sure n is not a perfect square, otherwise the search for D will only stop when D=n.
+         * **********************************************************************************************************/
+        public static int mpz_strongselfridge_prp(mpz_t n)
+        {
+            long d = 5, p = 1, q = 0;
+            int max_d = 1000000;
+            int jacobi = 0;
+            mpz_t zD = new();
+
+            if (mpz_cmp_ui(n, 2) < 0)
+                return PRP_COMPOSITE;
+
+            if (mpz_divisible_ui_p(n, 2) > 0)
+            {
+                if (mpz_cmp_ui(n, 2) == 0)
+                    return PRP_PRIME;
+                else
+                    return PRP_COMPOSITE;
+            }
+
+            mpz_init_set_ui(zD, (uint)d);
+
+            while (true)
+            {
+                jacobi = mpz_jacobi(zD, n);
+
+                /* if jacobi == 0, d is a factor of n, therefore n is composite... */
+                /* if d == n, then either n is either prime or 9... */
+                if (jacobi == 0)
+                {
+                    if ((mpz_cmpabs(zD, n) == 0) && (mpz_cmp_ui(zD, 9) != 0))
+                    {
+                        mpz_clear(zD);
+                        return PRP_PRIME;
+                    }
+                    else
+                    {
+                        mpz_clear(zD);
+                        return PRP_COMPOSITE;
+                    }
+                }
+                if (jacobi == -1)
+                    break;
+
+                /* if we get to the 5th d, make sure we aren't dealing with a square... */
+                if (d == 13)
+                {
+                    if (mpz_perfect_square_p(n) > 0)
+                    {
+                        mpz_clear(zD);
+                        return PRP_COMPOSITE;
+                    }
+                }
+
+                if (d < 0)
+                {
+                    d *= -1;
+                    d += 2;
+                }
+                else
+                {
+                    d += 2;
+                    d *= -1;
+                }
+
+                /* make sure we don't search forever */
+                if (d >= max_d)
+                {
+                    mpz_clear(zD);
+                    return PRP_ERROR;
+                }
+
+                mpz_set_si(zD, (int)d);
+            }
+            mpz_clear(zD);
+
+            q = (1 - d) / 4;
+
+            return mpz_stronglucas_prp(n, p, q);
+
+        }/* method mpz_strongselfridge_prp */
+
+        public static int mpz_stronglucas_prp(mpz_t n, long p, long q)
+        {
+            mpz_t zD = new();
+            mpz_t s = new();
+            mpz_t nmj = new(); /* n minus jacobi(D/n) */
+            mpz_t res = new();
+            /* these are needed for the LucasU and LucasV part of this function */
+
+            mpz_t uh = new(), vl = new(), vh = new(), ql = new(), qh = new(), tmp = new();
+            long d = p * p - 4 * q;
+            ulong r = 0;
+            int ret = 0;
+            ulong j = 0;
+
+            if (d == 0) /* Does not produce a proper Lucas sequence */
+                return PRP_ERROR;
+
+            if (mpz_cmp_ui(n, 2) < 0)
+                return PRP_COMPOSITE;
+
+            if (mpz_divisible_ui_p(n, 2) > 0)
+            {
+                if (mpz_cmp_ui(n, 2) == 0)
+                    return PRP_PRIME;
+                else
+                    return PRP_COMPOSITE;
+            }
+
+            mpz_init_set_si(zD, (int)d);
+            mpz_init(res);
+
+            mpz_mul_si(res, zD, (int)q);
+            mpz_mul_ui(res, res, 2);
+            mpz_gcd(res, res, n);
+            if ((mpz_cmp(res, n) != 0) && (mpz_cmp_ui(res, 1) > 0))
+            {
+                mpz_clear(zD);
+                mpz_clear(res);
+                return PRP_COMPOSITE;
+            }
+
+            mpz_init(s);
+            mpz_init(nmj);
+
+            /* nmj = n - (D/n), where (D/n) is the Jacobi symbol */
+            mpz_set(nmj, n);
+            ret = mpz_jacobi(zD, n);
+            if (ret == -1)
+                mpz_add_ui(nmj, nmj, 1);
+            else if (ret == 1)
+                mpz_sub_ui(nmj, nmj, 1);
+
+            r = mpz_scan1(nmj, 0);
+            mpz_fdiv_q_2exp(s, nmj, (mp_bitcnt_t)r);
+
+            /* make sure U_s == 0 mod n or V_((2^t)*s) == 0 mod n, for some t, 0 <= t < r */
+            mpz_init_set_si(uh, 1);
+            mpz_init_set_si(vl, 2);
+            mpz_init_set_si(vh, (int)p);
+            mpz_init_set_si(ql, 1);
+            mpz_init_set_si(qh, 1);
+            mpz_init_set_si(tmp, 0);
+
+            for (j = mpz_sizeinbase(s, 2) - 1; j >= 1; j--)
+            {
+                /* ql = ql*qh (mod n) */
+                mpz_mul(ql, ql, qh);
+                mpz_mod(ql, ql, n);
+                if (mpz_tstbit(s, (mp_bitcnt_t)j) == 1)
+                {
+                    /* qh = ql*q */
+                    mpz_mul_si(qh, ql, (int)q);
+
+                    /* uh = uh*vh (mod n) */
+                    mpz_mul(uh, uh, vh);
+                    mpz_mod(uh, uh, n);
+
+                    /* vl = vh*vl - p*ql (mod n) */
+                    mpz_mul(vl, vh, vl);
+                    mpz_mul_si(tmp, ql, (int)p);
+                    mpz_sub(vl, vl, tmp);
+                    mpz_mod(vl, vl, n);
+
+                    /* vh = vh*vh - 2*qh (mod n) */
+                    mpz_mul(vh, vh, vh);
+                    mpz_mul_si(tmp, qh, 2);
+                    mpz_sub(vh, vh, tmp);
+                    mpz_mod(vh, vh, n);
+                }
+                else
+                {
+                    /* qh = ql */
+                    mpz_set(qh, ql);
+
+                    /* uh = uh*vl - ql (mod n) */
+                    mpz_mul(uh, uh, vl);
+                    mpz_sub(uh, uh, ql);
+                    mpz_mod(uh, uh, n);
+
+                    /* vh = vh*vl - p*ql (mod n) */
+                    mpz_mul(vh, vh, vl);
+                    mpz_mul_si(tmp, ql, (int)p);
+                    mpz_sub(vh, vh, tmp);
+                    mpz_mod(vh, vh, n);
+
+                    /* vl = vl*vl - 2*ql (mod n) */
+                    mpz_mul(vl, vl, vl);
+                    mpz_mul_si(tmp, ql, 2);
+                    mpz_sub(vl, vl, tmp);
+                    mpz_mod(vl, vl, n);
+                }
+            }
+            /* ql = ql*qh */
+            mpz_mul(ql, ql, qh);
+
+            /* qh = ql*q */
+            mpz_mul_si(qh, ql, (int)q);
+
+            /* uh = uh*vl - ql */
+            mpz_mul(uh, uh, vl);
+            mpz_sub(uh, uh, ql);
+
+            /* vl = vh*vl - p*ql */
+            mpz_mul(vl, vh, vl);
+            mpz_mul_si(tmp, ql, (int)p);
+            mpz_sub(vl, vl, tmp);
+
+            /* ql = ql*qh */
+            mpz_mul(ql, ql, qh);
+
+            mpz_mod(uh, uh, n);
+            mpz_mod(vl, vl, n);
+
+            /* uh contains LucasU_s and vl contains LucasV_s */
+            if ((mpz_cmp_ui(uh, 0) == 0) || (mpz_cmp_ui(vl, 0) == 0))
+            {
+                mpz_clear(zD);
+                mpz_clear(s);
+                mpz_clear(nmj);
+                mpz_clear(res);
+                mpz_clear(uh);
+                mpz_clear(vl);
+                mpz_clear(vh);
+                mpz_clear(ql);
+                mpz_clear(qh);
+                mpz_clear(tmp);
+                return PRP_PRP;
+            }
+
+            for (j = 1; j < r; j++)
+            {
+                /* vl = vl*vl - 2*ql (mod n) */
+                mpz_mul(vl, vl, vl);
+                mpz_mul_si(tmp, ql, 2);
+                mpz_sub(vl, vl, tmp);
+                mpz_mod(vl, vl, n);
+
+                /* ql = ql*ql (mod n) */
+                mpz_mul(ql, ql, ql);
+                mpz_mod(ql, ql, n);
+
+                if (mpz_cmp_ui(vl, 0) == 0)
+                {
+                    mpz_clear(zD);
+                    mpz_clear(s);
+                    mpz_clear(nmj);
+                    mpz_clear(res);
+                    mpz_clear(uh);
+                    mpz_clear(vl);
+                    mpz_clear(vh);
+                    mpz_clear(ql);
+                    mpz_clear(qh);
+                    mpz_clear(tmp);
+                    return PRP_PRP;
+                }
+            }
+
+            mpz_clear(zD);
+            mpz_clear(s);
+            mpz_clear(nmj);
+            mpz_clear(res);
+            mpz_clear(uh);
+            mpz_clear(vl);
+            mpz_clear(vh);
+            mpz_clear(ql);
+            mpz_clear(qh);
+            mpz_clear(tmp);
+            return PRP_COMPOSITE;
+
+        }/* method mpz_stronglucas_prp */
+
+
+
+
+        /* *********************************************************************************************
+         * mpz_sprp: (also called a Miller-Rabin pseudoprime)
+         * A "strong pseudoprime" to the base a is an odd composite n = (2^r)*s+1 with s odd such that
+         * either a^s == 1 mod n, or a^((2^t)*s) == -1 mod n, for some integer t, with 0 <= t < r.
+         * *********************************************************************************************/
+        public static int mpz_sprp(mpz_t n, mpz_t a)
+        {
+            mpz_t s = new();
+            mpz_t nm1 = new();
+            mpz_t mpz_test = new();
+            ulong r = 0;
+
+            if (mpz_cmp_ui(a, 2) < 0)
+                return PRP_ERROR;
+
+            if (mpz_cmp_ui(n, 2) < 0)
+                return PRP_COMPOSITE;
+
+            if (mpz_divisible_ui_p(n, 2) == 1)
+            {
+                if (mpz_cmp_ui(n, 2) == 0)
+                    return PRP_PRIME;
+                else
+                    return PRP_COMPOSITE;
+            }
+
+            mpz_init_set_ui(mpz_test, 0);
+            mpz_init_set_ui(s, 0);
+            mpz_init_set(nm1, n);
+            mpz_sub_ui(nm1, nm1, 1);
+
+            /***********************************************/
+            /* Find s and r satisfying: n-1=(2^r)*s, s odd */
+            r = mpz_scan1(nm1, 0);
+            mpz_fdiv_q_2exp(s, nm1, (mp_bitcnt_t)r);
+
+
+            /******************************************/
+            /* Check a^((2^t)*s) mod n for 0 <= t < r */
+            mpz_powm(mpz_test, a, s, n);
+            if ((mpz_cmp_ui(mpz_test, 1) == 0) || (mpz_cmp(mpz_test, nm1) == 0))
+            {
+                mpz_clear(s);
+                mpz_clear(nm1);
+                mpz_clear(mpz_test);
+                return PRP_PRP;
+            }
+
+            while (--r > 0)
+            {
+                /* mpz_test = mpz_test^2%n */
+                mpz_mul(mpz_test, mpz_test, mpz_test);
+                mpz_mod(mpz_test, mpz_test, n);
+
+                if (mpz_cmp(mpz_test, nm1) == 0)
+                {
+                    mpz_clear(s);
+                    mpz_clear(nm1);
+                    mpz_clear(mpz_test);
+                    return PRP_PRP;
+                }
+            }
+
+            mpz_clear(s);
+            mpz_clear(nm1);
+            mpz_clear(mpz_test);
+            return PRP_COMPOSITE;
+
+        }/* method mpz_sprp */
+
+
+        /* **********************************************************************************
+         * mpz_bpsw_prp:
+         * A "Baillie-Pomerance-Selfridge-Wagstaff pseudoprime" is a composite n such that
+         * n is a strong pseudoprime to the base 2 and
+         * n is a Lucas pseudoprime using the Selfridge parameters.
+         * **********************************************************************************/
+        public static int mpz_bpsw_prp(mpz_t n)
+        {
+            int ret = 0;
+            mpz_t two = new();
+
+            mpz_init_set_ui(two, 2);
+
+            ret = mpz_sprp(n, two);
+            mpz_clear(two);
+
+            /* with a base of 2, mpz_sprp, won't return PRP_ERROR */
+            /* so, only check for PRP_COMPOSITE or PRP_PRIME here */
+            if ((ret == PRP_COMPOSITE) || (ret == PRP_PRIME))
+                return ret;
+
+            return mpz_selfridge_prp(n);
+
+        }/* method mpz_bpsw_prp */
+
+        /* ***********************************************************************************************
+         * mpz_selfridge_prp:
+         * A "Lucas-Selfridge pseudoprime" n is a "Lucas pseudoprime" using Selfridge parameters of:
+         * Find the first element D in the sequence {5, -7, 9, -11, 13, ...} such that Jacobi(D,n) = -1
+         * Then use P=1 and Q=(1-D)/4 in the Lucas pseudoprime test.
+         * Make sure n is not a perfect square, otherwise the search for D will only stop when D=n.
+         * ***********************************************************************************************/
+        public static int mpz_selfridge_prp(mpz_t n)
+        {
+            long d = 5, p = 1, q = 0;
+            int max_d = 1000000;
+            int jacobi = 0;
+            mpz_t zD = new();
+
+            if (mpz_cmp_ui(n, 2) < 0)
+                return PRP_COMPOSITE;
+
+            if (mpz_divisible_ui_p(n, 2) > 0)
+            {
+                if (mpz_cmp_ui(n, 2) == 0)
+                    return PRP_PRIME;
+                else
+                    return PRP_COMPOSITE;
+            }
+
+            mpz_init_set_ui(zD, (uint)d);
+
+            while (true)
+            {
+                jacobi = mpz_jacobi(zD, n);
+
+                /* if jacobi == 0, d is a factor of n, therefore n is composite... */
+                /* if d == n, then either n is either prime or 9... */
+                if (jacobi == 0)
+                {
+                    if ((mpz_cmpabs(zD, n) == 0) && (mpz_cmp_ui(zD, 9) != 0))
+                    {
+                        mpz_clear(zD);
+                        return PRP_PRIME;
+                    }
+                    else
+                    {
+                        mpz_clear(zD);
+                        return PRP_COMPOSITE;
+                    }
+                }
+                if (jacobi == -1)
+                    break;
+
+                /* if we get to the 5th d, make sure we aren't dealing with a square... */
+                if (d == 13)
+                {
+                    if (mpz_perfect_square_p(n) > 0)
+                    {
+                        mpz_clear(zD);
+                        return PRP_COMPOSITE;
+                    }
+                }
+
+                if (d < 0)
+                {
+                    d *= -1;
+                    d += 2;
+                }
+                else
+                {
+                    d += 2;
+                    d *= -1;
+                }
+
+                /* make sure we don't search forever */
+                if (d >= max_d)
+                {
+                    mpz_clear(zD);
+                    return PRP_ERROR;
+                }
+
+                mpz_set_si(zD, (int)d);
+            }
+            mpz_clear(zD);
+
+            q = (1 - d) / 4;
+
+            return mpz_lucas_prp(n, p, q);
+
+        }/* method mpz_selfridge_prp */
+
+        /* *******************************************************************************
+         * mpz_lucas_prp:
+         * A "Lucas pseudoprime" with parameters (P,Q) is a composite n with D=P^2-4Q,
+         * (n,2QD)=1 such that U_(n-(D/n)) == 0 mod n [(D/n) is the Jacobi symbol]
+         * *******************************************************************************/
+        public static int mpz_lucas_prp(mpz_t n, long p, long q)
+        {
+            mpz_t zD = new();
+            mpz_t res = new();
+            mpz_t index = new();
+            mpz_t uh = new(), vl = new(), vh = new(), ql = new(), qh = new(), tmp = new(); /* used for calculating the Lucas U sequence */
+            int s = 0, j = 0;
+            int ret = 0;
+            long d = p * p - 4 * q;
+
+            if (d == 0) /* Does not produce a proper Lucas sequence */
+                return PRP_ERROR;
+
+            if (mpz_cmp_ui(n, 2) < 0)
+                return PRP_COMPOSITE;
+
+            if (mpz_divisible_ui_p(n, 2) > 0)
+            {
+                if (mpz_cmp_ui(n, 2) == 0)
+                    return PRP_PRIME;
+                else
+                    return PRP_COMPOSITE;
+            }
+
+            mpz_init(index);
+            mpz_init_set_si(zD, (int)d);
+            mpz_init(res);
+
+            mpz_mul_si(res, zD, (int)q);
+            mpz_mul_ui(res, res, 2);
+            mpz_gcd(res, res, n);
+            if ((mpz_cmp(res, n) != 0) && (mpz_cmp_ui(res, 1) > 0))
+            {
+                mpz_clear(zD);
+                mpz_clear(res);
+                mpz_clear(index);
+                return PRP_COMPOSITE;
+            }
+
+            /* index = n-(D/n), where (D/n) is the Jacobi symbol */
+            mpz_set(index, n);
+            ret = mpz_jacobi(zD, n);
+            if (ret == -1)
+                mpz_add_ui(index, index, 1);
+            else if (ret == 1)
+                mpz_sub_ui(index, index, 1);
+
+            /* mpz_lucasumod(res, p, q, index, n); */
+            mpz_init_set_si(uh, 1);
+            mpz_init_set_si(vl, 2);
+            mpz_init_set_si(vh, (int) p);
+            mpz_init_set_si(ql, 1);
+            mpz_init_set_si(qh, 1);
+            mpz_init_set_si(tmp, 0);
+
+            s = (int)mpz_scan1(index, 0);
+            for (j = (int)mpz_sizeinbase(index, 2) - 1; j >= s + 1; j--)
+            {
+                /* ql = ql*qh (mod n) */
+                mpz_mul(ql, ql, qh);
+                mpz_mod(ql, ql, n);
+                if (mpz_tstbit(index, (mp_bitcnt_t) j) == 1)
+                {
+                    /* qh = ql*q */
+                    mpz_mul_si(qh, ql, (int)q);
+
+                    /* uh = uh*vh (mod n) */
+                    mpz_mul(uh, uh, vh);
+                    mpz_mod(uh, uh, n);
+
+                    /* vl = vh*vl - p*ql (mod n) */
+                    mpz_mul(vl, vh, vl);
+                    mpz_mul_si(tmp, ql, (int)p);
+                    mpz_sub(vl, vl, tmp);
+                    mpz_mod(vl, vl, n);
+
+                    /* vh = vh*vh - 2*qh (mod n) */
+                    mpz_mul(vh, vh, vh);
+                    mpz_mul_si(tmp, qh, 2);
+                    mpz_sub(vh, vh, tmp);
+                    mpz_mod(vh, vh, n);
+                }
+                else
+                {
+                    /* qh = ql */
+                    mpz_set(qh, ql);
+
+                    /* uh = uh*vl - ql (mod n) */
+                    mpz_mul(uh, uh, vl);
+                    mpz_sub(uh, uh, ql);
+                    mpz_mod(uh, uh, n);
+
+                    /* vh = vh*vl - p*ql (mod n) */
+                    mpz_mul(vh, vh, vl);
+                    mpz_mul_si(tmp, ql, (int)p);
+                    mpz_sub(vh, vh, tmp);
+                    mpz_mod(vh, vh, n);
+
+                    /* vl = vl*vl - 2*ql (mod n) */
+                    mpz_mul(vl, vl, vl);
+                    mpz_mul_si(tmp, ql, (int)2);
+                    mpz_sub(vl, vl, tmp);
+                    mpz_mod(vl, vl, n);
+                }
+            }
+            /* ql = ql*qh */
+            mpz_mul(ql, ql, qh);
+
+            /* qh = ql*q */
+            mpz_mul_si(qh, ql, (int)q);
+
+            /* uh = uh*vl - ql */
+            mpz_mul(uh, uh, vl);
+            mpz_sub(uh, uh, ql);
+
+            /* vl = vh*vl - p*ql */
+            mpz_mul(vl, vh, vl);
+            mpz_mul_si(tmp, ql, (int)p);
+            mpz_sub(vl, vl, tmp);
+
+            /* ql = ql*qh */
+            mpz_mul(ql, ql, qh);
+
+            for (j = 1; j <= s; j++)
+            {
+                /* uh = uh*vl (mod n) */
+                mpz_mul(uh, uh, vl);
+                mpz_mod(uh, uh, n);
+
+                /* vl = vl*vl - 2*ql (mod n) */
+                mpz_mul(vl, vl, vl);
+                mpz_mul_si(tmp, ql, 2);
+                mpz_sub(vl, vl, tmp);
+                mpz_mod(vl, vl, n);
+
+                /* ql = ql*ql (mod n) */
+                mpz_mul(ql, ql, ql);
+                mpz_mod(ql, ql, n);
+            }
+
+            mpz_mod(res, uh, n); /* uh contains our return value */
+
+            mpz_clear(zD);
+            mpz_clear(index);
+            mpz_clear(uh);
+            mpz_clear(vl);
+            mpz_clear(vh);
+            mpz_clear(ql);
+            mpz_clear(qh);
+            mpz_clear(tmp);
+
+            if (mpz_cmp_ui(res, 0) == 0)
+            {
+                mpz_clear(res);
+                return PRP_PRP;
+            }
+            else
+            {
+                mpz_clear(res);
+                return PRP_COMPOSITE;
+            }
+
+        }/* method mpz_lucas_prp */
+
+        public int SizeInBase10 => gmp_base10(this.Data);
+        public static int gmp_base10(mpz_t x)
+        {
+            mpz_t t = new();    //temp
+            int g;      //guess: either correct or +1
+
+            mpz_init(t);
+            g = (int)mpz_sizeinbase(x, 10);
+            mpz_set_ui(t, 10);
+            mpz_pow_ui(t, t, (uint)g - 1);
+            g = g - (mpz_cmp(t, x) > 0 ? 1 : 0);
+            mpz_clear(t);
+            return g;
         }
 
         // TODO: Create a version of this method which takes in a parameter to represent how well tested the prime should be.
@@ -698,6 +1423,19 @@ namespace HigginsSoft.Math.Lib
             var z = newz();
             mpz_lcm_ui(z, y, x);
             return z;
+        }
+
+        public static int LegendreSymbol(int x, int primeY)
+        {
+
+            if ((GmpInt)primeY == 2) return 0;
+            return mpz_jacobi((GmpInt)x, (GmpInt)primeY);
+        }
+
+        public static int LegendreSymbol(GmpInt x, GmpInt primeY)
+        {
+            if (primeY == 2) return 0;
+            return mpz_jacobi(x.Data, primeY.Data);
         }
 
         public static int LegendreSymbol(mpz_t x, mpz_t primeY)

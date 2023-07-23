@@ -28,8 +28,43 @@ namespace HigginsSoft.Math.Lib
         //static readonly int[] arr = Enumerable.Repeat(-1, 342 * 2).ToArray();
         //static readonly int[] arr = Enumerable.Repeat(-1, 1000 * 2).ToArray();
         //static readonly int[] arr = Enumerable.Repeat(-1, 5 * 2 * 7 * 2 * 11 * 2).ToArray();
-        static readonly int[] arr = PrimeGeneratorPreSieve.Wheel11.Concat(PrimeGeneratorPreSieve.Wheel11).Select(x => (int)x).ToArray();
+        static readonly int[] arr; // = PrimeGeneratorPreSieve.Wheel11.Concat(PrimeGeneratorPreSieve.Wheel11).Select(x => (int)x).ToArray();
+        static bool align = bool.Parse(bool.FalseString);
+        unsafe static PrimeGeneratorUnsafe()
+        {
+            arr = PrimeGeneratorPreSieve.Wheel11.Concat(PrimeGeneratorPreSieve.Wheel11).Select(x => (int)x).ToArray();
+            if (align)
+            {
+                AlignArray(ref arr);
+            }
+        }
 
+        static unsafe void AlignArray(ref int[] array)
+        {
+            for (; ; )
+            {
+                array = array.ToArray();
+
+                fixed (int* ptr = array)
+                {
+                    if ((uint)ptr % 32 == 0)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+        unsafe void alignArrays()
+        {
+            if (align)
+            {
+                AlignArray(ref sieve);
+                AlignArray(ref sievePrimes);
+                AlignArray(ref lowindices);
+                AlignArray(ref highindices);
+
+            }
+        }
         //TODO enable public access to WindowSize for calculating parallel seive jobs.
         //public const int WindowSize = 6000;
 
@@ -100,17 +135,17 @@ namespace HigginsSoft.Math.Lib
                 maxValuePrime = MathUtil.GetPreviousPrime(startPrime);
             }
 
-            if (startPrime <= 2 ) return;
+            if (startPrime <= 2) return;
             if (startPrime == 3) { incNext(); return; }
             if (startPrime == 5) { incNext(); incNext(); return; }
             // sieve the factor base
 
             while (!_sievedFactorBase)
             {
-                 incNext();
+                incNext();
                 if (value == maxValuePrime) break;
             }
-      
+
 
 
 
@@ -167,6 +202,8 @@ namespace HigginsSoft.Math.Lib
             clearSieve();
             sieve = Enumerable.Repeat(-1, arr.Length).ToArray();
 
+
+            alignArrays();
 
             BitLength = arr.Length << 5;
 
@@ -1124,6 +1161,7 @@ namespace HigginsSoft.Math.Lib
 
         public IEnumerator<int> GetEnumerator()
         {
+            //TODO: Implement reset: If value!= startValue {reset();}
             while (value < maxPrime)
             {
                 incNext();

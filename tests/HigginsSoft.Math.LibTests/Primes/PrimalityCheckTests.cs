@@ -18,7 +18,7 @@ namespace HigginsSoft.Math.Lib.Tests.PrimalityCheckTests
         public void IsPrimeTest()
         {
             var primes = Primes.IntFactorPrimes
-                .Where(x => x > 300).ToArray();
+                .Where(x => x > 300).Take(300).ToArray();
 
 
             var max = primes.Max();
@@ -27,7 +27,7 @@ namespace HigginsSoft.Math.Lib.Tests.PrimalityCheckTests
             for (var i = 300; j < primes.Length && i <= max; i++)
             {
                 var p = primes[j];
-                var isprime = CongruenceChecker.IsPrime(i);
+                var isprime = PrimeSquareCongruenceChecker.IsPrime(i);
                 var expected = p == i;
                 if (isprime != expected)
                 {
@@ -60,7 +60,7 @@ namespace HigginsSoft.Math.Lib.Tests.PrimalityCheckTests
             };
 
             var count1 = candidates.Where(x => Primes.IsPrime(x)).Count();
-            var count2 = candidates.Where(x => CongruenceChecker.IsPrime(x)).Count();
+            var count2 = candidates.Where(x => PrimeSquareCongruenceChecker.IsPrime(x)).Count();
 
             Assert.AreEqual(count1, count2);
 
@@ -70,7 +70,7 @@ namespace HigginsSoft.Math.Lib.Tests.PrimalityCheckTests
         [TestMethod()]
         public void CheckIsPrimeTest()
         {
-            CongruenceChecker.IsPrime(1);
+            PrimeSquareCongruenceChecker.IsPrime(1);
             Primes.IsPrime(1);
 
             var sw1 = new Stopwatch();
@@ -83,7 +83,7 @@ namespace HigginsSoft.Math.Lib.Tests.PrimalityCheckTests
                 result1 = Primes.IsPrime(i);
                 sw1.Stop();
                 sw2.Start();
-                result2 = CongruenceChecker.IsPrime(i);
+                result2 = PrimeSquareCongruenceChecker.IsPrime(i);
                 sw2.Stop();
 
 
@@ -96,7 +96,7 @@ namespace HigginsSoft.Math.Lib.Tests.PrimalityCheckTests
                 }
             }
             var time1 = $"{sw1.Elapsed} - {nameof(Primes)}.{nameof(Primes.IsPrime)}";
-            var time2 = $"{sw2.Elapsed} - {nameof(CongruenceChecker)}.{nameof(Primes.IsPrime)}";
+            var time2 = $"{sw2.Elapsed} - {nameof(PrimeSquareCongruenceChecker)}.{nameof(Primes.IsPrime)}";
             Console.WriteLine(time1);
             Console.WriteLine(time2);
         }

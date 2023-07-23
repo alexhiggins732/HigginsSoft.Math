@@ -31,7 +31,7 @@ namespace HigginsSoft.Math.Lib.Tests
                 var a = 11;
                 var b = 26;
                 var expected = 19;
-                var result = ModInv(a, b);
+                var result = ModInverse(a, b);
                 Assert.AreEqual(expected, result);  
                   
             }
@@ -41,7 +41,7 @@ namespace HigginsSoft.Math.Lib.Tests
             {
                 var a = 8;
                 var b = 10;
-                var result = ModInv(a, b);
+                var result = ModInverse(a, b);
                 Assert.AreEqual(a, result);
             }
         }

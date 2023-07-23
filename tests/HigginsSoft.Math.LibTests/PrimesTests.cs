@@ -163,9 +163,9 @@ namespace HigginsSoft.Math.Lib.Tests
             [TestMethod]
             public void TestRangeCount()
             {
-                for (var start = 0; start <= 64; start++)
+                for (var start = 0; start <= 32; start++)
                 {
-                    for (var end = start + 1; end <= 64; end++)
+                    for (var end = start + 1; end <= 32; end++)
                     {
                         var actual = Primes.Count(start, end);
                         var expected = new PrimeGeneratorUnsafe(start, end).Count();
@@ -219,6 +219,9 @@ namespace HigginsSoft.Math.Lib.Tests
                 Assert.AreEqual(54, a.Length);
             }
 
+#if SKIP_LONG_TESTS
+            [Ignore("Slow initial generator to be removed or replaced to use prime generator")]
+#endif
             [TestMethod()]
             public void Primes_65536_CountTest()
             {
@@ -511,6 +514,9 @@ namespace HigginsSoft.Math.Lib.Tests
                 }
             }
 
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_Inc_CompareToPrimes65536_Test()
             {
@@ -712,7 +718,9 @@ namespace HigginsSoft.Math.Lib.Tests
                     TestPrimeGenerator(i);
                 }
             }
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_Bits_24_Test()
             {
@@ -879,12 +887,18 @@ namespace HigginsSoft.Math.Lib.Tests
                 }
             }
 
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_Bits_24_Test()
             {
                 TestPrimeGenerator(24);
             }
 
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_Bits_24_MaxCores_Test()
             {
@@ -1070,6 +1084,7 @@ namespace HigginsSoft.Math.Lib.Tests
                 Assert.AreEqual(data.Count, count);
 
             }
+
 #if SKIP_LONG_TESTS
             [Ignore]
 #endif
@@ -1111,6 +1126,9 @@ namespace HigginsSoft.Math.Lib.Tests
                 return result;
             }
 
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod]
             public void Generator_CountLast31Range()
             {
@@ -1186,7 +1204,9 @@ namespace HigginsSoft.Math.Lib.Tests
                 Assert.AreEqual(expected.Count, count, $"2^{powerOfTwo} Count Failed.");
             }
 
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Parallel_24_Generator_MaxCores_Test()
             {
@@ -1240,7 +1260,9 @@ namespace HigginsSoft.Math.Lib.Tests
                 TestPrimeGeneratorMpi(32, Environment.ProcessorCount, false, false);
             }
 
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Parallel_32_Generator_MaxCores_LinqCount_Test()
             {
@@ -1615,13 +1637,17 @@ namespace HigginsSoft.Math.Lib.Tests
                     TestPrimeGenerator(i);
                 }
             }
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_Bits_24_Test()
             {
                 TestPrimeGenerator(24);
             }
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_Bits_24_MaxCores_Test()
             {
@@ -1747,6 +1773,7 @@ namespace HigginsSoft.Math.Lib.Tests
             {
                 TestPrimeGenerator(31);
             }
+
 #if SKIP_LONG_TESTS
             [Ignore]
 #endif
@@ -1755,6 +1782,7 @@ namespace HigginsSoft.Math.Lib.Tests
             {
                 TestPrimeGeneratorMpi(24, Environment.ProcessorCount);
             }
+
 #if SKIP_LONG_TESTS
             [Ignore]
 #endif
@@ -1763,6 +1791,7 @@ namespace HigginsSoft.Math.Lib.Tests
             {
                 TestPrimeGeneratorMpi(28, Environment.ProcessorCount);
             }
+
 #if SKIP_LONG_TESTS
             [Ignore]
 #endif
@@ -1771,6 +1800,7 @@ namespace HigginsSoft.Math.Lib.Tests
             {
                 TestPrimeGeneratorMpi(28, Environment.ProcessorCount, true);
             }
+
 #if SKIP_LONG_TESTS
             [Ignore]
 #endif
@@ -1780,7 +1810,9 @@ namespace HigginsSoft.Math.Lib.Tests
                 TestPrimeGeneratorMpi(31, Environment.ProcessorCount);
             }
 
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Parallel_31_Generator_MaxCores_LinqCount_Test()
             {

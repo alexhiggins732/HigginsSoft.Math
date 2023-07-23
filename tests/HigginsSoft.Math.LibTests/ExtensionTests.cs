@@ -20,7 +20,7 @@ namespace HigginsSoft.Math.Lib.Tests
     namespace ExtensionTests
     {
         [TestClass]
-        public class ExtensionTests
+        public class IlogTests
         {
             [TestMethod]
             public void Extensions_TestHexConversion()

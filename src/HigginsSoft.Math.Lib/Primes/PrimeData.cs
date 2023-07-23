@@ -79,7 +79,8 @@ namespace HigginsSoft.Math.Lib
         /// <remarks>Manually calculated using HigginsSoft.Math and verified using Yafu</remarks>
         public static Dictionary<int, PrimeData> Counts = (new PrimeData[]
         {
-            new(1,1, 2,3),
+            new(0,1, 0,2),//2^0=1, last prime=0, next prime=2
+            new(1,1, 2,3),//2^1=2, last prime=2, next prime=3
             new(2,2, 3,5),
             new(3,4, 7,11),
             new(4,6, 13,17),
