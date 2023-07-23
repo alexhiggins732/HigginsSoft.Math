@@ -13,12 +13,12 @@ namespace HigginsSoft.Math.UI.Models
     public class Class
     {
         public int Class;
-        public int ;
+        public int Res;
 
-        public Class(int @class, int )
+        public Class(int @class, int res)
         {
             Class = @class;
-             = ;
+            Res = res;
         }
     }
 }
@@ -64,7 +64,7 @@ namespace HigginsSoft.Math.UI.Pages
             get => ClassString;
             set
             {
-                if (int.TryParse(value, out int ))
+                if (int.TryParse(value, out int))
                 {
                     ClassString = value;
                     if (BigInteger.TryParse(nString, out BigInteger n))
@@ -83,7 +83,7 @@ namespace HigginsSoft.Math.UI.Pages
             get => String;
             set
             {
-                if (int.TryParse(value, out int ))
+                if (int.TryParse(value, out int))
                 {
                     String = value;
                 }
@@ -135,7 +135,7 @@ namespace HigginsSoft.Math.UI.Pages
                             Console.WriteLine($"Removed solution: {sol.p} - {sol.q} mod {comp.Value.Class} - not found in {other.Value.Class}");
                             break;
                         }
-                       
+
                     }
                     if (!found)
                     {
