@@ -445,6 +445,28 @@ namespace HigginsSoft.Math.Lib
         {
             return new GmpInt(value);
         }
+        public static GmpInt Convert(object value)
+        {
+            if (value is null) return GmpInt.Zero.Clone();
+            var t = value.GetType();
+            if (t == typeof(int) && value is int i) return new GmpInt(i);
+            if (t == typeof(uint) && value is uint u) return new GmpInt(u);
+            if (t == typeof(long) && value is long l) return new GmpInt(l);
+            if (t == typeof(ulong) && value is ulong ul) return new GmpInt(ul);
+            if (t == typeof(BigInteger) && value is BigInteger big) return new GmpInt(big);
+            if (t == typeof(mpz_t) && value is mpz_t z) return new GmpInt(z);
+            if (t == typeof(mpf_t) && value is mpf_t mpf) return new GmpInt(mpf);
+            if (t == typeof(float) && value is float f) return new GmpInt(f);
+            if (t == typeof(double) && value is double d) return new GmpInt(d);
+            if (t == typeof(decimal) && value is decimal dec) return new GmpInt(dec);
+            if (t == typeof(byte) && value is byte b) return new GmpInt(b);
+            if (t == typeof(sbyte) && value is sbyte sb) return new GmpInt(sb);
+            if (t == typeof(short) && value is short sh) return new GmpInt(sh);
+            if (t == typeof(ushort) && value is ushort us) return new GmpInt(us);
+            throw new InvalidCastException($"Cannot convert object of type of {t} to GmpInt");
+        }
+
+
 
         public static implicit operator string(GmpInt value)
         {
@@ -711,8 +733,32 @@ namespace HigginsSoft.Math.Lib
 
         public static GmpInt operator /(GmpInt dividend, GmpInt divisor)
         {
+            if (divisor.IsZero)
+            {
+                string bp = "";
+            }
             var result = new GmpInt();
-            gmp_lib.mpz_divexact(result.Data, dividend.Data, divisor.Data);
+            try
+            {
+                // divexact returns garbage results for certiain inputs
+                //gmp_lib.mpz_divexact(result.Data, dividend.Data, divisor.Data);
+                /* example:
+                    a = 46189; (dividend)
+                    m= 7; (divisor)
+                    q = a / m;
+
+                    result q = 5270498306774164203;
+                 */
+                // alternative is 
+                //gmp_lib.__gmpz_tdiv_q
+                gmp_lib.mpz_tdiv_q(result.Data, dividend.Data, divisor.Data);
+            }
+            catch (Exception ex)
+            {
+                string bp = ex.ToString();
+                Console.WriteLine(bp);
+            }
+
             return result;
         }
 

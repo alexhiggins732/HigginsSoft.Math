@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -34,26 +35,85 @@ namespace HigginsSoft.Math.Lib
             }
         }
 
+        public static IEnumerable<(int Value, int P, int Q)> GenerateSemiPrimes(int rootLimit = PrimeData.MaxIntFactorPrime)
+        {
+            for (var i = 0; i < Primes.IntFactorPrimes.Length; i++)
+            {
+                var x = Primes.IntFactorPrimes[i];
+
+                for (var k = i; k < Primes.IntFactorPrimes.Length; k++)
+                {
+                    var y = Primes.IntFactorPrimes[k];
+                    if (y >= rootLimit)
+                        break;
+                    yield return (x * y, x, y);
+                }
+                if (x >= rootLimit)
+                    break;
+            }
+
+        }
         public static IEnumerable<int> GenerateTo(int limit)
         {
-            if (limit > 3)
+            if (limit > 0)
             {
-                var primes = Primes.IntFactorPrimes;
-                var c = 2;
-                var prime = 2;
-                for (var i = 0; c <= limit && i < primes.Length; i++)
-                    for (prime = primes[i];  c <= prime && c <= limit;c++)
-                        if (c != prime)
-                            yield return c;
+                var lg = MathLib.ILogB(limit);
 
+                var primes = new PrimeGeneratorUnsafe(limit);
+                var iter = primes.GetEnumerator();
+                iter.MoveNext();
+
+                int prime = iter.Current;
+
+                bool moved = true;
+                for (var c = 2; c < limit; c++)
+                {
+                    if (c < prime || !moved)
+                        yield return c;
+                    else if (moved)
+                    {
+                        moved = iter.MoveNext();
+                        if (moved)
+                            prime = iter.Current;
+                    }
+                }
             }
         }
+
+        public static IEnumerable<int> GenerateTo(int start, int limit)
+        {
+            if (limit > 0)
+            {
+                var lg = MathLib.ILogB(limit);
+
+                var primes = new PrimeGeneratorUnsafe(start, limit);
+                var iter = primes.GetEnumerator();
+                iter.MoveNext();
+
+                int prime = iter.Current;
+
+                bool moved = true;
+                for (var c = start; c < limit; c++)
+                {
+                    if (c < prime || !moved)
+                        yield return c;
+                    else if (moved)
+                    {
+                        moved = iter.MoveNext();
+                        if (moved)
+                            prime = iter.Current;
+                    }
+                }
+            }
+        }
+
+
         public static IEnumerable<int> GenerateAll(int count)
         {
 
             if (count > 0)
             {
-                var primes = Primes.IntFactorPrimes;
+                var primes = Primes.UintFactorPrimes;
                 var c = 2;
                 var prime = 2;
                 var j = 0;

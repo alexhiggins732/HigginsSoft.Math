@@ -21,7 +21,7 @@ namespace HigginsSoft.Math.Demos.Tests
 //  limit unit test run time for cloud builds
 #if CLOUD_BUILD
         const int QS_TEST_START = 100;
-        const int QS_TEST_END = 200;
+        const int QS_TEST_END = 2000;
 #else
         const int QS_TEST_START = 65536;
         const int QS_TEST_END = 65536 << 1;
@@ -33,7 +33,7 @@ namespace HigginsSoft.Math.Demos.Tests
 
             var s = new Qs16();
             var sw = Stopwatch.StartNew();
-            for (var i = QS_TEST_START; i < QS_TEST_END; i++)
+            for (var i = QS_TEST_START; i < 200; i++)
             {
                 if (i == 16)
                 {
@@ -61,7 +61,7 @@ namespace HigginsSoft.Math.Demos.Tests
             var s = new Qs16();
             var pow = Qs16.t_div_pow_limit;
             int primecount = Qs16.factor_base_prime_count;
-            var morerels = Qs16.min_extra_residues;
+            var morerels = Qs16.min_extra_s;
 
             TimeSpan last = TimeSpan.FromSeconds(1);
             for (var limit = start; limit <= stop; limit <<= 1)
@@ -212,7 +212,7 @@ namespace HigginsSoft.Math.Demos.Tests
             sw.Stop();
             var pow = Qs16.t_div_pow_limit;
             int primecount = Qs16.factor_base_prime_count;
-            var morerels = Qs16.min_extra_residues;
+            var morerels = Qs16.min_extra_s;
             Console.WriteLine($"//  N <= {limit} 2^{pow} res limit ({primecount} primes) (add. rels {morerels}): {sw.Elapsed} with {s.opCount} ops - {primeFailCount} unfactored starting at {minfail}");
 
             // sieve window sqrt(n) - (sqrt(n) + root) << 1) + 32 primes + result prime check
@@ -286,7 +286,7 @@ namespace HigginsSoft.Math.Demos.Tests
 
 
             //TODO: time with only composites and no tdiv prime check in matrix solver.
-            // --theoritical optimization is use only primes that are residues
+            // --theoritical optimization is use only primes that are s
             // -- in practices this might be more overhead than it is worth.
         }
 

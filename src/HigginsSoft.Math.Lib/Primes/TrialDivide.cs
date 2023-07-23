@@ -22,7 +22,7 @@ namespace HigginsSoft.Math.Lib
         #region Trial Divide Int
 
         //use the first 1028 primes for trial division in a primality check
-        const int probable_prime_tdiv_limit = 4099; 
+        const int probable_prime_tdiv_limit = 4099;
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -36,7 +36,7 @@ namespace HigginsSoft.Math.Lib
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsPrime(BigInteger i)
         {
-            if (i <= 2) return i == 2;
+            if (i < 4) return i > 1;
             var bitLength = i.GetBitLength();
             if (bitLength < 65)
             {
@@ -51,7 +51,7 @@ namespace HigginsSoft.Math.Lib
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsPrime(GmpInt i)
         {
-            if (i <= 2) return i == 2;
+            if (i < 4) return i > 1;
             var bitLength = i.BitLength;
             if (bitLength < 65)
             {
@@ -106,9 +106,8 @@ namespace HigginsSoft.Math.Lib
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool TrialDivide(int n, IEnumerable<int> candidates, out int factor)
         {
+            if (n < 4) return (factor = n) > 1;
             factor = 1;
-            if (n < 2) return false;
-            if (n == 2) return (factor = n) == 2;
             var root = (int)System.Math.Sqrt(n);
             foreach (var p in candidates)
             {
@@ -136,9 +135,8 @@ namespace HigginsSoft.Math.Lib
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool TrialDivide(int n, int maxPrime, out int factor)
         {
+            if (n < 4) return (factor = n) > 1;
             factor = 1;
-            if (n <= 1) return false;
-            if (n == 2) return (factor = n) == 2;
             var arr = IntFactorPrimes;
             var root = (int)System.Math.Sqrt(n);
             var limit = MathLib.Min(maxPrime, root);
@@ -198,9 +196,8 @@ namespace HigginsSoft.Math.Lib
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool TrialDivide(uint n, IEnumerable<int> candidates, out uint factor)
         {
+            if (n < 4) return (factor = n) > 1;
             factor = 1;
-            if (n <= 1) return false;
-            if (n == 2) return (factor = n) == 2;
             var root = (int)System.Math.Sqrt(n);
             foreach (var p in candidates)
             {
@@ -228,9 +225,8 @@ namespace HigginsSoft.Math.Lib
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool TrialDivide(uint n, int maxPrime, out uint factor)
         {
+            if (n < 4) return (factor = n) > 1;
             factor = 1;
-            if (n <= 1) return false;
-            if (n == 2) return (factor = n) == 2;
             var arr = UintFactorPrimes;
             var root = (int)System.Math.Sqrt(n);
             var limit = MathLib.Min(maxPrime, root);
@@ -291,9 +287,8 @@ namespace HigginsSoft.Math.Lib
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool TrialDivide(long n, IEnumerable<uint> candidates, out long factor)
         {
+            if (n < 4) return (factor = n) > 1;
             factor = 1;
-            if (n <= 1) return false;
-            if (n == 2) return (factor = n) == 2;
             var root = (int)System.Math.Sqrt(n);
             foreach (var p in candidates)
             {
@@ -321,9 +316,8 @@ namespace HigginsSoft.Math.Lib
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool TrialDivide(long n, uint maxPrime, out long factor)
         {
+            if (n < 4) return (factor = n) > 1;
             factor = 1;
-            if (n <= 1) return false;
-            if (n == 2) return (factor = n) == 2;
             var root = (uint)System.Math.Sqrt(n);
             var limit = MathLib.Min(maxPrime, root);
             var candidates = new PrimeGeneratorUnsafeUint(limit);
@@ -383,9 +377,8 @@ namespace HigginsSoft.Math.Lib
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool TrialDivide(ulong n, IEnumerable<uint> candidates, out ulong factor)
         {
+            if (n < 4) return (factor = n) > 1;
             factor = 1;
-            if (n <= 1) return false;
-            if (n == 2) return (factor = n) == 2;
             var root = (int)System.Math.Sqrt(n);
             foreach (var p in candidates)
             {
@@ -413,9 +406,8 @@ namespace HigginsSoft.Math.Lib
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool TrialDivide(ulong n, uint maxPrime, out ulong factor)
         {
+            if (n < 4) return (factor = n) > 1;
             factor = 1;
-            if (n <= 1) return false;
-            if (n == 2) return (factor = n) == 2;
             var root = (uint)System.Math.Sqrt(n);
             var limit = MathLib.Min(maxPrime, root);
             var candidates = new PrimeGeneratorUnsafeUint(limit);
@@ -447,8 +439,8 @@ namespace HigginsSoft.Math.Lib
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool TrialDivide(GmpInt n, int maxPrime, out GmpInt factor)
         {
+            if (n < 4) return (factor = n) > 1;
             factor = 1;
-            if (n <= 1) return false;
             GmpInt root = n.Sqrt();
             if (root == 1)
             {
@@ -485,9 +477,8 @@ namespace HigginsSoft.Math.Lib
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool TrialDivide(GmpInt n, IEnumerable<int> candidates, out GmpInt factor)
         {
+            if (n < 4) return (factor = n) > 1;
             factor = 1;
-            if (n == 2) return (factor = n) == 2;
-            if (n <= 1) return false;
             GmpInt root = n.Sqrt();
             if (root == 1)
             {
@@ -521,9 +512,8 @@ namespace HigginsSoft.Math.Lib
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool TrialDivide(GmpInt n, IEnumerable<uint> candidates, out GmpInt factor)
         {
+            if (n < 4) return (factor = n) > 1;
             factor = 1;
-            if (n <= 1) return false;
-            if (n == 2) return (factor = n) == 2;
             GmpInt root = n.Sqrt();
             if (root == 1)
             {

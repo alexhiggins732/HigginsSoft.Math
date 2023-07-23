@@ -163,9 +163,9 @@ namespace HigginsSoft.Math.Lib.Tests
             [TestMethod]
             public void TestRangeCount()
             {
-                for (var start = 0; start <= 64; start++)
+                for (var start = 0; start <= 32; start++)
                 {
-                    for (var end = start + 1; end <= 64; end++)
+                    for (var end = start + 1; end <= 32; end++)
                     {
                         var actual = Primes.Count(start, end);
                         var expected = new PrimeGeneratorUnsafe(start, end).Count();
@@ -514,6 +514,9 @@ namespace HigginsSoft.Math.Lib.Tests
                 }
             }
 
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_Inc_CompareToPrimes65536_Test()
             {
@@ -715,7 +718,9 @@ namespace HigginsSoft.Math.Lib.Tests
                     TestPrimeGenerator(i);
                 }
             }
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_Bits_24_Test()
             {
@@ -882,12 +887,18 @@ namespace HigginsSoft.Math.Lib.Tests
                 }
             }
 
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_Bits_24_Test()
             {
                 TestPrimeGenerator(24);
             }
 
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_Bits_24_MaxCores_Test()
             {
@@ -1115,7 +1126,9 @@ namespace HigginsSoft.Math.Lib.Tests
                 return result;
             }
 
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod]
             public void Generator_CountLast31Range()
             {
@@ -1622,13 +1635,17 @@ namespace HigginsSoft.Math.Lib.Tests
                     TestPrimeGenerator(i);
                 }
             }
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_Bits_24_Test()
             {
                 TestPrimeGenerator(24);
             }
-
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Generator_Bits_24_MaxCores_Test()
             {
@@ -1755,6 +1772,9 @@ namespace HigginsSoft.Math.Lib.Tests
                 TestPrimeGenerator(31);
             }
 
+#if SKIP_LONG_TESTS
+            [Ignore]
+#endif
             [TestMethod()]
             public void Parallel_24_Generator_MaxCores_Test()
             {

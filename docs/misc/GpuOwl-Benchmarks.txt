@@ -1,0 +1,8 @@
+https://docs.google.com/spreadsheets/d/1Kxd8wQayP8FtdoKQ6k5kayM8cMNTaNJV/edit#gid=2116903905
+
+est Gtx 3070 2194 us/iter
+
+windows builds: https://www.mersenneforum.org/showthread.php?t=25624&page=4
+
+some bench marks:
+https://www.mersenneforum.org/showthread.php?t=27734

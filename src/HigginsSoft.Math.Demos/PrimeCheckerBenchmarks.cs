@@ -14,6 +14,7 @@ namespace HigginsSoft.Math.Demos
     using System.Reflection;
     using System.Diagnostics;
     using BenchmarkDotNet.Attributes;
+    using Microsoft.Diagnostics.Tracing.Parsers.Clr;
 
     public class PrimeCheckerBenchmarks
     {
@@ -377,7 +378,7 @@ namespace HigginsSoft.Math.Demos
 
             int count = 0;
             var limit = int.MaxValue;
-            for (var i = (limit- (1<<20)); i < limit; i++)
+            for (var i = (limit - (1 << 20)); i < limit; i++)
             {
                 var check = IsPrimeLoopDiv(i);
                 var result = _isPrime(i);
@@ -496,7 +497,7 @@ namespace HigginsSoft.Math.Demos
             }
 
             //    || i > 11 * 11;
-          
+
             var lastSquare = Expression.Constant(previousPrime * previousPrime);
             var gtLastSquare = Expression.GreaterThan(parameter, lastSquare);
 

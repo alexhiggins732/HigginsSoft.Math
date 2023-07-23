@@ -28,6 +28,7 @@ namespace HigginsSoft.Math.Lib
     {
 
 
+
         public static readonly int[] IntFactorPrimes = PrimeData.IntFactorPrimes;
         public static readonly int[] UintFactorPrimes = PrimeData.UintFactorPrimes;
 

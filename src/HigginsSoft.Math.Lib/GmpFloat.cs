@@ -143,8 +143,20 @@ namespace HigginsSoft.Math.Lib
 
             mp_exp_t exp = 0;
             char_ptr s = gmp_lib.mpf_get_str(char_ptr.Zero, ref exp, @base, 0, Data);
-            var value = s.ToString().PadRight(exp, '0');
-            return value;
+            var stringValue = s.ToString();
+            if (exp > 1)
+            {
+                stringValue= stringValue.PadRight(exp, '0');
+            }
+            if (stringValue.IndexOf('.') == -1)
+            {
+                //stringValue = $"0.{stringValue.PadRight(exp, '0')}";
+            }
+            else
+            {
+                //.PadRight(exp, '0');
+            }
+            return stringValue;
         }
 
         #region public properties
@@ -1207,6 +1219,13 @@ namespace HigginsSoft.Math.Lib
             gmp_lib.mpf_abs(z.Data, this.Data);
             return z;
         }
+
+        public static GmpFloat Parse(string value, int @base)
+        {
+            return new GmpFloat(value, 2);
+        }
+
+
 
         #endregion
     }

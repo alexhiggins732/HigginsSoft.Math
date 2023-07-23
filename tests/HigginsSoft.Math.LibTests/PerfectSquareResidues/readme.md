@@ -1,8 +1,8 @@
-﻿A square residue is calculated as `i*i%n`
+﻿A square  is calculated as `i*i%n`
 
-Let n be a given prime, then for all `i > sqrt(n)` primes have perfect square residues of count `floor(sqrt(prime))`
+Let n be a given prime, then for all `i > sqrt(n)` primes have perfect square s of count `floor(sqrt(prime))`
 
-|N	|SquareResidues	|Sqrt				|ISqrt	|Density of Square Residues	|
+|N	|Squares	|Sqrt				|ISqrt	|Density of Square s	|
 |--	|--				|-------------------|1		|0.707106781186548			|
 |2 	|0 				|1.4142135623731	|1		|0.707106781186548			|
 |3 	|1 				|1.73205080756888	|1		|0.577350269189626			|
@@ -18,9 +18,9 @@ Let n be a given prime, then for all `i > sqrt(n)` primes have perfect square re
 |37	|6 				|6.08276253029822	|6		|0.164398987305357			|
 
 
-Specifically the count of square residues is the number of squares less than the prime.
+Specifically the count of square s is the number of squares less than the prime.
 
-|N	|Count	| Sq Residues
+|N	|Count	| Sq s
 |2	|0		|
 |3	|0		|
 |5	|1		|4
@@ -32,14 +32,14 @@ Specifically the count of square residues is the number of squares less than the
 |23	|3		|16		9	4
 |29	|4		|25		16	9	4
 
-Including all i < n for a prime p, the total of square residues is 2 times number of squares less than p,
+Including all i < n for a prime p, the total of square s is 2 times number of squares less than p,
 as naturally there are k square values less than i, and j values that are perfect squares mod p.
 
-This pattern does not follow for composites. While the set of residues includes all squares less than some composite n,
-some composites have multiple perfect square residues for a given square and some residues can be 0 mod n.
+This pattern does not follow for composites. While the set of s includes all squares less than some composite n,
+some composites have multiple perfect square s for a given square and some s can be 0 mod n.
 
 
-|N	|Count	| Sq Residues
+|N	|Count	| Sq s
 |2	|0		|
 |3	|0		|
 |4	|1		|0
@@ -79,5 +79,5 @@ In particular:
 - 15 is 4 mod 7 ^ 2, 4 mod 8 ^ 2, 9 mod 12 ^ 2, 4 mod 13 ^ 2
 
 See also:
-- [Residues of all inteegers up to 255](QuadraticResidues-255.md)
-- [Residues of primes up to 255](QuadraticResiduesPrime-255.md)
+- [s of all inteegers up to 255](Quadratics-255.md)
+- [s of primes up to 255](QuadraticsPrime-255.md)

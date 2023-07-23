@@ -1,4 +1,4 @@
-﻿|N	|Residues|Unique Residues Factors
+﻿|N	|s|Unique s Factors
 |1	|	|
 |2	|	|
 |3	|1	|1

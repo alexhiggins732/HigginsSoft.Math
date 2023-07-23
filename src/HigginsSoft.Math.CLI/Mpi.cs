@@ -12,6 +12,12 @@
 
 */
 
+using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Jobs;
+using BenchmarkDotNet.Reports;
+using BenchmarkDotNet.Toolchains.InProcess.Emit;
+using BenchmarkDotNet.Toolchains.InProcess.NoEmit;
 using HigginsSoft.Math.Lib;
 using System;
 using System.Collections.Generic;
@@ -23,6 +29,7 @@ using System.Runtime.Versioning;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using static HigginsSoft.Math.CLI.Mpi;
 
 namespace HigginsSoft.Math.CLI
 {
@@ -57,7 +64,7 @@ namespace HigginsSoft.Math.CLI
                 Console.WriteLine($"[{DateTime.Now}] {id} {message}");
         }
 
-        public void DebugLine(object? message) 
+        public void DebugLine(object? message)
             => DebugLine(message?.ToString() ?? string.Empty);
 
         public void DebugLine(string message)
@@ -66,6 +73,58 @@ namespace HigginsSoft.Math.CLI
                 Console.WriteLine($"[{DateTime.Now}] {id} {message}");
         }
     }
+
+    public class InProcessEmitConfig : ManualConfig
+    {
+        public InProcessEmitConfig()
+        {
+            AddJob(Job.MediumRun
+                .WithToolchain(InProcessEmitToolchain.Instance));
+        }
+    }
+
+    public class InProcessNoEmit : ManualConfig
+    {
+        public InProcessNoEmit()
+        {
+            AddJob(Job.MediumRun
+                .WithToolchain(InProcessNoEmitToolchain.Instance));
+        }
+    }
+
+    [Config(typeof(InProcessNoEmit))]
+    public class MpiBenchmark
+    {
+        //[Params(8, 16)]
+        [Params(16)]
+        public int threads { get; set; } = 8;
+
+        //[Params(1<<16,1<<20)]
+        [Params(1ul << 30)]
+        public ulong end { get; set; } = 65536;
+
+        internal static void Run()
+        {
+            var b = new MpiBenchmark();
+            b.end = 1ul << 32;
+            b.threads = 16;
+            b.TestMpiUint32();
+        }
+
+        [Benchmark]
+        public void TestMpiUint32()
+        {
+            if (end > uint.MaxValue) end = uint.MaxValue;
+            var args = $"threads {threads} range 1 {end}";
+            Console.WriteLine($"Running args: {args}");
+            MpiRunner.RunThreads(args.Split(' '));
+        }
+    }
+
+   
+
+
+
     public class Mpi
     {
         public static void RunThread()
@@ -83,6 +142,11 @@ namespace HigginsSoft.Math.CLI
         {
             public static Logger Logger = new Logger(id);
 
+
+            /// <summary>
+            /// args => $"threads {numThreads} command [commandArgs...]
+            /// </summary>
+            /// <param name="args"></param>
             public static void RunThreads(string[] args)
             {
                 pipeName = "Master";
@@ -101,7 +165,10 @@ namespace HigginsSoft.Math.CLI
                             commandArgs = commandArgs.Select(x => x.Replace(",", "").Trim()).ToArray();
                             if (args.Length == 5
                                 && uint.TryParse(commandArgs[0], out uint start)
-                                 && uint.TryParse(commandArgs[1], out uint end)
+                                 &&
+                                    (uint.TryParse(commandArgs[1], out uint end)
+                                    || TryParseExpression(commandArgs[1], out end)
+                                    )
                                 )
                             {
                                 RunRangeThreads(numThreads, start, end);
@@ -124,6 +191,39 @@ namespace HigginsSoft.Math.CLI
                 Logger.WriteLine($"Invalid arguments {string.Join(", ", args)}");
 
 
+            }
+
+            private static bool TryParseExpression(string expression, out uint end)
+            {
+                end = 0;
+                var result = false;
+                if (expression != null)
+                {
+                    var idx = expression.IndexOf("^");
+                    if (idx > 0 && idx < expression.Length)
+                    {
+                        var parts = expression.Split("^");
+                        if (int.TryParse(parts[0].Trim(), out int @base) && int.TryParse(parts[1], out int power))
+                        {
+                            var product = (ulong)MathLib.Pow(@base, @power);
+                            end = product <= uint.MaxValue ? (uint)product : uint.MaxValue;
+
+                            return true;
+                        }
+                    }
+                    idx = expression.IndexOf("<<");
+                    if (idx > 0 && idx < expression.Length)
+                    {
+                        var parts = expression.Split("<<");
+                        if (int.TryParse(parts[0].Trim(), out int @base) && int.TryParse(parts[1], out int power))
+                        {
+                            var product = 1ul << power;
+                            end = product <= uint.MaxValue ? (uint)product : uint.MaxValue;
+                        }
+                    }
+                }
+
+                return result;
             }
 
             private static void RunRangeThreads(int numThreads, uint start, uint end)
@@ -217,12 +317,16 @@ namespace HigginsSoft.Math.CLI
                 Console.WriteLine();
                 Console.WriteLine("".PadLeft(Console.BufferWidth, '='));
                 Console.WriteLine();
-               
+
             }
 
+            /// <summary>
+            /// args => $"thread {Index} {Name} {Command} {Start} {End}"
+            /// </summary>
+            /// <param name="args"></param>
             public static void RunRangeThread(string[] args)
             {
-             
+
                 //Args => $"thread {Index} {Name} {Command} {Start} {End}";
                 pipeName = "invalid";
                 if (args.Length == 6)
@@ -237,7 +341,7 @@ namespace HigginsSoft.Math.CLI
                         var command = args[3];
                         //Logger.WriteLine($"Setting Processor affinity to {affinityMask} for process {p.Id}");
                         SetProcessor(clientIndex);
-                       
+
                         Logger.WriteLine($"Running client {string.Join(" ", args)}");
                         var sw = Stopwatch.StartNew();
                         LaunchSieve(startIndex, endIndex, pipeName);

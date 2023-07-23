@@ -1,0 +1,73 @@
+﻿@{
+    if (Value.Class != 0)
+    {
+
+        <MudButton Variant="Variant.Filled" OnClick="@(e=> HandleClick())">Remove Class @Value.Class</MudButton> 
+        <MudToggleIconButton Toggled="@ShowModTable" ToggledChanged="ShowModTableChanged"
+                     Icon="@Icons.Material.Filled.AlarmOff" Color="@Color.Error" Title="Off"
+                     ToggledIcon="@Icons.Material.Filled.AlarmOn" ToggledColor="@Color.Success" ToggledTitle="On" />
+        <MudButton Variant="Variant.Filled" OnClick="@(e=> HandleFilterClick())">Filter @Value.Class</MudButton>
+        if (solutions.Count != 0)
+        {
+
+            <div>@solutions.Count solutions n mod @Value.Class == @Value.:</div>
+            <div class="solutions" style="clear:both;">
+
+                @foreach (var solution in solutions)
+                {
+                    <div>@solution.p - @solution.q </div>
+
+                    <div>&nbsp;@("\t")</div>
+                    
+                }
+
+
+            </div>
+            <div class="solutions" style="clear:both;"></div>
+        }
+       
+        @if (ShowModTable)
+        {
+            <div class="modtable">
+                <table>
+                    @for (var row = 0; row < Value.Class; row++)
+                    {
+                        if (row == 0)
+                        {
+                            <tr>
+                                <td>-</td>
+                                @for (var col = 1; col < Value.Class; col++)
+                                {
+                                    <td><span class="p">@col</span></td>
+                                }
+                            </tr>
+                        }
+                        else
+                        {
+                            <tr>
+                                <td><span class="q">@row</span></td>
+                                @for (var col = 1; col < Value.Class; col++)
+                                {
+                                    var value = row * col % Value.Class;
+                                    if (Value. > 0 && value == Value.)
+                                    {
+                                        <td class="match">@value</td>
+                                    }
+                                    else
+                                    {
+                                        <td> @value</td>
+                                    }
+
+                                }
+                            </tr>
+                        }
+
+
+
+                    }
+                </table>
+            </div>
+        }
+
+    }
+}

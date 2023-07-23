@@ -29,12 +29,61 @@ namespace HigginsSoft.Math.Lib
         //static readonly int[] arr = Enumerable.Repeat(-1, 1000 * 2).ToArray();
         //static readonly int[] arr = Enumerable.Repeat(-1, 5 * 2 * 7 * 2 * 11 * 2).ToArray();
 
-        static readonly int[] arr = PrimeGeneratorPreSieve.Wheel11.Concat(PrimeGeneratorPreSieve.Wheel11).ToArray();
+        static readonly int[] arr;// = PrimeGeneratorPreSieve.Wheel11.Concat(PrimeGeneratorPreSieve.Wheel11).ToArray();
 
         private int[] sieve = null!;
         private int[] sievePrimes = new int[6542];
         private int[] lowindices = new int[6542];
         private int[] highindices = new int[6542];
+
+        static bool align = bool.Parse(bool.FalseString);
+        unsafe static PrimeGeneratorUnsafeUint()
+        {
+            // double double concat=int[1540];
+            // double concat=int[1540];
+            // single concat=int[770];
+            // Detected L1 = 32768 bytes, L2 = 16777216 bytes, CL = 64 bytes
+            // Detected L1 = 8,192 ints, L2 = 4,194,304 ints, CL = 64 bytes
+
+            //770+770=1540;
+            arr = PrimeGeneratorPreSieve.Wheel11.Concat(PrimeGeneratorPreSieve.Wheel11).Select(x => (int)x).ToArray();
+            // 1540 +1540=3,080
+            //arr = arr.Concat(arr).ToArray();
+            // 3,080+3080=6,160
+            //arr = arr.Concat(arr).ToArray();
+            if (align)
+            {
+                AlignArray(ref arr);
+            }
+        }
+
+        static unsafe void AlignArray(ref int[] array)
+        {
+            for (; ; )
+            {
+                array = array.ToArray();
+
+                fixed (int* ptr = array)
+                {
+                    if ((uint)ptr % 32 == 0)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
+        unsafe void alignArrays()
+        {
+            if (align)
+            {
+                AlignArray(ref sieve);
+                AlignArray(ref sievePrimes);
+                AlignArray(ref lowindices);
+                AlignArray(ref highindices);
+
+            }
+        }
 
         internal int BitLength;
         private uint _current = 0;
@@ -153,7 +202,7 @@ namespace HigginsSoft.Math.Lib
             sieve = new int[arr.Length];
             clearSieve();
             sieve = Enumerable.Repeat(-1, arr.Length).ToArray();
-
+            alignArrays();
 
             BitLength = arr.Length << 5;
 

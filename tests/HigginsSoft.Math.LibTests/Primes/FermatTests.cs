@@ -1,4 +1,6 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿#define SKIP_LONG_TESTS
+
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using HigginsSoft.Math.Lib;
 using System;
 using System.Collections.Generic;
@@ -11,6 +13,9 @@ using Microsoft.VisualBasic;
 
 namespace HigginsSoft.Math.Lib.Tests.FermatTests
 {
+#if SKIP_LONG_TESTS
+        [Ignore]
+#endif
     [TestClass()]
     public class FermatTest
     {

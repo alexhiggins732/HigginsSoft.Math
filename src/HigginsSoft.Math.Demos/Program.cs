@@ -12,8 +12,10 @@
 
 */
 
+using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
 using System.Reflection;
+using System.Runtime.Intrinsics.X86;
 
 namespace HigginsSoft.Math.Demos
 {
@@ -24,28 +26,49 @@ namespace HigginsSoft.Math.Demos
             // run benchmarks:  dotnet run -c Release [argument]
             if (args.Length == 1)
             {
+                Summary summary;
+                //args[0] = "primerecip";
                 switch (args[0])
                 {
                     case "loop":
-                        var summary = BenchmarkRunner.Run<LoopBenchmark>();
+                         summary = BenchmarkRunner.Run<LoopBenchmark>();
                         break;
-                    case "printresidues":
-                        PrimeResidueClasses.PrintResidueClasses(); break;
+                    case "prints":
+                        PrimeClasses.PrintClasses(); break;
                     case "factorial":
-                        PrimeResidueClasses.ShowProductFactorial(); break;
+                        PrimeClasses.ShowProductFactorial(); break;
                     case "factorialfactor":
-                        PrimeResidueClasses.ProductFactorialFactor();
+                        PrimeClasses.ProductFactorialFactor();
                         break;
                     case "primeinline":
                         //var summary2 = BenchmarkRunner.Run<InlinePrimeCheck>();
                         break;
                     case "timeprimechecker":
-                        var summary1 = BenchmarkRunner.Run<PrimeCheckerBenchmarks>();
+                        summary = BenchmarkRunner.Run<PrimeCheckerBenchmarks>();
                         //PrimeChecker.TestDiv();
+                        break;
+                    case "primerecip":
+                        RecipTDiv.PrintRecipricols();
                         break;
                     case "primechecker":
                         //var summary1 = BenchmarkRunner.Run<PrimeChecker>();
                         PrimeCheckerBenchmarks.TestLoopDiv();
+                        break;
+
+                    //PrimeChecker.TestDiv();
+                    case "avx":
+                        //var summary1 = BenchmarkRunner.Run<PrimeChecker>();
+                        summary = BenchmarkRunner.Run<AvxBenchmark>();
+                        break;
+                    case "avxsq":
+                        //var summary1 = BenchmarkRunner.Run<PrimeChecker>();
+                        summary = BenchmarkRunner.Run<AvxSquareGenBenchmark>();
+                        break;
+                    case "tdivcount":
+                        TDivCount.PrintCountIncremental();
+                        break;
+                    case "tdivcountavx":
+                        TDivCount.PrintCountIncrementalAvx();
                         break;
                 }
 

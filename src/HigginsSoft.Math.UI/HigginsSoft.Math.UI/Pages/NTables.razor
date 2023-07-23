@@ -1,0 +1,76 @@
+﻿@page "/ntables"
+
+<PageTitle>Mod Tables</PageTitle>
+
+<style>
+
+    .p, .q {
+        background-color: #cdcdcd;
+    }
+
+    .match {
+        background-color: #C6EFCE;
+    }
+
+    td {
+        border: 1px solid #dedede;
+    }
+
+    .modtable {
+        overflow: scroll;
+        clear: both;
+    }
+
+    .solutions div {
+        float: left;
+        border: 1px solid #dedede;
+        margin-right: 5px;
+    }
+</style>
+<div>
+    <MudTextField @bind-Value="NString" Label="N" HelperText="Enter a value for N" Variant="Variant.Text" />
+
+    <br />
+    <b>Add Class</b>
+    <MudTextField @bind-Value="ClassString" Label="N" HelperText="Enter a Class Value" Variant="Variant.Text" />
+    <MudTextField @bind-Value="String" Label="" HelperText="Enter a target  value" Variant="Variant.Text" />
+    <MudButton Variant="Variant.Filled" OnClick="@(e=> AddClass())">Add Class</MudButton>
+    <MudButton Variant="Variant.Filled" OnClick="@(e=> ClearClasses())">Clear Classes</MudButton>
+    <MudTextField @bind-Value="SmallPrimeCount" Label="N" HelperText="Max Prime" Variant="Variant.Text" />
+    <MudButton Variant="Variant.Filled" OnClick="@(e=> LoadSmallPrimes())">Small Primes</MudButton>
+    <p></p>
+    <MudButton Variant="Variant.Filled" OnClick="@(e=> ShowSolutionsAsync())">Show Solutions</MudButton>
+    <MudButton Variant="Variant.Filled" OnClick="@(e=> stop=true)">Stop Solving</MudButton>
+    <p></p>
+    @if (SolutionSteps > 0)
+    {
+        <p>Step: @SolutionSteps.ToString("N0") = @SolutionValue.ToString("N0");</p>
+        foreach (var sol in solutions)
+        {
+            <div>Step: @sol.q.ToString("N0") - Value: @sol.p.ToString("N0")</div>
+        }
+        if (solutions.Count > 1)
+        {
+            var size = solutions[1].p - solutions[0].p;
+            var offset = solutions[1].p % solutions[0].p;
+            var interval = solutions[1].q - solutions[0].q;
+            <div>Step: @interval.ToString("N0") - Offset: @offset.ToString("N0") - Size: @size.ToString("N0") - Mod = @(size / interval)</div>
+        }
+    }
+
+
+</div>
+<div>----------</div>
+@{
+    foreach (var c in this.Classes)
+    {
+        var comp = new Components.Class() { Value = c };
+
+        <HigginsSoft.Math.UI.Components.Class Value="@c"
+                                             OnRemoveClick="(() => Remove(c))"
+                                             OnFilterClick="(() => FilterSolutions(c))"
+                                             Parent="this">
+        </HigginsSoft.Math.UI.Components.Class>
+    }
+
+}

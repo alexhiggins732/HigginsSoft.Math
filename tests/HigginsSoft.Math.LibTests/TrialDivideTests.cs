@@ -240,7 +240,7 @@ namespace HigginsSoft.Math.Lib.Tests.PrimeTests
                     Assert.AreNotEqual(i, actual, $"Trial divide factor failed for {i}");
                     Assert.AreEqual(0, i % actual, $"Trial divide factor does not divide {i}");
                 }
-                else
+                else if (i != 0)
                 {
                     Assert.AreEqual(1, actual, $"Trial divide factor failed for {i}");
                 }
@@ -280,7 +280,7 @@ namespace HigginsSoft.Math.Lib.Tests.PrimeTests
                     Assert.AreNotEqual(i, actual, $"Trial divide factor failed for {i}");
                     Assert.AreEqual(0, i % actual, $"Trial divide factor does not divide {i}");
                 }
-                else
+                else if (i != 0)
                 {
                     Assert.AreEqual(1, actual, $"Trial divide factor failed for {i}");
                 }

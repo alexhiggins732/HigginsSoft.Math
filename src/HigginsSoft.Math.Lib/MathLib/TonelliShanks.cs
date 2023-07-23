@@ -20,9 +20,9 @@ namespace HigginsSoft.Math.Lib
 
     public static partial class MathLib
     {
-        public class QuadraticResidue
+        public class Quadratic
         {
-            public static bool IsQuadraticResidue(long q, long n)
+            public static bool IsQuadratic(long q, long n)
             {
                 return Legendre(n, (q - 1) / 2, q) == 1;
             }
@@ -117,7 +117,7 @@ namespace HigginsSoft.Math.Lib
 
             /// <summary>
             /// Gets the square roots for the equation x2 ≡ n(mod p)
-            ///     where n is an integer which is a quadratic residue(mod p), p
+            ///     where n is an integer which is a quadratic (mod p), p
             /// </summary>
             /// <param name="n"></param>
             /// <param name="p"></param>

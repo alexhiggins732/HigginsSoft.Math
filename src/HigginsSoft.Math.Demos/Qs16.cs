@@ -23,6 +23,7 @@ using System.Text;
 using System.Threading.Tasks;
 using static BenchmarkDotNet.Engines.EngineEventSource;
 using static HigginsSoft.Math.Demos.Qs16;
+using static HigginsSoft.Math.Lib.MathLib;
 
 namespace HigginsSoft.Math.Demos
 {
@@ -124,14 +125,14 @@ namespace HigginsSoft.Math.Demos
 
         public const int t_div_pow_limit = 16;
         const int trial_div_limit = 1 << t_div_pow_limit;
-        public const int min_extra_residues = 2;
+        public const int min_extra_s = 2;
         private int[] MicroFactorBase = Primes.IntFactorPrimes.Take(factor_base_prime_count).ToArray();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         bool tdiv(int value, FactorizationInt f, out int factor)
         {
             if (value < 2)
-                throw new Exception($"Invalid residue: {value}");
+                throw new Exception($"Invalid : {value}");
             var primes = MicroFactorBase;
             factor = value;
             int count;
@@ -165,7 +166,7 @@ namespace HigginsSoft.Math.Demos
         bool tdiv(int value, FactorizationInt f, out int factor, int[] primes)
         {
             if (value < 2)
-                throw new Exception($"Invalid residue: {value}");
+                throw new Exception($"Invalid : {value}");
             //var primes = MicroFactorBase;
             factor = value;
             int count;
@@ -375,7 +376,7 @@ namespace HigginsSoft.Math.Demos
                         f.Offset = i;
                         d.Add(f);
 
-                        if (d.Count > primeFactors.Count + min_extra_residues)
+                        if (d.Count > primeFactors.Count + min_extra_s)
                         {
                             if (i < factorBaseSolve && checkFactorBase)
                             {
@@ -385,7 +386,7 @@ namespace HigginsSoft.Math.Demos
                                     if (!primeFactors.Contains(x.P))
                                         primeFactors.Add(x.P);
                                 });
-                                if (d.Count <= primeFactors.Count + min_extra_residues)
+                                if (d.Count <= primeFactors.Count + min_extra_s)
                                     continue;
                             }
                             if (n == 51103)
@@ -423,7 +424,7 @@ namespace HigginsSoft.Math.Demos
 
         static bool IsQuadRes(int p, int n)
         {
-            return MathLib.QuadraticResidue.IsQuadraticResidue(p, n);
+            return MathLib.Quadratic.IsQuadratic(p, n);
         }
         const bool checkFactorBase = true;
         static PopComparer comp = new PopComparer();
@@ -445,8 +446,8 @@ namespace HigginsSoft.Math.Demos
             var factLogSolved = Path.GetFullPath(@$"facts\facts-qr-{n}-solved.log");
             var factLogSolvedDirect = Path.GetFullPath(@$"facts\facts-qr-{n}-solved-direct.log");
 
-            bool checkQaudResidues = bool.Parse(bool.TrueString);
-            if (checkQaudResidues)
+            bool checkQauds = bool.Parse(bool.TrueString);
+            if (checkQauds)
             {
                 File.Delete(factLog);
                 using var sw = new StreamWriter(factLog, false);
@@ -468,7 +469,7 @@ namespace HigginsSoft.Math.Demos
                 // test[p]==0 divides n;
                 foreach (var p in factorBase)
                 {
-                    var isres = MathLib.QuadraticResidue.IsQuadraticResidue(p, n);
+                    var isres = MathLib.Quadratic.IsQuadratic(p, n);
                     var a1 = MathLib.PowerMod(n, (p - 1) / 2, n);
 
 
@@ -485,7 +486,7 @@ namespace HigginsSoft.Math.Demos
                 // This is the naive algorithm without a precomputed factorbase.
                 if (nonQuadBase.Count > 0)
                 {
-                    string bp = $"Factorizations count {nonQuadBase.Count} primes that are not quard residues of {n}";
+                    string bp = $"Factorizations count {nonQuadBase.Count} primes that are not quard s of {n}";
                 }
             }
 #endif
@@ -640,7 +641,7 @@ namespace HigginsSoft.Math.Demos
                 }
 
 
-                // try pairs (relationships with same exact residue)
+                // try pairs (relationships with same exact )
                 foreach (var pair in pairs)
                 {
                     var pairCount = pair.Count();
@@ -690,6 +691,44 @@ namespace HigginsSoft.Math.Demos
                                     sw.WriteLine($"Gcd({n}, {pminus}) = {gcdminus}");
                                     sw.Close();
 #endif
+                                    var factorLeft = d.First(x => x.Offset == candidates[i].Key);
+                                    var factorRight = d.First(x => x.Offset == candidates[j].Key);
+                                    var leftPrimes = factorLeft.Factors.Select(x => x.P);
+                                    var rightPrimes = factorRight.Factors.Select(x => x.P);
+                                    var solPrimes = leftPrimes.Concat(rightPrimes).Distinct().ToList();
+                                    var qrDic = solPrimes.ToDictionary(x => x, x => IsQuadratic(n, x));
+                                    if (qrDic.Any(x => x.Value == false))
+                                    {
+                                        var b = new System.Text.StringBuilder();
+                                        b.AppendLine($"N={n}");
+                                        MathLib.IsPerfectSquare(n, out int nSqrt);
+
+                                        b.AppendLine($"NSqrt={nSqrt}");
+                                        b.AppendLine();
+                                        b.AppendLine($"Relations:");
+                                        b.AppendLine($"    {candidates[i].Key}^2 % {n} = {factorLeft} ");
+                                        b.AppendLine($"    {candidates[j].Key}^2 % {n} = {factorRight} ");
+                                        b.AppendLine();
+                                        b.AppendLine($"Solution: ");
+                                        b.AppendLine($"    product: {candidates[i].Key} * {candidates[j].Key} = {product}");
+                                        b.AppendLine($"    root: {factorLeft.GetProduct()} * {factorRight.GetProduct()} = {res} = {root}^2");
+                                        b.AppendLine($"    gcd: gcd({n}, {product}-{root}, {product} + {root}) = {result.ToString()} ");
+
+                                        b.AppendLine();
+                                        b.AppendLine($"IsQuadratic: ");
+
+                                        foreach (var r in qrDic.OrderBy(x=> x.Key))
+                                        {
+                                            b.AppendLine($"    {r.Key}: {r.Value}");
+
+                                        }
+                                        string bp = b.ToString();
+                                        Console.WriteLine("Quadratic check failed.");
+                                        Console.WriteLine(bp);
+                                    }
+
+
+                                    var solstring = "";
                                     return true;
                                 }
                             }
@@ -765,7 +804,7 @@ namespace HigginsSoft.Math.Demos
                         if (GcdCheck(n, product + res, product - res, result))
                         {
 #if LOG
-                            if (checkQaudResidues)
+                            if (checkQauds)
                             {
                                 File.Move(factLog, factLogSolved, true);
                                 using var sw = new StreamWriter(factLogSolved, true);
@@ -964,8 +1003,6 @@ namespace HigginsSoft.Math.Demos
                             {
                                 break;
                             }
-
-
                         }
                         Factorization f = (res > 256) ?
                             Naive((short)res) : Factorization.FactorTrialDivide(res);

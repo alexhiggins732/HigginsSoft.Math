@@ -14,15 +14,18 @@
 
 using HigginsSoft.Math.Lib;
 
+
 namespace HigginsSoft.Math.Demos
 {
-    public class PerfectSquareResidues
+    public class PerfectSquares
     {
+
+
         public static int Count(sbyte value) => Count((int)value);
         public static int Count(byte value) => Count((int)value);
         public static int Count(short value) => Count((int)value);
         public static int Count(ushort value) => Count((int)value);
-   
+
         public static int Count(int value)
         {
             var root = MathLib.Sqrt(value, out bool isexact);
@@ -40,10 +43,10 @@ namespace HigginsSoft.Math.Demos
                     count++;
             }
 
-            return count; 
+            return count;
         }
-     
-        public static List<int> GetPerfectSquareResidues(int value)
+
+        public static List<int> GetPerfectSquares(int value)
         {
             var root = MathLib.Sqrt(value, out bool isexact);
             int start = isexact ? root : root + 1;
@@ -56,19 +59,19 @@ namespace HigginsSoft.Math.Demos
                 var square = i * i;
                 var res = square % value;
                 var isSquare = res == 0 ? true : MathLib.IsPerfectSquare(res);
-                if(isSquare)
+                if (isSquare)
                     result.Add(res);
             }
 
             return result;
         }
 
-        public static List<int> GetPerfectSquareResidueDistributions(int value)
+        public static List<int> GetPerfectSquareDistributions(int value)
         {
             var root = MathLib.Sqrt(value, out bool isexact);
             int start = isexact ? root : root + 1;
             //if (isexact) { return value < 1 ? 0 : 2; }
-            int end = (int)value -1 - root;
+            int end = (int)value - 1 - root;
             List<int> result = new();
 
             for (var i = start; i <= end; i++)

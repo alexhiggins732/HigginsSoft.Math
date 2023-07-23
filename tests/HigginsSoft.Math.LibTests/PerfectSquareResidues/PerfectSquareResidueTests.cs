@@ -16,7 +16,7 @@ namespace HigginsSoft.Math.Demos.Tests
 {
 
     [TestClass()]
-    public class Unsigned8PerfectSquareResiduesTests
+    public class Unsigned8PerfectSquaresTests
     {
 
 #if RUN_LONG_TESTS
@@ -26,7 +26,7 @@ namespace HigginsSoft.Math.Demos.Tests
         [TestMethod()]
         public void CountByteTest()
         {
-            Func<byte, int> count = PerfectSquareResidues.Count;
+            Func<byte, int> count = PerfectSquares.Count;
 
             int last = 0;
             for (int i = 0; i <= byte.MaxValue; i++)
@@ -53,7 +53,7 @@ namespace HigginsSoft.Math.Demos.Tests
         [TestMethod()]
         public void CountBytePrimesTest()
         {
-            Func<ushort, int> count = PerfectSquareResidues.Count;
+            Func<ushort, int> count = PerfectSquares.Count;
 
             int last = 0;
             var primes = new PrimeGeneratorUnsafe(byte.MaxValue).ToList();
@@ -82,7 +82,7 @@ namespace HigginsSoft.Math.Demos.Tests
         [TestMethod()]
         public void PrintBytePerfectSquaresTest()
         {
-            Func<int, List<int>> get = PerfectSquareResidues.GetPerfectSquareResidues;
+            Func<int, List<int>> get = PerfectSquares.GetPerfectSquares;
 
             for (int i = 0; i < byte.MaxValue; i++)
             {
@@ -100,7 +100,7 @@ namespace HigginsSoft.Math.Demos.Tests
         [TestMethod()]
         public void PrintBytePerfectSquareDistributionTest()
         {
-            Func<int, List<int>> get = PerfectSquareResidues.GetPerfectSquareResidueDistributions;
+            Func<int, List<int>> get = PerfectSquares.GetPerfectSquareDistributions;
 
             for (int i = 0; i <= byte.MaxValue; i++)
             {
@@ -118,7 +118,7 @@ namespace HigginsSoft.Math.Demos.Tests
         [TestMethod()]
         public void PrintBytePrimePerfectSquaresTest()
         {
-            Func<int, List<int>> get = PerfectSquareResidues.GetPerfectSquareResidues;
+            Func<int, List<int>> get = PerfectSquares.GetPerfectSquares;
 
             int last = 0;
             var primes = new PrimeGeneratorUnsafe(byte.MaxValue).ToList();
@@ -137,9 +137,9 @@ namespace HigginsSoft.Math.Demos.Tests
         [Ignore]
 #endif
         [TestMethod()]
-        public void PrintByteResiduesTest()
+        public void PrintBytesTest()
         {
-            PrintResidues(Enumerable.Range(1, 255));
+            Prints(Enumerable.Range(1, 255));
         }
 
 #if RUN_LONG_TESTS
@@ -147,20 +147,20 @@ namespace HigginsSoft.Math.Demos.Tests
         [Ignore]
 #endif
         [TestMethod()]
-        public void PrintBytePrimeResiduesTest()
+        public void PrintBytePrimesTest()
         {
             var gen = new PrimeGeneratorUnsafe(byte.MaxValue);
-            PrintResidues(gen);
+            Prints(gen);
         }
 
 #if RUN_LONG_TESTS
 #else
         [Ignore]
 #endif
-        void PrintResidues(IEnumerable<int> values)
+        void Prints(IEnumerable<int> values)
         {
             var sb = new StringBuilder();
-            sb.AppendLine("|N\t|Residues");
+            sb.AppendLine("|N\t|s");
 
             foreach (var value in values)
             {
@@ -170,14 +170,14 @@ namespace HigginsSoft.Math.Demos.Tests
                 int end = (int)value - 1;
                 List<int> result = new();
 
-                var residues = new List<int>();
+                var s = new List<int>();
                 for (var i = start; i <= end; i++)
                 {
                     var square = i * i;
                     var res = square % value;
-                    residues.Add(res);
+                    s.Add(res);
                 }
-                sb.AppendLine($"|{value}\t|{string.Join(" ", residues)}");
+                sb.AppendLine($"|{value}\t|{string.Join(" ", s)}");
             }
             Console.WriteLine(sb.ToString());
         }
@@ -187,13 +187,13 @@ namespace HigginsSoft.Math.Demos.Tests
         [Ignore]
 #endif
         [TestMethod()]
-        public void PrintBytePrimeResiduesUniqueFactorsTest()
+        public void PrintBytePrimesUniqueFactorsTest()
         {
             var values = new PrimeGeneratorUnsafe(byte.MaxValue);
 
 
             var sb = new StringBuilder();
-            sb.AppendLine("|N\t|Residues|Unique Residues Factors");
+            sb.AppendLine("|N\t|s|Unique s Factors");
 
             foreach (var value in values)
             {
@@ -203,21 +203,21 @@ namespace HigginsSoft.Math.Demos.Tests
                 int end = (int)value - 1;
 
 
-                var residues = new List<int>();
+                var s = new List<int>();
                 var factors = new List<int>();
                 for (var i = start; i <= end; i++)
                 {
                     var square = i * i;
                     var res = square % value;
-                    residues.Add(res);
+                    s.Add(res);
       
                     var factorization = Factorization.FactorTrialDivide(res);
-                    var primeResidues = factorization.Factors.Select(x => (int)x.P).Distinct().ToList();
-                    factors.AddRange(primeResidues);
+                    var primes = factorization.Factors.Select(x => (int)x.P).Distinct().ToList();
+                    factors.AddRange(primes);
                
                 }
                 var distinctFactors = factors.Distinct().OrderBy(x => x).ToList();
-                sb.AppendLine($"|{value}\t|{string.Join(" ", distinctFactors)}\t|{string.Join(" ", residues)}");
+                sb.AppendLine($"|{value}\t|{string.Join(" ", distinctFactors)}\t|{string.Join(" ", s)}");
             }
             Console.WriteLine(sb.ToString());
         }
@@ -227,13 +227,13 @@ namespace HigginsSoft.Math.Demos.Tests
         [Ignore]
 #endif
         [TestMethod()]
-        public void PrintByteAllResiduesUniqueFactorsTest()
+        public void PrintByteAllsUniqueFactorsTest()
         {
             var values = Enumerable.Range(1, 255);
 
 
             var sb = new StringBuilder();
-            sb.AppendLine("|N\t|Residues|Unique Residues Factors");
+            sb.AppendLine("|N\t|s|Unique s Factors");
 
             foreach (var value in values)
             {
@@ -243,21 +243,21 @@ namespace HigginsSoft.Math.Demos.Tests
                 int end = (int)value - 1;
 
 
-                var residues = new List<int>();
+                var s = new List<int>();
                 var factors = new List<int>();
                 for (var i = start; i <= end; i++)
                 {
                     var square = i * i;
                     var res = square % value;
-                    residues.Add(res);
+                    s.Add(res);
  
                     var factorization = Factorization.FactorTrialDivide(res);
-                    var primeResidues = factorization.Factors.Select(x => (int)x.P).Distinct().ToList();
-                    factors.AddRange(primeResidues);
+                    var primes = factorization.Factors.Select(x => (int)x.P).Distinct().ToList();
+                    factors.AddRange(primes);
 
                 }
                 var distinctFactors = factors.Distinct().OrderBy(x => x).ToList();
-                sb.AppendLine($"|{value}\t|{string.Join(" ", distinctFactors)}\t|{string.Join(" ", residues)}");
+                sb.AppendLine($"|{value}\t|{string.Join(" ", distinctFactors)}\t|{string.Join(" ", s)}");
             }
             Console.WriteLine(sb.ToString());
         }
@@ -270,13 +270,13 @@ namespace HigginsSoft.Math.Demos.Tests
     [Ignore]
 #endif
     [TestClass()]
-    public class Signed16SPerfectSquareResiduesTests
+    public class Signed16SPerfectSquaresTests
     {
 
         [TestMethod()]
         public void CountShortTest()
         {
-            Func<ushort, int> count = PerfectSquareResidues.Count;
+            Func<ushort, int> count = PerfectSquares.Count;
 
             int last = 0;
             for (int i = 0; i <= ushort.MaxValue; i++)
@@ -300,7 +300,7 @@ namespace HigginsSoft.Math.Demos.Tests
         [TestMethod()]
         public void CountShortPrimesTest()
         {
-            Func<ushort, int> count = PerfectSquareResidues.Count;
+            Func<ushort, int> count = PerfectSquares.Count;
 
             int last = 0;
             var primes = new PrimeGeneratorUnsafe(ushort.MaxValue).ToList();
@@ -325,7 +325,7 @@ namespace HigginsSoft.Math.Demos.Tests
         [TestMethod()]
         public void CountTest()
         {
-            Func<short, int> count = PerfectSquareResidues.Count;
+            Func<short, int> count = PerfectSquares.Count;
             count(short.MaxValue);
             for (short i = 0; i <= short.MaxValue; i++)
             {

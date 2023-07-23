@@ -474,7 +474,7 @@ namespace HigginsSoft.Math.Demos
 
 
 
-        static readonly int[] mod30IntResidues =
+        static readonly int[] mod30Ints =
             new int[] { 1, 7, 11, 13, 17, 19, 23, 29 };
 
         //|       LoopIntMod30IndexOf | 18.734 s | 0.0528 s | 0.0494 s |
@@ -486,7 +486,7 @@ namespace HigginsSoft.Math.Demos
             for (var i = 0; i < int.MaxValue; i++)
             {
                 res = (i % 30);
-                result = Array.IndexOf(mod30IntResidues, res) == 0;
+                result = Array.IndexOf(mod30Ints, res) == 0;
             }
             return result;
         }
@@ -497,17 +497,17 @@ namespace HigginsSoft.Math.Demos
         {
             var result = false;
             int res;
-            var mod30IntResidues = new[] { 1, 7, 11, 13, 17, 19, 23, 29 };
+            var mod30Ints = new[] { 1, 7, 11, 13, 17, 19, 23, 29 };
             for (var i = 0; i < int.MaxValue; i++)
             {
                 res = (i % 30);
-                result = Array.IndexOf(mod30IntResidues, res) == 0;
+                result = Array.IndexOf(mod30Ints, res) == 0;
             }
             return result;
         }
 
 
-        static readonly uint[] mod30UintResidues =
+        static readonly uint[] mod30Uints =
            new uint[] { 1, 7, 11, 13, 17, 19, 23, 29 };
 
         //|      LoopUintMod30IndexOf | 38.292 s | 0.0920 s | 0.0860 s |
@@ -519,7 +519,7 @@ namespace HigginsSoft.Math.Demos
             for (var i = 0u; i < uint.MaxValue; i++)
             {
                 res = (i % 30u);
-                result = Array.IndexOf(mod30UintResidues, res) == 0;
+                result = Array.IndexOf(mod30Uints, res) == 0;
             }
             return result;
         }
@@ -583,7 +583,7 @@ namespace HigginsSoft.Math.Demos
         }
 
 
-        static readonly int[] mod210IntResidues = new[] {   11, 13, 17, 19, 23, 29,
+        static readonly int[] mod210Ints = new[] {   11, 13, 17, 19, 23, 29,
                     37, 41, 43, 47, 53, 59,
                     61, 67, 71, 73, 79, 83,
                     89, 97, 101, 103, 107, 109,
@@ -600,13 +600,13 @@ namespace HigginsSoft.Math.Demos
             for (var i = 0; i < int.MaxValue; i++)
             {
                 res = (i % 210);
-                result = Array.IndexOf(mod210IntResidues, res) > -1;
+                result = Array.IndexOf(mod210Ints, res) > -1;
             }
             return result;
         }
 
 
-        static readonly uint[] mod210UintResidues = new uint[] {   11, 13, 17, 19, 23, 29,
+        static readonly uint[] mod210Uints = new uint[] {   11, 13, 17, 19, 23, 29,
                     37, 41, 43, 47, 53, 59,
                     61, 67, 71, 73, 79, 83,
                     89, 97, 101, 103, 107, 109,
@@ -624,7 +624,7 @@ namespace HigginsSoft.Math.Demos
             for (var i = 0u; i < uint.MaxValue; i++)
             {
                 res = (i % 210u);
-                result = Array.IndexOf(mod210UintResidues, res) > -1;
+                result = Array.IndexOf(mod210Uints, res) > -1;
             }
             return result;
         }

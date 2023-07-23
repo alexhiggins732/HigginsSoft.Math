@@ -54,6 +54,9 @@ namespace HigginsSoft.Math.Lib.Tests
                 Assert.IsTrue(GmpInt.MinusOne == GmpInt.Negate(GmpInt.One));
             }
 
+
+
+
             [TestMethod()]
             public void ComplementTest()
             {
