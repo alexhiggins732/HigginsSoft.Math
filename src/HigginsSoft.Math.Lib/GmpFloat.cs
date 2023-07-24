@@ -155,6 +155,8 @@ namespace HigginsSoft.Math.Lib
                 var b = new StringBuilder(stringValue);
                 b.Insert(0, '.');
                 b.Insert(0, '0');
+                if (Sign < 1)
+                    b.Insert(0, '-');
                 stringValue = b.ToString();
             }
             else
@@ -162,7 +164,7 @@ namespace HigginsSoft.Math.Lib
                 var abs = MathLib.Abs(exp);
                 var b = new StringBuilder(stringValue);
                 b.Insert(abs, '.');
-                if (Sign == -1)
+                if (Sign < 1)
                     b.Insert(0, '-');
                 stringValue = b.ToString();
             }
@@ -496,7 +498,19 @@ namespace HigginsSoft.Math.Lib
         public static explicit operator decimal(GmpFloat value)
         {
             if (value.IsZero) return 0M;
-            return (decimal)(BigInteger)value;
+            var s = value.ToString();
+            bool parsed = Decimal.TryParse(s, out decimal result);
+            if (parsed) return result;
+            else
+            {
+                var idx = s.IndexOf('.');
+                if (idx > -1)
+                {
+                    s = s.Substring(0, idx);
+                }
+                return (decimal)BigInteger.Parse(s);
+            }
+
         }
 
         public static explicit operator mpf_t(GmpFloat value)
@@ -1225,12 +1239,30 @@ namespace HigginsSoft.Math.Lib
         }
         public static GmpFloat Round(GmpFloat value)
         {
-            GmpFloat result = 0;
-            gmp_lib.mpf_floor(result.Data, value.Data);
-            var diff = value - result;
-            if (diff >= .5)
-                result += 1.0;
-            return result;
+            var s = value.ToString();
+            var idx = s.IndexOf('.');
+            if (idx == -1) return value.Clone();
+            var tail = s.Substring(idx, 1)[0];
+            switch (tail)
+            {
+                case '0':
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                    return value.Clone();
+                default:
+                    var result = value + 1;
+                    return result;
+
+            }
+
+            //GmpFloat result = 0;
+            //gmp_lib.mpf_floor(result.Data, value.Data);
+            //var diff = value - result;
+            //if (diff >= .5)
+            //    result += 1.0;
+            //return result;
         }
 
 

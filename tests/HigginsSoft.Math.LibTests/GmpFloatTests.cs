@@ -402,6 +402,7 @@ namespace HigginsSoft.Math.Lib.Tests.GmpFloatTests
         {
             double maxError = 0.001;
             double[] expectedValues = { 0.01, 0.1, 1, 1.1, 10.01, 100.001 };
+            expectedValues = expectedValues.Concat(expectedValues.Select(x => -x)).ToArray();
             foreach (var expected in expectedValues)
             {
                 GmpFloat value = (GmpFloat)expected;
@@ -763,6 +764,7 @@ namespace HigginsSoft.Math.Lib.Tests.GmpFloatTests
         [TestMethod]
         public void AlgebraicPolyEvalTest()
         {
+            decimal maxError = 0.00000001m;
             BigInteger a = 1;
             BigInteger b = 3;
             int[] poly = { 62, 10, 1, 2 };
@@ -774,36 +776,55 @@ namespace HigginsSoft.Math.Lib.Tests.GmpFloatTests
             decimal bD = (decimal)b;
             decimal ab = (-aD) / bD;
 
-            int num = poly.Length - 1;
-            decimal num2 = (decimal)poly[num];
-            while (--num >= 0)
-            {
-                num2 *= (decimal)ab;
-                num2 += (decimal)poly[num];
-            }
-
-            decimal leftd = num2;
-            BigInteger rightd = BigInteger.Pow(BigInteger.Negate(b), poly.Length);
-            var productB = leftd * leftd;
-            var productBRounded = MathLib.Round(productB);
-            BigInteger resultb = (BigInteger)productBRounded;
-
 
             var aG = (GmpFloat)a;
             var bG = (GmpFloat)b;
             var abG = (-aG) / bG;
 
-            int numg = poly.Length - 1;
-            var num2g = (GmpFloat)poly[numg];
-            while (--numg >= 0)
+            int num = poly.Length - 1;
+            decimal num2 = (decimal)poly[num];
+            var num2g = (GmpFloat)poly[num];
+            while (--num >= 0)
             {
+                num2 *= (decimal)ab;
                 num2g *= abG;
-                num2g += (GmpFloat)poly[numg];
+
+                var num2gAsD= (decimal)num2g;
+                if (num2gAsD != num2)
+                {
+                    var diff = MathLib.Abs(num2 - num2gAsD);
+                    if (diff > maxError)
+                    {
+                        Assert.AreEqual(num2, num2gAsD);
+                    }
+                }
+
+
+                num2 += (decimal)poly[num];
+                num2g += (GmpFloat)poly[num];
+                num2gAsD = (decimal)num2g;
+                if (num2gAsD != num2)
+                {
+                    var diff = MathLib.Abs(num2 - num2gAsD);
+                    if (diff > maxError)
+                    {
+                        Assert.AreEqual(num2, num2gAsD);
+                    }
+                }
+
             }
+
+            decimal leftd = num2;
+            BigInteger rightd = BigInteger.Pow(BigInteger.Negate(b), poly.Length);
+            var productB = leftd * (decimal)rightd;
+            var productBRounded = MathLib.Round(productB);
+            BigInteger resultb = (BigInteger)productBRounded;
+
+
 
             var leftg = num2g;
             var rightg = GmpInt.Power(GmpInt.Negate(b), poly.Length);
-            var productg = leftg * rightg;
+            var productg = leftg * (GmpFloat)rightg;
             var resultg = MathLib.Round(productg);
 
             var gAsD = (decimal)resultg;
