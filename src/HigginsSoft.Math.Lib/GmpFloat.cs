@@ -141,10 +141,12 @@ namespace HigginsSoft.Math.Lib
         {
             //if (true)
             //    return Data.ToString();
-            var ds = Data.ToString();
+
+          
             if (Data.Pointer == IntPtr.Zero) return "uninitialized";
             if (IsZero) return "0";
-
+        
+            var ds = Data.ToString();
             mp_exp_t exp = 0;
             char_ptr s = gmp_lib.mpf_get_str(char_ptr.Zero, ref exp, @base, 0, Data);
             var stringValue = s.ToString().TrimStart('-');
@@ -163,7 +165,18 @@ namespace HigginsSoft.Math.Lib
             {
                 var abs = MathLib.Abs(exp);
                 var b = new StringBuilder(stringValue);
-                b.Insert(abs, '.');
+
+                stringValue = b.ToString();
+                if (abs > stringValue.Length)
+                {
+                    GmpInt t = 0;
+                    gmp_lib.mpz_set_f(t.Data, this.Data);
+                    string wholePart = t.ToString();
+                    b = new StringBuilder(wholePart);
+                }
+                    
+                if (abs < stringValue.Length)
+                    b.Insert(abs, '.');
                 if (Sign < 1)
                     b.Insert(0, '-');
                 stringValue = b.ToString();

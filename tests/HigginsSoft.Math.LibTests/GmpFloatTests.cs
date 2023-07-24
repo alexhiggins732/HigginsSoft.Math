@@ -414,18 +414,29 @@ namespace HigginsSoft.Math.Lib.Tests.GmpFloatTests
                 Assert.AreEqual(expectedStr, actualStr, $"Comp failed for {expectedStr} - Actual: {actualStr}");
                 var actualToStrFull = value.ToString();
                 var actualToStr = actualToStrFull.Substring(0, expectedStr.Length);
-               
-                
+
+
                 if (expectedStr != actualToStr)
                 {
                     var parsed = double.Parse(actualToStrFull);
                     var diff = MathLib.Abs(valueAsD - parsed);
-                    if (diff> maxError)
-                     Assert.AreEqual(expectedStr, actualToStr, $"Comp failed for {expectedStr} - Actual: {actualToStr}");
+                    if (diff > maxError)
+                        Assert.AreEqual(expectedStr, actualToStr, $"Comp failed for {expectedStr} - Actual: {actualToStr}");
                 }
-            
+
 
             }
+        }
+
+        [TestMethod()]
+        public void ToStringTest3()
+        {
+            GmpFloat f = ulong.MaxValue;
+            f += .0005;
+            f *= f;
+            var fs = f.ToString();
+            Assert.AreEqual("34028236692093846342648111928434910822500", fs);
+
         }
 
         [TestMethod()]
@@ -756,7 +767,9 @@ namespace HigginsSoft.Math.Lib.Tests.GmpFloatTests
                 var pow = System.Math.Pow(10, i);
 
                 GmpFloat a = (int)pow;
-                Assert.IsTrue((int)((GmpInt)a).DigitCount == i + 1);
+                var z = (GmpInt)a;
+                var digitCount = z.DigitCount;
+                Assert.IsTrue((int)digitCount == i + 1);
 
             }
         }
@@ -789,7 +802,7 @@ namespace HigginsSoft.Math.Lib.Tests.GmpFloatTests
                 num2 *= (decimal)ab;
                 num2g *= abG;
 
-                var num2gAsD= (decimal)num2g;
+                var num2gAsD = (decimal)num2g;
                 if (num2gAsD != num2)
                 {
                     var diff = MathLib.Abs(num2 - num2gAsD);
