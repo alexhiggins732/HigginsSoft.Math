@@ -436,7 +436,6 @@ namespace HigginsSoft.Math.Lib.Tests.GmpFloatTests
             f *= f;
             var fs = f.ToString();
             Assert.AreEqual("34028236692093846342648111928434910822500", fs);
-
         }
 
         [TestMethod()]
@@ -774,6 +773,74 @@ namespace HigginsSoft.Math.Lib.Tests.GmpFloatTests
             }
         }
 
+        void TestPoly( BigInteger a, BigInteger b, BigInteger[] poly)
+        {
+            decimal maxError = 0.00000001m;
+
+            decimal aD = (decimal)a;
+            decimal bD = (decimal)b;
+            decimal ab = (-aD) / bD;
+
+
+            var aG = (GmpFloat)a;
+            var bG = (GmpFloat)b;
+            var abG = (-aG) / bG;
+
+            int num = poly.Length - 1;
+            decimal num2 = (decimal)poly[num];
+            var num2g = (GmpFloat)poly[num];
+            while (--num >= 0)
+            {
+                num2 *= (decimal)ab;
+                num2g *= abG;
+
+                var num2gAsD = (decimal)num2g;
+                if (num2gAsD != num2)
+                {
+                    var diff = MathLib.Abs(num2 - num2gAsD);
+                    if (diff > maxError)
+                    {
+                        Assert.AreEqual(num2, num2gAsD);
+                    }
+                }
+
+
+                num2 += (decimal)poly[num];
+                num2g += (GmpFloat)poly[num];
+                num2gAsD = (decimal)num2g;
+                if (num2gAsD != num2)
+                {
+                    var diff = MathLib.Abs(num2 - num2gAsD);
+                    if (diff > maxError)
+                    {
+                        Assert.AreEqual(num2, num2gAsD);
+                    }
+                }
+
+            }
+
+            decimal leftd = num2;
+            BigInteger rightd = BigInteger.Pow(BigInteger.Negate(b), poly.Length-1);
+            var productB = leftd * (decimal)rightd;
+            var productBRounded = MathLib.Round(productB);
+            BigInteger resultb = (BigInteger)productBRounded;
+
+
+
+            var leftg = num2g;
+            var rightg = GmpInt.Power(GmpInt.Negate(b), poly.Length-1);
+            var productg = leftg * (GmpFloat)rightg;
+            var resultg = MathLib.Round(productg);
+
+            var gAsD = (decimal)resultg;
+            Assert.AreEqual(productBRounded, gAsD);
+
+            var resultz = (GmpInt)resultg;
+            var zAsB = (BigInteger)resultz;
+
+            Assert.AreEqual(resultb, zAsB);
+        }
+
         [TestMethod]
         public void AlgebraicPolyEvalTest()
         {
@@ -828,7 +895,7 @@ namespace HigginsSoft.Math.Lib.Tests.GmpFloatTests
             }
 
             decimal leftd = num2;
-            BigInteger rightd = BigInteger.Pow(BigInteger.Negate(b), poly.Length);
+            BigInteger rightd = BigInteger.Pow(BigInteger.Negate(b), poly.Length-1);
             var productB = leftd * (decimal)rightd;
             var productBRounded = MathLib.Round(productB);
             BigInteger resultb = (BigInteger)productBRounded;
@@ -836,7 +903,7 @@ namespace HigginsSoft.Math.Lib.Tests.GmpFloatTests
 
 
             var leftg = num2g;
-            var rightg = GmpInt.Power(GmpInt.Negate(b), poly.Length);
+            var rightg = GmpInt.Power(GmpInt.Negate(b), poly.Length - 1);
             var productg = leftg * (GmpFloat)rightg;
             var resultg = MathLib.Round(productg);
 
@@ -850,6 +917,15 @@ namespace HigginsSoft.Math.Lib.Tests.GmpFloatTests
 
 
 
+        }
+        
+        [TestMethod]
+        public void AlgebraicPolyEval1Test()
+        {
+            BigInteger a = 2;
+            BigInteger b = 3;
+            BigInteger[] poly = { 62, 10, 1, 2 };
+            TestPoly(a, b, poly);
         }
 
         [Ignore("Decimal Poly implementation throws overflow exception")]
@@ -915,7 +991,7 @@ namespace HigginsSoft.Math.Lib.Tests.GmpFloatTests
             }
 
             decimal leftd = num2;
-            BigInteger rightd = BigInteger.Pow(BigInteger.Negate(b), poly.Length);
+            BigInteger rightd = BigInteger.Pow(BigInteger.Negate(b), poly.Length-1);
             var productB = leftd * (decimal)rightd;
             var productBRounded = MathLib.Round(productB);
             BigInteger resultb = (BigInteger)productBRounded;
@@ -923,7 +999,7 @@ namespace HigginsSoft.Math.Lib.Tests.GmpFloatTests
 
 
             var leftg = num2g;
-            var rightg = GmpInt.Power(GmpInt.Negate(b), poly.Length);
+            var rightg = GmpInt.Power(GmpInt.Negate(b), poly.Length-1);
             var productg = leftg * (GmpFloat)rightg;
             var resultg = MathLib.Round(productg);
 
