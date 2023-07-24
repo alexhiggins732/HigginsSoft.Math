@@ -348,6 +348,8 @@ namespace HigginsSoft.Math.Lib.Tests.GmpFloatTests
         [TestMethod()]
         public void ToStringTest()
         {
+
+
             GmpFloat a = 1;
             var s = a.ToString();
 
@@ -356,6 +358,7 @@ namespace HigginsSoft.Math.Lib.Tests.GmpFloatTests
             //Assert.IsTrue(GmpFloat.Zero.ToString() == "{}");
             Assert.IsTrue(GmpFloat.One.ToString() == "1");
             Assert.IsTrue(GmpFloat.MinusOne.ToString() == "-1");
+
         }
 
         [TestMethod()]
@@ -392,6 +395,36 @@ namespace HigginsSoft.Math.Lib.Tests.GmpFloatTests
             s = a.ToString(16);
 
             Assert.IsTrue(s == "-ffff", $"expected: -ffff, actual: {s}");
+        }
+
+        [TestMethod()]
+        public void ToStringTest2()
+        {
+            double maxError = 0.001;
+            double[] expectedValues = { 0.01, 0.1, 1, 1.1, 10.01, 100.001 };
+            foreach (var expected in expectedValues)
+            {
+                GmpFloat value = (GmpFloat)expected;
+                var valueAsD = (double)value;
+                Assert.AreEqual(expected, valueAsD, $"Comp failed for {expected} - Actual: {valueAsD}");
+
+                var expectedStr = expected.ToString();
+                var actualStr = valueAsD.ToString();
+                Assert.AreEqual(expectedStr, actualStr, $"Comp failed for {expectedStr} - Actual: {actualStr}");
+                var actualToStrFull = value.ToString();
+                var actualToStr = actualToStrFull.Substring(0, expectedStr.Length);
+               
+                
+                if (expectedStr != actualToStr)
+                {
+                    var parsed = double.Parse(actualToStrFull);
+                    var diff = MathLib.Abs(valueAsD - parsed);
+                    if (diff> maxError)
+                     Assert.AreEqual(expectedStr, actualToStr, $"Comp failed for {expectedStr} - Actual: {actualToStr}");
+                }
+            
+
+            }
         }
 
         [TestMethod()]
@@ -767,6 +800,74 @@ namespace HigginsSoft.Math.Lib.Tests.GmpFloatTests
                 num2g *= abG;
                 num2g += (GmpFloat)poly[numg];
             }
+
+            var leftg = num2g;
+            var rightg = GmpInt.Power(GmpInt.Negate(b), poly.Length);
+            var productg = leftg * rightg;
+            var resultg = MathLib.Round(productg);
+
+            var gAsD = (decimal)resultg;
+            Assert.AreEqual(productBRounded, gAsD);
+
+            var resultz = (GmpInt)resultg;
+            var zAsB = (BigInteger)resultz;
+
+            Assert.AreEqual(resultb, zAsB);
+
+
+
+        }
+        [TestMethod]
+        public void AlgebraicPolyEval2Test()
+        {
+            //{9487735613*X^3 + 4481689*X^2 + 2117*X + 253201175967347219055173370331573192760}
+            BigInteger a = 1;
+            BigInteger b = 3;
+            BigInteger[] poly = {
+                BigInteger.Parse("253201175967347219055173370331573192760"),
+                2117,
+                4481689,
+                9487735613
+            };
+
+            //Algebraic(BigInteger a, BigInteger b, Polynomial poly)
+
+
+            decimal aD = (decimal)a;
+            decimal bD = (decimal)b;
+            decimal ab = (-aD) / bD;
+
+
+            var aG = (GmpFloat)a;
+            var bG = (GmpFloat)b;
+            var abG = (-aG) / bG;
+
+            int num = poly.Length - 1;
+            decimal num2 = (decimal)poly[num];
+            var num2g = (GmpFloat)poly[num];
+            while (--num >= 0)
+            {
+                num2 *= (decimal)ab;
+                num2g *= abG;
+
+                var num2AsG = (decimal)num2g;
+                Assert.AreEqual(num2, num2AsG);
+
+                num2 += (decimal)poly[num];
+
+                num2g += (GmpFloat)poly[num];
+
+                var num2gAsD = (decimal)num2g;
+                Assert.AreEqual(num2, num2gAsD);
+            }
+
+            decimal leftd = num2;
+            BigInteger rightd = BigInteger.Pow(BigInteger.Negate(b), poly.Length);
+            var productB = leftd * leftd;
+            var productBRounded = MathLib.Round(productB);
+            BigInteger resultb = (BigInteger)productBRounded;
+
+
 
             var leftg = num2;
             var rightg = GmpInt.Power(GmpInt.Negate(b), poly.Length);

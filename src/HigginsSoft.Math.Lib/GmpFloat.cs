@@ -17,6 +17,7 @@ using System.Collections;
 using System.Numerics;
 using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace HigginsSoft.Math.Lib
 {
@@ -138,25 +139,38 @@ namespace HigginsSoft.Math.Lib
 
         public string ToString(int @base)
         {
+            //if (true)
+            //    return Data.ToString();
+            var ds = Data.ToString();
             if (Data.Pointer == IntPtr.Zero) return "uninitialized";
             if (IsZero) return "0";
 
             mp_exp_t exp = 0;
             char_ptr s = gmp_lib.mpf_get_str(char_ptr.Zero, ref exp, @base, 0, Data);
-            var stringValue = s.ToString();
-            if (exp > 1)
+            var stringValue = s.ToString().TrimStart('-');
+            if (exp < 1)
             {
-                stringValue = stringValue.PadRight(exp, '0');
-            }
-            if (stringValue.IndexOf('.') == -1)
-            {
-                //stringValue = $"0.{stringValue.PadRight(exp, '0')}";
+                var abs = MathLib.Abs(exp);
+                stringValue = stringValue.PadLeft(stringValue.Length + abs, '0');
+                var b = new StringBuilder(stringValue);
+                b.Insert(0, '.');
+                b.Insert(0, '0');
+                stringValue = b.ToString();
             }
             else
             {
-                //.PadRight(exp, '0');
+                var abs = MathLib.Abs(exp);
+                var b = new StringBuilder(stringValue);
+                b.Insert(abs, '.');
+                if (Sign == -1)
+                    b.Insert(0, '-');
+                stringValue = b.ToString();
             }
-            return stringValue;
+
+
+            var result = stringValue.TrimEnd('.');
+
+            return result;
         }
 
         #region public properties
@@ -652,6 +666,30 @@ namespace HigginsSoft.Math.Lib
             string resultStr = result.ToString();
             return result;
         }
+
+        public static GmpFloat operator *(GmpFloat left, GmpInt right)
+        {
+            if (right.IsZero) return Zero.Clone();
+            if (left.IsZero) return Zero.Clone();
+            var fRight = (GmpFloat)right;
+            var result = new GmpFloat();
+            gmp_lib.mpf_mul(result.Data, left.Data, fRight.Data);
+            string resultStr = result.ToString();
+            return result;
+        }
+
+
+        public static GmpFloat operator *(GmpInt left, GmpFloat right)
+        {
+            if (right.IsZero) return Zero.Clone();
+            if (left.IsZero) return Zero.Clone();
+            var fLeft = (GmpFloat)left;
+            var result = new GmpFloat();
+            gmp_lib.mpf_mul(result.Data, fLeft.Data, right.Data);
+            string resultStr = result.ToString();
+            return result;
+        }
+
 
         public static GmpFloat operator *(GmpFloat left, uint right)
         {
@@ -1188,7 +1226,7 @@ namespace HigginsSoft.Math.Lib
         public static GmpFloat Round(GmpFloat value)
         {
             GmpFloat result = 0;
-            gmp_lib.mpf_floor(result.Data, value.Data   );
+            gmp_lib.mpf_floor(result.Data, value.Data);
             var diff = value - result;
             if (diff >= .5)
                 result += 1.0;

@@ -386,7 +386,7 @@ namespace HigginsSoft.Math.Lib
 
         }
 
-        public static mpz_t Power(GmpInt src, int exponent)
+        public static GmpInt Power(GmpInt src, int exponent)
         {
             var result = src.Power(exponent);
             return result;
