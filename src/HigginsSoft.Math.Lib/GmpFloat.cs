@@ -171,7 +171,7 @@ namespace HigginsSoft.Math.Lib
                 {
                     GmpInt t = 0;
                     gmp_lib.mpz_set_f(t.Data, this.Data);
-                    string wholePart = t.ToString();
+                    string wholePart = t.ToString().TrimStart('-');
                     b = new StringBuilder(wholePart);
                 }
                     
