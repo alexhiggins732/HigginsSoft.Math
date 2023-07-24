@@ -20,5 +20,9 @@ namespace HigginsSoft.Math.Lib
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static double Pow(double x, double y) => System.Math.Pow(x, y);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static double Pow(int x, double y) => System.Math.Pow((double)x, y);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static double Pow(int x, int y) => System.Math.Pow((double)x, (double)y);
     }
 }

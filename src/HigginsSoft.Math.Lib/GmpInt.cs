@@ -64,7 +64,15 @@ namespace HigginsSoft.Math.Lib
         public GmpInt(mpf_t value)
             : this()
         {
-            gmp_lib.mpz_set_f(Data, value);
+            var s = ((GmpFloat)value).ToString();
+            var idx = s.IndexOf('.');
+            if (idx>-1)
+                s= s.Substring(0, idx);
+            // bug: gmplib rounds {0.4755e4} to {0.4754e4} when calling
+            //      gmp_lib.mpz_set_f(Data, value);
+            char_ptr ptr = new char_ptr(s);
+            gmp_lib.mpz_set_str(Data, ptr, 10);
+          
         }
 
 

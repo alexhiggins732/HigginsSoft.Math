@@ -28,6 +28,7 @@ namespace HigginsSoft.Math.Lib
         {
             return decimal.Ceiling(d);
         }
+        
 
     }
 }
