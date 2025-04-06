@@ -22,6 +22,7 @@ using System.Numerics;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 using intv = System.Numerics.Vector<int>;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 namespace HigginsSoft.Math.Lib
 {
     public static partial class MathLib
@@ -46,7 +47,7 @@ namespace HigginsSoft.Math.Lib
                     this.Poly = poly;
                 else
                 {
-                    poly= rand.Next();
+                    poly = rand.Next();
                 }
             }
 
@@ -563,7 +564,7 @@ namespace HigginsSoft.Math.Lib
                 y = x;
                 c = BigRandom.Next(0, climit) + 1;
                 var gcdCount = 0;
-                while (gcdCount< maxAttempts && gcd == 1)
+                while (gcdCount < maxAttempts && gcd == 1)
                 {
                     x = (x * x + c) % n;
                     y = (y * y + c) % n;
@@ -596,6 +597,46 @@ namespace HigginsSoft.Math.Lib
             int c, b;
             GmpInt abs;
             GmpInt gcd = 1;
+
+            int xRandLimit = int.MaxValue - 2;
+            if (n - 2 < int.MaxValue) xRandLimit = (int)(n - 2);
+            var cRandLimit = int.MaxValue - 1;
+            if (n - 1 < int.MaxValue) cRandLimit = (int)(n - 1);
+
+            for (var i = 0; gcd == 1 && i < maxAttempts; i++)
+            {
+                b = rand.Next(0, xRandLimit) + 2;
+                x = b;
+                y = x;
+                c = rand.Next(0, cRandLimit) + 1;
+                while (gcd == 1)
+                {
+                    x = (x * x + c) % n;
+                    y = (y * y + c) % n;
+                    y = (y * y + c) % n;
+                    abs = MathLib.Abs(x - y);
+                    gcd = MathUtil.Gcd(abs, n);
+                }
+                if (gcd == n) gcd = 1;
+            }
+            if (gcd == 1)
+            {
+                gcd = n;
+            }
+            return gcd;
+        }
+
+        public static BigInteger PollardRhoZOld(BigInteger n, int maxAttempts = 20)
+        {
+
+            if (n == 1) return 1;
+            if ((n & 1) == 0) return 2;
+
+            BigInteger x;
+            BigInteger y;
+            int c, b;
+            BigInteger abs;
+            BigInteger gcd = 1;
 
             int xRandLimit = int.MaxValue - 2;
             if (n - 2 < int.MaxValue) xRandLimit = (int)(n - 2);
@@ -842,6 +883,187 @@ namespace HigginsSoft.Math.Lib
             mpz_clear(g);
             mpz_clear(ys);
             mpz_clear(t1);
+
+            return it;
+        }
+
+
+
+        public static BigInteger PollardRhoC(BigInteger n, int c, int maxAttempts = 20)
+        {
+            GmpInt gmpN = new GmpInt(n);
+            var res = mbrent(gmpN.Data, (uint)c, out mpz_t gmp_f, maxAttempts);
+            mpz_clear(gmpN.Data);
+            BigInteger result = BigInteger.Parse(ToString(gmp_f));
+            mpz_clear(gmp_f);
+            return result;
+        }
+
+        public static string ToString(mpz_t Data, int @base = 10)
+        {
+            if (Data.Pointer == IntPtr.Zero) return "uninitialized";
+
+            if (gmp_lib.mpz_sgn(Data) ==0)
+            {
+                return "0";
+            }
+       
+            char_ptr s = gmp_lib.mpz_get_str(char_ptr.Zero, @base, Data);
+            var value = s.ToString().Replace(" ", "").TrimStart('0');
+            return value;
+        }
+
+        static int mbrent(BigInteger gmp_n, uint c, out BigInteger gmp_f, int iterations = 20)
+        {
+            /*
+            run pollard's rho algorithm on n with Brent's modification, 
+            returning the first factor found in f, or else 0 for failure.
+            use f(x) = x^2 + c
+            see, for example, bressoud's book.
+            */
+
+            BigInteger x = new(), y = new(), q = new(), g = new(), ys = new(), t1 = new();
+            gmp_f = new();
+
+            uint32_t i = 0, k, r, m;
+            int it;
+            int imax = iterations;
+
+            // initialize local args
+            //mpz_init(x);
+            //mpz_init(y);
+            //mpz_init(q);
+            //mpz_init(g);
+            //mpz_init(ys);
+            //mpz_init(t1);
+            //mpz_init(gmp_f);
+            // starting state of algorithm.  
+            r = 1;
+            m = 256;
+            i = 0;
+            it = 0;
+
+
+            //mpz_set_ui(q, 1);
+            //mpz_set_ui(y, 0);
+            //mpz_set_ui(g, 1);
+            q = 1;
+            y = 0;
+            g = 1;
+
+            do
+            {
+                //mpz_set(x, y);
+                x = y;
+                for (i = 0; i <= r; i++)
+                {
+
+                    //mpz_mul(t1, y, y);      //y = (y*y + c) mod n
+                    //mpz_add_ui(t1, t1, c);
+                    //mpz_tdiv_r(y, t1, gmp_n);
+                    t1 = y * y;      //y = (y*y + c) mod n
+                    t1 += c;
+                    y = t1 % gmp_n;
+                }
+
+                k = 0;
+                do
+                {
+                    //mpz_set(ys, y);
+                    ys = y;
+                    for (i = 1; i <= MIN(m, r - k); i++)
+                    {
+                        //mpz_mul(t1, y, y); //y=(y*y + c)%n
+                        t1 = y * y;
+                        //mpz_add_ui(t1, t1, c);
+                        t1 += c;
+                        //mpz_tdiv_r(y, t1, gmp_n);
+                        y = t1 % gmp_n;
+
+                        //mpz_sub(t1, x, y); //q = q*abs(x-y) mod n
+                        t1 = x - y;
+
+                        //if (mpz_sgn(t1) < 0)
+                        //    mpz_add(t1, t1, gmp_n);
+                        if (t1 < 0)
+                            t1 += gmp_n;
+
+                        //mpz_mul(q, t1, q);
+                        q *= t1;
+                        //mpz_tdiv_r(q, q, gmp_n);
+                        q %= gmp_n;
+                    }
+                    //mpz_gcd(g, q, gmp_n);
+                    g = MathUtil.Gcd(q, gmp_n);
+                    k += m;
+                    it++;
+
+                    // abort after the specified number of gcd's
+                    if (it > imax)
+                    {
+                        //mpz_set(gmp_f, gmp_n);
+                        gmp_f = gmp_n;
+                        goto free;
+                    }
+
+                } while (k < r && (g == 1));
+                r *= 2;
+            } while (g == 1);
+
+            //if (mpz_cmp(g, gmp_n) == 0)
+            if (g == gmp_n)
+            {
+                // back track
+                do
+                {
+                    //mpz_mul(t1, ys, ys); //ys = (ys*ys + c) mod n
+                    t1 = ys * ys;
+                    // mpz_add_ui(t1, t1, c);
+                    t1 += c;
+                    // mpz_tdiv_r(ys, t1, gmp_n);
+                    ys = t1 % gmp_n;
+
+                    //mpz_sub(t1, ys, x);
+                    t1 = ys - x;
+                    //if (mpz_sgn(t1) < 0)
+                    //    mpz_add(t1, t1, gmp_n);
+                    if (t1 < 0)
+                        t1 += gmp_n;
+                    // mpz_gcd(g, t1, gmp_n);
+                    g = MathUtil.Gcd(t1, gmp_n);
+                } while ((g == 1));
+
+                if (g == gmp_n)
+                {
+                    //mpz_set(gmp_f, gmp_n);
+                    gmp_f = gmp_n;
+                    goto free;
+                }
+                else
+                {
+                    //mpz_set(gmp_f, g);
+                    gmp_f = g;
+                    goto free;
+                }
+            }
+            else
+            {
+                //mpz_set(gmp_f, g);
+                gmp_f = g;
+                goto free;
+            }
+
+
+        free:
+            //if (fobj->VFLAG >= 0)
+            //	printf("\n");
+
+            //mpz_clear(x);
+            //mpz_clear(y);
+            //mpz_clear(q);
+            //mpz_clear(g);
+            //mpz_clear(ys);
+            //mpz_clear(t1);
 
             return it;
         }

@@ -29,12 +29,22 @@ namespace HigginsSoft.Math.CLI
         static void Main(string[] args)
         {
 
+            //QsTest.RunSmallTest64(bits: 16);
+            // 18 bits, 8 primes 510510 size.
+            // 20 bits, 11 primes 510510 size.
+            // 22 bits, 16 primes 510510 size. -> crawls up to 22 primes
+            // 24 bits, 16 primes 510510 += 510510 size. -> crawls up to 22 primes
+            // 28 bits, 20 primes 510510 +=
+            QsParamTest.RunSmallTest64(bits: 28);
             if (args.Length > 0)
             {
                 Action RunTest = () => TestPrimeCounts();
                 Summary summary;
                 switch (args[0])
                 {
+                    case "rsa1024":
+                        RunTest = ()=> Rsa1024Factoring.Run(args);
+                        break;
                     case "threads":
                         RunTest = Mpi.RunThreads;
                         break;

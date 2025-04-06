@@ -112,6 +112,14 @@ namespace HigginsSoft.Math.Lib
             => IsPerfectSquare((GmpInt)n);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsPerfectSquare(BigInteger n, out BigInteger root)
+        {
+            var result = IsPerfectSquare((GmpInt)n, out GmpInt sqrt);
+            root = (BigInteger)sqrt;
+            return result;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsPerfectSquare(GmpInt n)
             => n.IsPerfectSquare();
 

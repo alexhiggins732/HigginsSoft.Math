@@ -14,13 +14,34 @@
 
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Numerics;
 using System.Runtime.CompilerServices;
+using static HigginsSoft.Math.Lib.MathLib;
 
 namespace HigginsSoft.Math.Lib
 {
-    public partial class Factorization
+    public partial class Factorization :IDisposable
     {
+        public int num_factors => this.Factors.Count;
+
+        public FactorArray factors => new FactorArray(this);
+
+        // if a number is <= aprcl_prove_cutoff, we will prove it prime or composite
+        public int aprcl_prove_cutoff = 500;
+        // if a number is >= aprcl_display_cutoff, we will show the APRCL progress
+        public int aprcl_display_cutoff = 200;
+        public class FactorArray
+        {
+            //using yfactor_list_t = HigginsSoft.Math.Lib.Factorization;
+            private Factorization fact { get; }
+            public FactorArray(Factorization fact)
+            {
+                this.fact = fact;
+            }
+            public Factor this[int i]
+            {
+                get => fact.Factors[i];
+            }
+        }
         public List<Factor> Factors = new();
 
         public Stopwatch? TDivWatch;
@@ -29,6 +50,8 @@ namespace HigginsSoft.Math.Lib
         public Stopwatch? RhoP2Watch;
         public Stopwatch? RhoP3Watch;
         public string? FoundBy;
+        private bool disposedValue;
+
         public string Timings
         {
             get
@@ -43,6 +66,9 @@ namespace HigginsSoft.Math.Lib
                 return result;
             }
         }
+       
+        
+        
         public static Factorization Factor(GmpInt n, bool checkPrimality = true)
         {
             var sw = Stopwatch.StartNew();
@@ -133,7 +159,11 @@ namespace HigginsSoft.Math.Lib
             return res;
         }
 
-        public void Clear() => Factors.Clear();
+        public void Clear()
+        {
+            Factors.ForEach(x => x.Dispose());
+            Factors.Clear();
+        }
 
         public static Factorization FactorTrialDivide(int n)
         {
@@ -164,6 +194,68 @@ namespace HigginsSoft.Math.Lib
                 result.Add(n, 1);
             return result;
         }
+
+
+        public static Factorization FactorTrialDivide(GmpInt n, int limit, IEnumerable<int> primes)
+        {
+            var result = new Factorization();
+            if (n < 4 || MathLib.IsPrime(n))
+            {
+                result.Add(n, 1);
+                return result;
+            }
+
+            foreach(var p in primes)
+            {
+                if (p > limit)
+                    break;
+                int count = 0;
+                while (n > 0 && n % p == 0)
+                {
+                    count++;
+                    n = n / p;
+                }
+                if (count > 0)
+                    result.Add(p, count);
+                if (n == 0)
+                    break;
+            }
+           
+            if (n > 1)
+                result.Add(n, 1);
+            return result;
+        }
+
+        public static Factorization FactorTrialDivide(GmpInt n, int limit)
+        {
+            var result = new Factorization();
+            if (n < 4 || MathLib.IsPrime(n))
+            {
+                result.Add(n, 1);
+                return result;
+            }
+
+       
+            var primes = Primes.IntFactorPrimes;
+            int prime;
+            for (var j = 0; j < primes.Length && (prime = primes[j]) <= limit; j++)
+            {
+                int count = 0;
+                while (n > 0 && n % prime == 0)
+                {
+                    count++;
+                    n = n / prime;
+                }
+                if (count > 0)
+                    result.Add(prime, count);
+                if (n == 0)
+                    break;
+            }
+            if (n > 1)
+                result.Add(n, 1);
+            return result;
+        }
+
         public static FactorizationInt FactorIntTrialDivide1(int n)
         {
             var result = new FactorizationInt();
@@ -298,7 +390,37 @@ namespace HigginsSoft.Math.Lib
         public bool IsPerfectSquare()
             => Factors.All(x => (x.Power & 1) == 0);
 
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    Clear();
+                    // TODO: dispose managed state (managed objects)
+                }
+
+                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+                // TODO: set large fields to null
+                disposedValue = true;
+            }
+        }
+
+        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+        // ~Factorization()
+        // {
+        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        //     Dispose(disposing: false);
+        // }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
     }
+
 
     public class FactStruct
     {
@@ -877,7 +999,7 @@ namespace HigginsSoft.Math.Lib
             this.P = otherFactor.P;
             this.Power = otherFactor.Power;
         }
-
+        public PrimalityType FactorType { get; set; } = PrimalityType.Unknown;
         public Factor(T value, int count)
         {
             P = value;
@@ -920,11 +1042,21 @@ namespace HigginsSoft.Math.Lib
             return FactorizationString();
         }
     }
+
     public partial class Factor :
         ICloneable,
         IComparable<Factor>,
-        IComparable
+        IComparable,
+        IDisposable
     {
+        private bool disposedValue;
+        public int count
+        {
+            get => this.Power;
+            set => this.Power++;
+        }
+        public PrimalityType type;
+        public PrimalityType FactorType { get; set; }= PrimalityType.Unknown;
         public Factor(Factor otherFactor)
         {
             this.P = otherFactor.P.Clone();
@@ -971,6 +1103,11 @@ namespace HigginsSoft.Math.Lib
         public override string ToString()
         {
             return FactorizationString();
+        }
+
+        public void Dispose()
+        {
+            ((IDisposable)P).Dispose();
         }
     }
 }

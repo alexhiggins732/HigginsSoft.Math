@@ -253,6 +253,11 @@ namespace HigginsSoft.Math.Lib
             return new GmpInt(this);
         }
 
+        public GmpInt Copy()
+        {
+            return new GmpInt(this);
+        }
+
         public int CompareTo(object? other)
         {
             if (other == null)
@@ -1237,7 +1242,7 @@ namespace HigginsSoft.Math.Lib
                 {
                     // TODO: dispose managed state (managed objects)
                     //if (Data.Pointer != IntPtr.Zero)
-                    //    gmp_lib.mpz_clear(Data);
+                    gmp_lib.mpz_clear(Data);
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override finalizer

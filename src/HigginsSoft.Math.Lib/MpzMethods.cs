@@ -360,6 +360,11 @@ namespace HigginsSoft.Math.Lib
             return z;
         }
 
+        public mpz_t PowerMod(int exponent, int mod)
+        {
+            return PowerMod(exponent, new GmpInt(mod));
+        }
+
         public mpz_t PowerMod(int exponent, mpz_t mod)
         {
             var z = newz();
@@ -384,6 +389,11 @@ namespace HigginsSoft.Math.Lib
             return z;
 
 
+        }
+
+        public static GmpInt Pow(GmpInt src, int exponent)
+        {
+            return Power(src, exponent);
         }
 
         public static GmpInt Power(GmpInt src, int exponent)
@@ -647,8 +657,32 @@ namespace HigginsSoft.Math.Lib
             return ((i == 1) || (i == 2)) && mpz_strongbpsw_prp(n) == 1;
         }
 
+        public PrimalityType Primality(int num_witnesses = 20)
+        {
+            if (this <= 2)
+            {
+                if (this == 2) return PrimalityType.Prime;
+                return PrimalityType.Error; ;
+            }
+            return is_mpz_prp(this, num_witnesses);
+        }
+
+        public static PrimalityType Primality(BigInteger n, int num_witnesses = 20)
+        {
+            if (n <= 2)
+            {
+                if (n == 2) return PrimalityType.Prime;
+                return PrimalityType.Error; ;
+            }
+            GmpInt t = new GmpInt(n);
+            var result = is_mpz_prp(t, num_witnesses);
+            mpz_clear(t.Data);
+            return result;
+        }
+
         public static PrimalityType is_mpz_prp(mpz_t n, int num_witnesses)
         {
+
             int i = mpz_probab_prime_p(n, num_witnesses);
             if (i == 1) return PrimalityType.Prime;
             else if (i == 2 && mpz_strongbpsw_prp(n) == 1)
@@ -1201,7 +1235,7 @@ namespace HigginsSoft.Math.Lib
             /* mpz_lucasumod(res, p, q, index, n); */
             mpz_init_set_si(uh, 1);
             mpz_init_set_si(vl, 2);
-            mpz_init_set_si(vh, (int) p);
+            mpz_init_set_si(vh, (int)p);
             mpz_init_set_si(ql, 1);
             mpz_init_set_si(qh, 1);
             mpz_init_set_si(tmp, 0);
@@ -1212,7 +1246,7 @@ namespace HigginsSoft.Math.Lib
                 /* ql = ql*qh (mod n) */
                 mpz_mul(ql, ql, qh);
                 mpz_mod(ql, ql, n);
-                if (mpz_tstbit(index, (mp_bitcnt_t) j) == 1)
+                if (mpz_tstbit(index, (mp_bitcnt_t)j) == 1)
                 {
                     /* qh = ql*q */
                     mpz_mul_si(qh, ql, (int)q);

@@ -19,7 +19,7 @@ namespace HigginsSoft.Math.Lib.Tests
     {
 
         [TestMethod()]
-        public void FactorPm1TestCompositsTo216()
+        public void FactorPm1TestCompositesTo216()
         {
             Factorization f = new();
             int bits = 16;
@@ -88,7 +88,7 @@ namespace HigginsSoft.Math.Lib.Tests
         [Ignore]
 #endif
         [TestMethod()]
-        public void FactorEcmTestCompositsTo216()
+        public void FactorEcmTestCompositesTo216()
         {
             ulong rsa;
             Stopwatch sw;

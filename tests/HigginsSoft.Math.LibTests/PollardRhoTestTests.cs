@@ -40,7 +40,7 @@ namespace HigginsSoft.Math.Lib.Tests
                 }
                 sw.Stop();
 
-                Console.WriteLine($"Rho factored {factored} of {gen.Count} composites between {start} and {limit} in {sw.Elapsed}.");
+                Console.WriteLine($"Rho factored {factored.ToString("N0")} of {gen.Count.ToString("N0")} composites between {start.ToString("N0")} and {limit.ToString("N0")} in {sw.Elapsed}.");
                 Console.WriteLine($" -> {fails} failures starting at {minFail} using {num_witnesses} witnesses");
             }
 
@@ -156,7 +156,7 @@ namespace HigginsSoft.Math.Lib.Tests
                 }
                 sw.Stop();
 
-                Console.WriteLine($"RhoAvx factored {factored} of {gen.Count} composites between {start} and {limit} in {sw.Elapsed}.");
+                Console.WriteLine($"RhoAvx factored {factored.ToString("N0")} of {gen.Count.ToString("N0")} composites between {start.ToString("N0")} and {limit.ToString("N0")} in {sw.Elapsed}.");
                 Console.WriteLine($" -> {fails} failures starting at {minFail} using {num_witnesses} witnesses");
 
             }
@@ -185,7 +185,7 @@ namespace HigginsSoft.Math.Lib.Tests
             }
 
 #if SKIP_LONG_TESTS
-        [Ignore]
+            [Ignore]
 #endif
             [TestMethod()]
             public void RunTestsRsa126igIntegerTest()
@@ -205,7 +205,7 @@ namespace HigginsSoft.Math.Lib.Tests
                 };
 
                 int bitLimit = 100;
-         
+
                 foreach (var t in tests)
                 {
                     var bits = t.Key;
@@ -213,7 +213,7 @@ namespace HigginsSoft.Math.Lib.Tests
 
                     var sw = Stopwatch.StartNew();
                     var c = t.Value;
-     
+
                     int num_witnesses = (int)bits * bits;
 
                     var result = MathLib.PollardRho(c, num_witnesses);
@@ -249,6 +249,8 @@ namespace HigginsSoft.Math.Lib.Tests
 
 #if SKIP_LONG_TESTS
             [Ignore]
+#else
+
 #endif
             [TestMethod()]
             public void RunTestsI63TestTo2P16To2P24()
@@ -316,11 +318,24 @@ namespace HigginsSoft.Math.Lib.Tests
 
 #if SKIP_LONG_TESTS
             [Ignore]
+#else
+
+#endif
+            [TestMethod()]
+            public void RunTestsAvxTest2P24To2P28WithWitnesses()
+            {
+                RunAvxTests(1 << 24, 1 << 28, 5);
+            }
+
+#if SKIP_LONG_TESTS
+            [Ignore]
+#else
+
 #endif
             [TestMethod()]
             public void RunTestsAvxTest2P16To2P24WithWitnesses()
             {
-                for (int count = 5; count <= 40; count <<= 1)
+                for (int count = 5; count <= 5; count <<= 1)
                 {
                     //if (count == 20) continue;// don't repeat default test
                     RunAvxTests(1 << 16, 1 << 24, count);

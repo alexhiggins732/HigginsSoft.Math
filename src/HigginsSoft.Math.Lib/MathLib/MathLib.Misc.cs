@@ -44,7 +44,7 @@ namespace HigginsSoft.Math.Lib
         public enum PrimalityType
         {
             Error = PRP_ERROR,
-            UNKNOWN = -2,
+            Unknown = -2,
             Composite = PRP_COMPOSITE,
             ProbablePrime = PRP_PRP,
             Prime = PRP_PRIME,

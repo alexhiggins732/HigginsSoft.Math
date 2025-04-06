@@ -41,5 +41,7 @@ namespace HigginsSoft.Math.Lib
             => Primes.IsPrime(n);
         public static bool IsPrime(GmpInt n)
             => Primes.IsPrime(n);
+
+
     }
 }

@@ -283,6 +283,60 @@ namespace HigginsSoft.Math.Lib
             return state;
         }
 
+
+        public static FactorizationState<BigInteger> StartResumable(BigInteger n, int maxIterations = 1000)
+        {
+            var state = new FactorizationState<BigInteger>(n: n);
+
+            if (n < 2)
+            {
+                state.P = n;
+                state.HasFactor = false;
+                return state;
+            }
+            if (n < 4)
+            {
+                state.P = n;
+                state.HasFactor = true;
+                return state;
+            }
+
+            if ((n & 1) == 0)
+            {
+                // If the number is even, one factor is 2 and the other factor is n/2
+                state.P = 2;
+                state.Q = n >> 1;
+                state.HasFactor = true;
+                return state;
+            }
+
+            if (MathLib.IsPerfectSquare(n, out BigInteger sqrt))
+            {
+                state.P = sqrt;
+                state.Q = sqrt;
+                state.HasFactor = true;
+                return state;
+            }
+            state.A = sqrt + 1;
+
+            state.B2 = state.A * state.A - n;
+            state.B = MathLib.Sqrt(state.B2);
+            bool noFactor = state.B * state.B != state.B2;
+
+            if (!noFactor)
+            {
+                state.Q = state.A + state.B;
+                state.P = state.A - state.B;
+                state.HasFactor = n == state.Q || n == state.P;
+            }
+            else
+            {
+                Resume(state);
+            }
+            return state;
+        }
+
+
         public static bool Resume<T>(FactorizationState<T> state, int maxIterations = 1000)
         {
             if (state.HasFactor) { return state.HasFactor; }
@@ -365,39 +419,8 @@ namespace HigginsSoft.Math.Lib
         }
     }
 
-    public partial class Factorization
-    {
-        public int num_factors => this.Factors.Count;
 
-        public FactorArray factors => new FactorArray(this);
 
-        // if a number is <= aprcl_prove_cutoff, we will prove it prime or composite
-        public int aprcl_prove_cutoff = 500;
-        // if a number is >= aprcl_display_cutoff, we will show the APRCL progress
-        public int aprcl_display_cutoff = 200;
-        public class FactorArray
-        {
-            private yfactor_list_t fact { get; }
-            public FactorArray(Factorization fact)
-            {
-                this.fact = fact;
-            }
-            public Factor this[int i]
-            {
-                get => fact.Factors[i];
-            }
-        }
-    }
-    public partial class Factor
-    {
-        public GmpInt factor => this.P;
-        public int count
-        {
-            get => this.Power;
-            set => this.Power++;
-        }
-        public PrimalityType type;
-    }
 
     // ported from bbuhrow's Yafu
     public class FermatZ
@@ -445,7 +468,7 @@ namespace HigginsSoft.Math.Lib
             return message.Length;
         }
 
-        const PrimalityType UNKNOWN = PrimalityType.UNKNOWN;
+        const PrimalityType UNKNOWN = PrimalityType.Unknown;
         const PrimalityType PRIME = PrimalityType.Prime;
         const PrimalityType COMPOSITE = PrimalityType.Composite;
         const PrimalityType PRP = PrimalityType.ProbablePrime;
@@ -465,7 +488,7 @@ namespace HigginsSoft.Math.Lib
             // look to see if this factor is already in the list
             for (i = 0; i < flist.num_factors && found == 0; i++)
             {
-                if (mpz_cmp(n, flist.factors[i].factor) == 0)
+                if (mpz_cmp(n, flist.factors[i].P) == 0)
                 {
                     found = 1;
                     flist.factors[i].count++;
@@ -482,8 +505,8 @@ namespace HigginsSoft.Math.Lib
             //        flist.alloc_factors * sizeof(yfactor_t));
             //}
 
-            mpz_init(flist.factors[fid].factor);
-            mpz_set(flist.factors[fid].factor, n);
+            mpz_init(flist.factors[fid].P);
+            mpz_set(flist.factors[fid].P, n);
             flist.factors[fid].count = 1;
             flist.factors[fid].type = UNKNOWN;
 

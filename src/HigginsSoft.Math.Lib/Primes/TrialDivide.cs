@@ -46,7 +46,8 @@ namespace HigginsSoft.Math.Lib
                 return IsPrime((uint)i);
             }
             var result = TrialDivide(i, probable_prime_tdiv_limit, out _);
-            return result || ((GmpInt)i).IsProbablyPrimeRabinMiller(20);
+            using var gmpI = new GmpInt(i);
+            return result || (gmpI).IsProbablyPrimeRabinMiller(20);
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsPrime(GmpInt i)
