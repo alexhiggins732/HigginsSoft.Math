@@ -373,14 +373,13 @@ namespace HigginsSoft.Math.Lib
                 a = Ops<T>.AddT(a, one);
                 b2 = Ops<T>.MultiplyT(a, a);
                 b2 = Ops<T>.SubtractT(b2, n);
-                var root = MathLib.Sqrt(Ops<T>.ToGmpInt(b2));
-                b = Ops<T>.FromGmpInt(root);
-
+                b= Ops<T>.SqrtT(b2);
                 var bMul = Ops<T>.MultiplyT(b, b);
                 var neq = Ops<T>.NotEqualT(bMul, b2);
                 noFactor = neq;
+                state.Iterations++;
             }
-            state.Iterations += i;
+           
             if (!noFactor)
             {
                 q = Ops<T>.AddT(a, b);

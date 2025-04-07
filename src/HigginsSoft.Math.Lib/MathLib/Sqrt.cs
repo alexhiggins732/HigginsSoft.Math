@@ -24,7 +24,35 @@ namespace HigginsSoft.Math.Lib
         public static double Sqrt(ulong d) => (ulong)System.Math.Sqrt(d);
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 
-        public static BigInteger Sqrt(BigInteger d) => (BigInteger)Sqrt((GmpInt)d);
+        public static BigInteger Sqrt(BigInteger d)// => (BigInteger)Sqrt((GmpInt)d);
+        {
+            if (d < 0)
+                throw new ArgumentOutOfRangeException(nameof(d), "Cannot take square root of negative number");
+            if (d < 2)
+                return d;
+
+            BigInteger x = d >> (int)(d.GetBitLength() >> 1);
+            BigInteger lastX;
+
+            do
+            {
+                lastX = x;
+                x = (x + d / x) >> 1;
+            } while (BigInteger.Abs(x - lastX) > 1);
+
+            if ((x + 1) * (x + 1) <= d)
+                x++;
+            else if (x * x > d)
+                x--;
+
+            return x;
+            //GmpInt gmp_d = (GmpInt)d;
+            //var gmp_result = Sqrt(gmp_d);
+            //gmp_d.Dispose();
+            //BigInteger result = (BigInteger)gmp_result;
+            //gmp_result.Dispose();
+            //return result;
+        }
         public static GmpInt Sqrt(GmpInt d) => d.Sqrt();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -109,14 +137,24 @@ namespace HigginsSoft.Math.Lib
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsPerfectSquare(BigInteger n)
-            => IsPerfectSquare((GmpInt)n);
+            => IsPerfectSquare(n, out _);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsPerfectSquare(BigInteger n, out BigInteger root)
         {
-            var result = IsPerfectSquare((GmpInt)n, out GmpInt sqrt);
-            root = (BigInteger)sqrt;
-            return result;
+            if (n < 2)
+            {
+                root = 0;
+                return false;
+            }
+            root = Sqrt(n);
+            return root * root == n;
+            //using var gmp_n = (GmpInt)n;
+            //var result = IsPerfectSquare(gmp_n, out GmpInt sqrt);
+            //root = (BigInteger)sqrt;
+            //gmp_n.Dispose();
+            //sqrt.Dispose();
+            //return result;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

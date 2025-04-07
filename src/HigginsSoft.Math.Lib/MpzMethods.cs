@@ -674,7 +674,7 @@ namespace HigginsSoft.Math.Lib
                 if (n == 2) return PrimalityType.Prime;
                 return PrimalityType.Error; ;
             }
-            GmpInt t = new GmpInt(n);
+            using GmpInt t = new GmpInt(n);
             var result = is_mpz_prp(t, num_witnesses);
             mpz_clear(t.Data);
             return result;
@@ -728,7 +728,7 @@ namespace HigginsSoft.Math.Lib
             long d = 5, p = 1, q = 0;
             int max_d = 1000000;
             int jacobi = 0;
-            mpz_t zD = new();
+          
 
             if (mpz_cmp_ui(n, 2) < 0)
                 return PRP_COMPOSITE;
@@ -740,6 +740,13 @@ namespace HigginsSoft.Math.Lib
                 else
                     return PRP_COMPOSITE;
             }
+
+            mpz_t zD = new();
+
+            Action clear = () =>
+            {
+                mpz_clear(zD);
+            };
 
             mpz_init_set_ui(zD, (uint)d);
 
@@ -753,12 +760,12 @@ namespace HigginsSoft.Math.Lib
                 {
                     if ((mpz_cmpabs(zD, n) == 0) && (mpz_cmp_ui(zD, 9) != 0))
                     {
-                        mpz_clear(zD);
+                        clear();
                         return PRP_PRIME;
                     }
                     else
                     {
-                        mpz_clear(zD);
+                        clear();
                         return PRP_COMPOSITE;
                     }
                 }
@@ -770,7 +777,7 @@ namespace HigginsSoft.Math.Lib
                 {
                     if (mpz_perfect_square_p(n) > 0)
                     {
-                        mpz_clear(zD);
+                        clear();
                         return PRP_COMPOSITE;
                     }
                 }
@@ -789,13 +796,13 @@ namespace HigginsSoft.Math.Lib
                 /* make sure we don't search forever */
                 if (d >= max_d)
                 {
-                    mpz_clear(zD);
+                    clear();
                     return PRP_ERROR;
                 }
 
                 mpz_set_si(zD, (int)d);
             }
-            mpz_clear(zD);
+            clear();
 
             q = (1 - d) / 4;
 
@@ -805,13 +812,7 @@ namespace HigginsSoft.Math.Lib
 
         public static int mpz_stronglucas_prp(mpz_t n, long p, long q)
         {
-            mpz_t zD = new();
-            mpz_t s = new();
-            mpz_t nmj = new(); /* n minus jacobi(D/n) */
-            mpz_t res = new();
-            /* these are needed for the LucasU and LucasV part of this function */
-
-            mpz_t uh = new(), vl = new(), vh = new(), ql = new(), qh = new(), tmp = new();
+    
             long d = p * p - 4 * q;
             ulong r = 0;
             int ret = 0;
@@ -831,6 +832,33 @@ namespace HigginsSoft.Math.Lib
                     return PRP_COMPOSITE;
             }
 
+            mpz_t zD = new();
+            mpz_t s = new();
+            mpz_t nmj = new(); /* n minus jacobi(D/n) */
+            mpz_t res = new();
+            /* these are needed for the LucasU and LucasV part of this function */
+
+            mpz_t uh = new();
+            mpz_t vl = new();
+            mpz_t vh = new(); mpz_t ql = new(); mpz_t qh = new(); mpz_t tmp = new();
+
+
+            Action clear = () =>
+            {
+                mpz_clear(zD);
+                mpz_clear(s);
+                mpz_clear(nmj);
+                mpz_clear(res);
+                mpz_clear(uh);
+                mpz_clear(vl);
+                mpz_clear(vh);
+                mpz_clear(ql);
+                mpz_clear(qh);
+                mpz_clear(tmp);
+            }
+            ;
+
+
             mpz_init_set_si(zD, (int)d);
             mpz_init(res);
 
@@ -839,8 +867,7 @@ namespace HigginsSoft.Math.Lib
             mpz_gcd(res, res, n);
             if ((mpz_cmp(res, n) != 0) && (mpz_cmp_ui(res, 1) > 0))
             {
-                mpz_clear(zD);
-                mpz_clear(res);
+                clear();
                 return PRP_COMPOSITE;
             }
 
@@ -939,16 +966,7 @@ namespace HigginsSoft.Math.Lib
             /* uh contains LucasU_s and vl contains LucasV_s */
             if ((mpz_cmp_ui(uh, 0) == 0) || (mpz_cmp_ui(vl, 0) == 0))
             {
-                mpz_clear(zD);
-                mpz_clear(s);
-                mpz_clear(nmj);
-                mpz_clear(res);
-                mpz_clear(uh);
-                mpz_clear(vl);
-                mpz_clear(vh);
-                mpz_clear(ql);
-                mpz_clear(qh);
-                mpz_clear(tmp);
+                clear();
                 return PRP_PRP;
             }
 
@@ -966,30 +984,12 @@ namespace HigginsSoft.Math.Lib
 
                 if (mpz_cmp_ui(vl, 0) == 0)
                 {
-                    mpz_clear(zD);
-                    mpz_clear(s);
-                    mpz_clear(nmj);
-                    mpz_clear(res);
-                    mpz_clear(uh);
-                    mpz_clear(vl);
-                    mpz_clear(vh);
-                    mpz_clear(ql);
-                    mpz_clear(qh);
-                    mpz_clear(tmp);
+                    clear();
                     return PRP_PRP;
                 }
             }
 
-            mpz_clear(zD);
-            mpz_clear(s);
-            mpz_clear(nmj);
-            mpz_clear(res);
-            mpz_clear(uh);
-            mpz_clear(vl);
-            mpz_clear(vh);
-            mpz_clear(ql);
-            mpz_clear(qh);
-            mpz_clear(tmp);
+            clear();
             return PRP_COMPOSITE;
 
         }/* method mpz_stronglucas_prp */
@@ -1004,10 +1004,7 @@ namespace HigginsSoft.Math.Lib
          * *********************************************************************************************/
         public static int mpz_sprp(mpz_t n, mpz_t a)
         {
-            mpz_t s = new();
-            mpz_t nm1 = new();
-            mpz_t mpz_test = new();
-            ulong r = 0;
+
 
             if (mpz_cmp_ui(a, 2) < 0)
                 return PRP_ERROR;
@@ -1022,6 +1019,21 @@ namespace HigginsSoft.Math.Lib
                 else
                     return PRP_COMPOSITE;
             }
+
+
+            mpz_t s = new();
+            mpz_t nm1 = new();
+            mpz_t mpz_test = new();
+
+            Action clear = () =>
+                {
+                    mpz_clear(s);
+                    mpz_clear(nm1);
+                    mpz_clear(mpz_test);
+                }
+            ;
+
+            ulong r = 0;
 
             mpz_init_set_ui(mpz_test, 0);
             mpz_init_set_ui(s, 0);
@@ -1039,9 +1051,7 @@ namespace HigginsSoft.Math.Lib
             mpz_powm(mpz_test, a, s, n);
             if ((mpz_cmp_ui(mpz_test, 1) == 0) || (mpz_cmp(mpz_test, nm1) == 0))
             {
-                mpz_clear(s);
-                mpz_clear(nm1);
-                mpz_clear(mpz_test);
+                clear();
                 return PRP_PRP;
             }
 
@@ -1053,16 +1063,12 @@ namespace HigginsSoft.Math.Lib
 
                 if (mpz_cmp(mpz_test, nm1) == 0)
                 {
-                    mpz_clear(s);
-                    mpz_clear(nm1);
-                    mpz_clear(mpz_test);
+                    clear();
                     return PRP_PRP;
                 }
             }
 
-            mpz_clear(s);
-            mpz_clear(nm1);
-            mpz_clear(mpz_test);
+            clear();
             return PRP_COMPOSITE;
 
         }/* method mpz_sprp */
@@ -1105,7 +1111,7 @@ namespace HigginsSoft.Math.Lib
             long d = 5, p = 1, q = 0;
             int max_d = 1000000;
             int jacobi = 0;
-            mpz_t zD = new();
+          
 
             if (mpz_cmp_ui(n, 2) < 0)
                 return PRP_COMPOSITE;
@@ -1117,6 +1123,12 @@ namespace HigginsSoft.Math.Lib
                 else
                     return PRP_COMPOSITE;
             }
+
+            mpz_t zD = new();
+            Action clear = () =>
+            {
+                mpz_clear(zD);
+            };
 
             mpz_init_set_ui(zD, (uint)d);
 
@@ -1130,12 +1142,12 @@ namespace HigginsSoft.Math.Lib
                 {
                     if ((mpz_cmpabs(zD, n) == 0) && (mpz_cmp_ui(zD, 9) != 0))
                     {
-                        mpz_clear(zD);
+                        clear();
                         return PRP_PRIME;
                     }
                     else
                     {
-                        mpz_clear(zD);
+                        clear();
                         return PRP_COMPOSITE;
                     }
                 }
@@ -1147,7 +1159,7 @@ namespace HigginsSoft.Math.Lib
                 {
                     if (mpz_perfect_square_p(n) > 0)
                     {
-                        mpz_clear(zD);
+                        clear();
                         return PRP_COMPOSITE;
                     }
                 }
@@ -1166,13 +1178,13 @@ namespace HigginsSoft.Math.Lib
                 /* make sure we don't search forever */
                 if (d >= max_d)
                 {
-                    mpz_clear(zD);
+                    clear();
                     return PRP_ERROR;
                 }
 
                 mpz_set_si(zD, (int)d);
             }
-            mpz_clear(zD);
+            clear();
 
             q = (1 - d) / 4;
 
@@ -1187,10 +1199,7 @@ namespace HigginsSoft.Math.Lib
          * *******************************************************************************/
         public static int mpz_lucas_prp(mpz_t n, long p, long q)
         {
-            mpz_t zD = new();
-            mpz_t res = new();
-            mpz_t index = new();
-            mpz_t uh = new(), vl = new(), vh = new(), ql = new(), qh = new(), tmp = new(); /* used for calculating the Lucas U sequence */
+          
             int s = 0, j = 0;
             int ret = 0;
             long d = p * p - 4 * q;
@@ -1209,6 +1218,26 @@ namespace HigginsSoft.Math.Lib
                     return PRP_COMPOSITE;
             }
 
+            mpz_t zD = new();
+            mpz_t res = new();
+            mpz_t index = new();
+            mpz_t uh = new(); mpz_t vl = new(); mpz_t vh = new(); mpz_t ql = new();
+            mpz_t qh = new(); mpz_t tmp = new(); /* used for calculating the Lucas U sequence */
+
+            Action clear = () =>
+            {
+                mpz_clear(zD);
+                mpz_clear(res);
+                mpz_clear(index);
+                mpz_clear(uh);
+                mpz_clear(vl);
+                mpz_clear(vh);
+                mpz_clear(ql);
+                mpz_clear(qh);
+                mpz_clear(tmp);
+            };
+
+
             mpz_init(index);
             mpz_init_set_si(zD, (int)d);
             mpz_init(res);
@@ -1218,9 +1247,7 @@ namespace HigginsSoft.Math.Lib
             mpz_gcd(res, res, n);
             if ((mpz_cmp(res, n) != 0) && (mpz_cmp_ui(res, 1) > 0))
             {
-                mpz_clear(zD);
-                mpz_clear(res);
-                mpz_clear(index);
+                clear();
                 return PRP_COMPOSITE;
             }
 
@@ -1326,24 +1353,16 @@ namespace HigginsSoft.Math.Lib
             }
 
             mpz_mod(res, uh, n); /* uh contains our return value */
-
-            mpz_clear(zD);
-            mpz_clear(index);
-            mpz_clear(uh);
-            mpz_clear(vl);
-            mpz_clear(vh);
-            mpz_clear(ql);
-            mpz_clear(qh);
-            mpz_clear(tmp);
+         
 
             if (mpz_cmp_ui(res, 0) == 0)
             {
-                mpz_clear(res);
+                clear();
                 return PRP_PRP;
             }
             else
             {
-                mpz_clear(res);
+                clear();
                 return PRP_COMPOSITE;
             }
 

@@ -66,13 +66,13 @@ namespace HigginsSoft.Math.Lib
         {
             var s = ((GmpFloat)value).ToString();
             var idx = s.IndexOf('.');
-            if (idx>-1)
-                s= s.Substring(0, idx);
+            if (idx > -1)
+                s = s.Substring(0, idx);
             // bug: gmplib rounds {0.4755e4} to {0.4754e4} when calling
             //      gmp_lib.mpz_set_f(Data, value);
             char_ptr ptr = new char_ptr(s);
             gmp_lib.mpz_set_str(Data, ptr, 10);
-          
+
         }
 
 
@@ -1241,8 +1241,8 @@ namespace HigginsSoft.Math.Lib
                 if (disposing)
                 {
                     // TODO: dispose managed state (managed objects)
-                    //if (Data.Pointer != IntPtr.Zero)
-                    gmp_lib.mpz_clear(Data);
+                    if (Data.Pointer != IntPtr.Zero)
+                        gmp_lib.mpz_clear(Data);
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override finalizer
