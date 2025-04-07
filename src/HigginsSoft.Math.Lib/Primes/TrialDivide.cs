@@ -43,7 +43,7 @@ namespace HigginsSoft.Math.Lib
                 if (bitLength < 32) return IsPrime((int)i);
                 if (bitLength < 33) return IsPrime((uint)i);
                 if (bitLength < 64) return IsPrime((long)i);
-                return IsPrime((uint)i);
+                return IsPrime((ulong)i);
             }
             var result = TrialDivide(i, probable_prime_tdiv_limit, out _);
             using var gmpI = new GmpInt(i);

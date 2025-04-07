@@ -656,6 +656,10 @@ namespace HigginsSoft.Math.Lib
                     y = (y * y + c) % n;
                     abs = MathLib.Abs(x - y);
                     gcd = MathUtil.Gcd(abs, n);
+                    i++;
+                    if (i >= maxAttempts)
+                        break;
+
                 }
                 if (gcd == n) gcd = 1;
             }
@@ -891,11 +895,8 @@ namespace HigginsSoft.Math.Lib
 
         public static BigInteger PollardRhoC(BigInteger n, int c, int maxAttempts = 20)
         {
-            GmpInt gmpN = new GmpInt(n);
-            var res = mbrent(gmpN.Data, (uint)c, out mpz_t gmp_f, maxAttempts);
-            mpz_clear(gmpN.Data);
-            BigInteger result = BigInteger.Parse(ToString(gmp_f));
-            mpz_clear(gmp_f);
+            //using var gmpN = new GmpInt(n);
+            var res = mbrent(n, (uint)c, out BigInteger result, maxAttempts);
             return result;
         }
 
@@ -913,7 +914,7 @@ namespace HigginsSoft.Math.Lib
             return value;
         }
 
-        static int mbrent(BigInteger gmp_n, uint c, out BigInteger gmp_f, int iterations = 20)
+        static int mbrent(BigInteger gmp_n, uint c, out BigInteger gmp_f, int iterations = 100)
         {
             /*
             run pollard's rho algorithm on n with Brent's modification, 

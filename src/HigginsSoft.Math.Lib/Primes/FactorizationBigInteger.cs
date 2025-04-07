@@ -14,6 +14,7 @@
 
 using System.Diagnostics;
 using System.Numerics;
+using static HigginsSoft.Math.Lib.Fermat;
 
 namespace HigginsSoft.Math.Lib
 {
@@ -21,7 +22,7 @@ namespace HigginsSoft.Math.Lib
     {
         public int num_factors => this.Factors.Count;
 
-  
+
         public List<Factor<BigInteger>> Factors = new();
 
         public Stopwatch? TDivWatch;
@@ -29,6 +30,7 @@ namespace HigginsSoft.Math.Lib
         public Stopwatch? RhoWatch;
         public Stopwatch? RhoP2Watch;
         public Stopwatch? RhoP3Watch;
+        public Stopwatch? RhoZWatch;
         public string? FoundBy;
         private bool disposedValue;
 
@@ -41,24 +43,107 @@ namespace HigginsSoft.Math.Lib
                 var rho = RhoWatch is null ? TimeSpan.Zero : RhoWatch.Elapsed;
                 var rho2 = RhoP2Watch is null ? TimeSpan.Zero : RhoP2Watch.Elapsed;
                 var rho3 = RhoP3Watch is null ? TimeSpan.Zero : RhoP3Watch.Elapsed;
+                var rhoZ = RhoZWatch is null ? TimeSpan.Zero : RhoZWatch.Elapsed;
                 var by = FoundBy is null ? "" : $"({FoundBy}) ";
-                var result = $"{by}Tdiv: {tdiv} - Fermat: {fermat} - Rho: {rho}  - Rho(x^2+2): {rho2} - Rho(x^2+3): {rho3}";
+                var result = $"{by}Tdiv: {tdiv} - Fermat: {fermat} - Rho: {rho}  - Rho(x^2+2): {rho2} - Rho(x^2+3): {rho3} - Rho(Z) = {rhoZ}";
                 return result;
             }
         }
 
 
+        public class FactorizationMethod
+        {
+            public const string Fermat = nameof(Fermat);
+            public const string Rho = nameof(Rho);
+            public const string RhoP2 = nameof(Rho) + "+2";
+            public const string RhoP3 = nameof(Rho) + "+3";
+            public const string RhoZ = nameof(Rho) + "+Z";
+            public const string PP1 = nameof(PP1);
+            public const string PM1 = nameof(PM1);
+            public const string ECM = nameof(ECM);
+            public const string QS = nameof(QS);
+            public const string TDiv = nameof(TDiv);
+        }
 
-        public static FactorizationBigInteger Factor(BigInteger n, bool checkPrimality = true)
+        public class FactorConfig
+        {
+            public bool checkPrimality = true;
+            public bool skipTrialDivide = true;
+            public bool skipFermat = true;
+            public bool skipRho = true;
+            public bool skipRhoP2 = true;
+            public bool skipRhoP3 = true;
+            public bool skipRhoZ = true;
+            public bool skipPP1 = true;
+            public bool skipPM1 = true;
+            public bool skipECM = true;
+            public bool skipQS = true;
+        }
+
+        static FactorConfig? commandLineConfig = null;
+        static FactorConfig GetCommandLineConfig()
+        {
+            if (commandLineConfig is null)
+            {
+                commandLineConfig = new FactorConfig();
+                var args = Environment.GetCommandLineArgs().Select(x=> x.Trim());
+                foreach (var arg in args)
+                {
+                    if (arg.Equals("fermat", StringComparison.CurrentCultureIgnoreCase))
+                        commandLineConfig.skipFermat = false;
+                    if (arg.Equals("rho", StringComparison.CurrentCultureIgnoreCase))
+                        commandLineConfig.skipRho = false;
+                    if (arg.Equals("rhop2", StringComparison.CurrentCultureIgnoreCase))
+                        commandLineConfig.skipRhoP2 = false;
+                    if (arg.Equals("rhop3", StringComparison.CurrentCultureIgnoreCase))
+                        commandLineConfig.skipRhoP3 = false;
+                    if (arg.Equals("rhoz", StringComparison.CurrentCultureIgnoreCase))
+                        commandLineConfig.skipRhoZ = false;
+                    if (arg.Equals("pp1", StringComparison.CurrentCultureIgnoreCase))
+                        commandLineConfig.skipPP1 = false;
+                    if (arg.Equals("pm1", StringComparison.CurrentCultureIgnoreCase))
+                        commandLineConfig.skipPM1 = false;
+                    if (arg.Equals("ecm", StringComparison.CurrentCultureIgnoreCase))
+                        commandLineConfig.skipECM = false;
+                    if (arg.Equals("qs", StringComparison.CurrentCultureIgnoreCase))
+                        commandLineConfig.skipQS = false;
+                }
+            }
+            return commandLineConfig;
+        }
+
+        static NumericsEcm ecm = new();
+        public static FactorizationBigInteger Factor(BigInteger n,
+            bool checkPrimality = true,
+            bool skipTrialDivide = true,
+            bool skipFermat = false,
+            bool skipRho = false,
+            bool skipRhoP2 = false,
+            bool skipRhoP3 = false,
+            bool skipRhoZ = false,
+            bool skipPP1 = false,
+            bool skipPM1= false,
+            bool skipECM = false,
+            bool skipQS = false,
+            int autoSiqsLimit = 50)
         {
             var sw = Stopwatch.StartNew();
-            var res = FactorTrialDivide(n, checkPrimality);
+
+            FactorizationBigInteger res;
+            if (skipTrialDivide)
+            {
+                res = new FactorizationBigInteger(); res.Add(n, 1);
+            }
+            else
+            {
+                res = FactorTrialDivide(n, checkPrimality);
+            }
             sw.Stop();
             res.TDivWatch = sw;
 
             if (res.Factors.Count > 1)
             {
-                res.FoundBy = "TDiv";
+                res.FoundBy = FactorizationMethod.TDiv;
             }
             if (res.Factors.Count == 1)
             {
@@ -67,75 +152,251 @@ namespace HigginsSoft.Math.Lib
                 res.FermatWatch = new();
                 res.RhoP2Watch = new();
                 res.RhoP3Watch = new();
+                res.RhoZWatch = new();
 
-                res.FermatWatch.Start();
-                var resumable = Fermat.StartResumable(n);
-                res.FermatWatch.Stop();
+                FactorizationState<BigInteger>? resumable = null;
+                bool factored = false;
 
-                bool factored = resumable.HasFactor;
-                int maxIterations = (int)resumable.Iterations;
-                while (!factored)
+                int maxIterations = 10000;
+                if (!skipFermat)
                 {
-
                     res.FermatWatch.Start();
-                    factored = Fermat.Resume(resumable, (int)(resumable.Iterations + maxIterations));
+                    resumable = Fermat.StartResumable(n, maxIterations);
+                    res.FermatWatch.Stop();
+
+                    factored = resumable.HasFactor;
+
+                }
+
+     
+                int maxRuns = 1;
+                int run = 0;
+
+                Func<bool> factoredFermat = () =>
+                {
+                    if (resumable == null)
+                        return false;
+                    res.FermatWatch.Start();
+                    factored = Fermat.Resume(resumable, 10000);
                     res.FermatWatch.Stop();
                     if (factored)
                     {
                         res.Add(resumable.P, 1);
                         res.Add(resumable.Q, 1);
-                        res.FoundBy = nameof(Fermat);
+                        res.FoundBy = FactorizationMethod.Fermat;
+                    }
+                    return factored;
+                };
+
+                Func<bool> factoredRho = () =>
+                {
+                    res.RhoWatch.Start();
+                    var Rho = MathLib.PollardRhoC(n, 1, 1000);
+                    res.RhoWatch.Stop();
+                    if (Rho != n)
+                    {
+                        res.Add(Rho, 1);
+                        res.Add(n / Rho, 1);
+                        factored = true;
+                        res.FoundBy = FactorizationMethod.Rho;
+                    }
+                    return factored;
+                };
+
+                Func<bool> factoredRhoP2 = () =>
+                {
+                    res.RhoP2Watch.Start();
+                    var Rho = MathLib.PollardRhoC(n, 2, 1000);
+                    res.RhoP2Watch.Stop();
+                    if (Rho != n)
+                    {
+                        res.Add(Rho, 1);
+                        res.Add(n / Rho, 1);
+                        factored = true;
+                        res.FoundBy = FactorizationMethod.RhoP2;
+                    }
+                    return factored;
+                };
+
+                Func<bool> factoredRhoP3 = () =>
+                {
+                    res.RhoP3Watch.Start();
+                    var Rho = MathLib.PollardRhoC(n, 3, 1000);
+                    res.RhoP3Watch.Stop();
+                    if (Rho != n)
+                    {
+                        res.Add(Rho, 1);
+                        res.Add(n / Rho, 1);
+                        factored = true;
+                        res.FoundBy = FactorizationMethod.RhoP3;
+                    }
+                    return factored;
+                };
+
+                Func<bool> factoredRhoZ = () =>
+                {
+                    res.RhoZWatch.Start();
+                    var Rho = MathLib.PollardRhoZOld(n, 200000);
+                    res.RhoZWatch.Stop();
+                    if (Rho != n)
+                    {
+                        res.Add(Rho, 1);
+                        res.Add(n / Rho, 1);
+                        factored = true;
+                        res.FoundBy = FactorizationMethod.RhoZ;
+                    }
+                    return factored;
+                };
+
+                Func<bool> factoredPP1 = () =>
+                {
+                    using var pp1 = ecm.PP1(n);
+                    if (pp1.Factors.Count > 1)
+                    {
+                        res.Add(pp1);
+                        res.FoundBy = FactorizationMethod.PP1;
+                        factored = true;
+                    }
+                    return factored;
+                };
+
+                Func<bool> factoredPM1 = () =>
+                {
+                    using var pp1 = ecm.PM1(n);
+                    if (pp1.Factors.Count > 1)
+                    {
+                        res.Add(pp1);
+                        res.FoundBy = FactorizationMethod.PM1;
+                        factored = true;
+                    }
+                    return factored;
+                };
+
+                Func<bool> factoredECM = () =>
+                {
+                    using var pp1 = ecm.ECM(n);
+                    if (pp1.Factors.Count > 1)
+                    {
+                        res.Add(pp1);
+                        res.FoundBy = FactorizationMethod.ECM;
+                        factored = true;
+                    }
+                    return factored;
+                };
+
+                Func<bool> factoredQS = () =>
+                {
+                    return factored;
+                };
+
+
+                var config = GetCommandLineConfig();
+                List<Func<bool>> factoredMethods = new();
+                if (!skipFermat || !config.skipFermat)
+                    factoredMethods.Add(factoredFermat);
+                if (!skipRho || !config.skipRho)
+                    factoredMethods.Add(factoredRho);
+                if (!skipRhoP2 || !config.skipRhoP2)
+                    factoredMethods.Add(factoredRhoP2);
+                if (!skipRhoP3 || !config.skipRhoP3)
+                    factoredMethods.Add(factoredRhoP3);
+                if (!skipRhoZ || !config.skipRhoZ)
+                    factoredMethods.Add(factoredRhoZ);
+                if (!skipPP1 || !config.skipPP1)
+                    factoredMethods.Add(factoredPP1);
+                if (!skipPM1|| !config.skipPM1)
+                    factoredMethods.Add(factoredPP1);
+                if (!skipECM || !config.skipECM)
+                    factoredMethods.Add(factoredECM);
+                if (!skipQS || !config.skipQS)
+                    factoredMethods.Add(factoredQS);
+
+                if (factoredMethods.Count == 0)
+                {
+                    factoredMethods.Add(new[] { factoredRho, factoredRhoP2, factoredRhoP3 }
+                        .OrderBy(x => Guid.NewGuid()).First());
+                }
+
+                while (!factored && run < maxRuns)
+                {
+                    run++;
+
+                    var randomMethods = factoredMethods.OrderBy(x => Guid.NewGuid()).ToList();
+                    foreach (var method in randomMethods)
+                    {
+                        factored = method();
+                        if (factored)
+                            break;
+                    }
+
+
+                    /*
+                    res.FermatWatch.Start();
+                    factored = Fermat.Resume(resumable, 10000);
+                    res.FermatWatch.Stop();
+                    if (factored)
+                    {
+                        res.Add(resumable.P, 1);
+                        res.Add(resumable.Q, 1);
+                        res.FoundBy = FactorizationMethod.Fermat;
                     }
                     else
                     {
                         res.RhoWatch.Start();
-                        var Rho = MathLib.PollardRhoC(n, 1);
+                        var Rho = MathLib.PollardRhoC(n, 1, 1000);
                         res.RhoWatch.Stop();
                         if (Rho != n)
                         {
                             res.Add(Rho, 1);
                             res.Add(n / Rho, 1);
                             factored = true;
-                            res.FoundBy = nameof(Rho);
+                            res.FoundBy = FactorizationMethod.Rho;
                             break;
                         }
 
                         res.RhoP2Watch.Start();
-                        Rho = MathLib.PollardRhoC(n, 2);
+                        Rho = MathLib.PollardRhoC(n, 2, 1000);
                         res.RhoP2Watch.Stop();
                         if (Rho != n)
                         {
                             res.Add(Rho, 1);
                             res.Add(n / Rho, 1);
                             factored = true;
-                            res.FoundBy = nameof(Rho) + "+2";
+                            res.FoundBy = FactorizationMethod.RhoP2;
                             break;
                         }
 
                         res.RhoP3Watch.Start();
-                        Rho = MathLib.PollardRhoC(n, 3);
+                        Rho = MathLib.PollardRhoC(n, 3, 1000);
                         res.RhoP3Watch.Stop();
                         if (Rho != n)
                         {
                             res.Add(Rho, 1);
                             res.Add(n / Rho, 1);
                             factored = true;
-                            res.FoundBy = nameof(Rho) + "+3";
+                            res.FoundBy = FactorizationMethod.RhoP3;
                             break;
                         }
-                        Rho = MathLib.PollardRhoZOld(n);
+                        res.RhoZWatch.Start();
+                        Rho = MathLib.PollardRhoZOld(n, 200000);
+                        res.RhoZWatch.Stop();
                         if (Rho != n)
                         {
                             res.Add(Rho, 1);
                             res.Add(n / Rho, 1);
                             factored = true;
-                            res.FoundBy = nameof(Rho) + "+3";
+                            res.FoundBy = FactorizationMethod.RhoZ;
                             break;
                         }
                     }
+                    */
+
                 }
 
+
             }
+            
+            
             return res;
         }
 
@@ -285,7 +546,7 @@ namespace HigginsSoft.Math.Lib
                     break;
             }
             if (n > 1)
-                result.Add((int)n, 1);
+                result.Add(n, 1);
             return result;
         }
 

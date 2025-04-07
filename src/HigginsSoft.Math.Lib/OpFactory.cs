@@ -118,6 +118,7 @@ namespace HigginsSoft.Math.Lib
             XorT = op.XorT;
 
             Power = op.Power;
+            SqrtT = op.SqrtT;
         }
 
         public static Func<int, T> ConvertFromInt { get; } = null!;
@@ -153,7 +154,7 @@ namespace HigginsSoft.Math.Lib
         public static Func<GmpInt, T, GmpInt> Mod { get; } = null!;
         public static Func<T, T, T> ModT { get; } = null!;
         public static Func<T, T, T> Power { get; } = null!;
-
+        public static Func<T, T> SqrtT { get; } = null!;
         public static Func<GmpInt, T, GmpInt> LeftShift { get; } = null!;
         public static Func<GmpInt, T, GmpInt> RightShift { get; } = null!;
 
@@ -237,6 +238,8 @@ namespace HigginsSoft.Math.Lib
         public Func<T, GmpInt> Neg { get; protected set; } = null!;
         public Func<T, T> NegT { get; protected set; } = null!;
         public Func<T, T, T> Power { get; protected set; } = null!;
+
+        public Func<T, T> SqrtT { get; protected set; } = null!;
     }
 
     public class IntOps : OpFactory<int>
@@ -303,6 +306,7 @@ namespace HigginsSoft.Math.Lib
             XorT = (a, b) => a ^ b;
 
             Power = (a, b) => (int)System.Math.Pow(a, b);
+            SqrtT = (a) => (int)System.Math.Sqrt(a);
         }
 
 
@@ -374,6 +378,7 @@ namespace HigginsSoft.Math.Lib
             XorT = (a, b) => a ^ b;
 
             Power = (a, b) => (uint)System.Math.Pow(a, b);
+            SqrtT = (a) => (uint)System.Math.Sqrt(a);
         }
 
 
@@ -443,6 +448,7 @@ namespace HigginsSoft.Math.Lib
             XorT = (a, b) => a ^ b;
 
             Power = (a, b) => (long)System.Math.Pow(a, b);
+            SqrtT = (a) => (long)System.Math.Sqrt(a);
         }
 
 
@@ -512,6 +518,7 @@ namespace HigginsSoft.Math.Lib
             XorT = (a, b) => a ^ b;
 
             Power = (a, b) => (ulong)System.Math.Pow(a, b);
+            SqrtT = (a) => (ulong)System.Math.Sqrt(a);
         }
 
 
@@ -582,6 +589,7 @@ namespace HigginsSoft.Math.Lib
             XorT = (a, b) => FromGmpInt((GmpInt)a ^ (GmpInt)b);
 
             Power = (a, b) => (float)System.Math.Pow(a, b);
+            SqrtT = (a) => (float)System.Math.Sqrt(a);
         }
 
 
@@ -651,6 +659,7 @@ namespace HigginsSoft.Math.Lib
             XorT = (a, b) => FromGmpInt((GmpInt)a ^ (GmpInt)b);
 
             Power = (a, b) => System.Math.Pow(a, b);
+            SqrtT = (a) => System.Math.Sqrt(a);
         }
     }
 
@@ -720,6 +729,7 @@ namespace HigginsSoft.Math.Lib
             XorT = (a, b) => FromGmpInt((GmpInt)a ^ (GmpInt)b);
 
             Power = (a, b) => (decimal)System.Math.Pow((double)a, (int)b);
+            SqrtT = (a) => (decimal)System.Math.Sqrt((double)a);
         }
     }
 
@@ -788,6 +798,7 @@ namespace HigginsSoft.Math.Lib
             XorT = (a, b) => a ^ b;
 
             Power = (a, b) => BigInteger.Pow(a, (int)b);
+            SqrtT = (a) => MathLib.Sqrt(a);
 
         }
     }
@@ -857,6 +868,7 @@ namespace HigginsSoft.Math.Lib
             XorT = (a, b) => a ^ b;
 
             Power = (a, b) => a.Power((int)b);
+            SqrtT = (a) => a.Sqrt();
         }
     }
 
