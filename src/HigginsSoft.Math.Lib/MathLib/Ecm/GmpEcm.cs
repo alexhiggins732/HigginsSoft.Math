@@ -801,7 +801,7 @@ namespace HigginsSoft.Math.Lib
 
             string gpuSwitch = enableGpu ? "-gpu" : "";
             // string b2Switch = effectiveB2 >0 ?  enableGpu ? "-gpu" : "";
-            var exeName = gpuSwitch ? "ecm_gpu.exe" : "ecm.exe";
+            var exeName = !string.IsNullOrEmpty(gpuSwitch) ? "ecm_gpu.exe" : "ecm.exe";
             if (!string.IsNullOrEmpty(algo))
             {
                 algo = $" {algo}";
