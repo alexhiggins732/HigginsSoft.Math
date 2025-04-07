@@ -809,7 +809,8 @@ namespace HigginsSoft.Math.Lib
             string curveSwitch =  effectiveCurves> 0 ? $"-c {effectiveCurves}" : "";
 
             //TODO: stage exe in stand-alone directory to allow multiple instances to run
-            var workingDirectory = @"E:\Source\Repos\NumTheory\msieve\HigginsSoft\gmp-ecm-alexhiggins732\bin\x64\Release";
+            //var workingDirectory = @"E:\Source\Repos\NumTheory\msieve\HigginsSoft\gmp-ecm-alexhiggins732\bin\x64\Release";
+            var workingDirectory = Path.Combine(AppContext.BaseDirectory, "binaries");
             var cmd = $"echo \"{n}\" | {exeName} {gpuSwitch}{algo} {curveSwitch} {effectiveB1} {effectiveB2}";
 
             //Console.WriteLine(cmd);

@@ -57,6 +57,28 @@
     <Compile Remove="ConvertFactory.cs" />
   </ItemGroup>
 
+
+
+  <ItemGroup>
+    <None Remove="binaries\ecm_gpu.exe" />
+    <None Remove="binaries\ecm_gpu.pdb" />
+    <None Remove="binaries\yafu-x64.exe" />
+  </ItemGroup>
+
+
+
+  <ItemGroup>
+    <Content Include="binaries\ecm_gpu.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="binaries\ecm_gpu.pdb">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="binaries\yafu-x64.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.3" />
     <PackageReference Include="Nethermind.Gmp" Version="1.0.1" />

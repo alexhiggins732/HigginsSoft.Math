@@ -17,4 +17,8 @@
     <ProjectReference Include="..\src\HigginsSoft.Math.Lib\HigginsSoft.Math.Lib.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="binaries\" />
+  </ItemGroup>
+
 </Project>
