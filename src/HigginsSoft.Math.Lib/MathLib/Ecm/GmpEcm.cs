@@ -655,7 +655,7 @@ namespace HigginsSoft.Math.Lib
 
 
                     str = str.Split(" ")[0];
-                    var f =BigInteger.Parse(str);
+                    var f = BigInteger.Parse(str);
                     var factor = new Factor<BigInteger>(f, 1);
                     result.Add(f, 1);
                     switch (header)
@@ -800,13 +800,13 @@ namespace HigginsSoft.Math.Lib
             */
 
             string gpuSwitch = enableGpu ? "-gpu" : "";
-           // string b2Switch = effectiveB2 >0 ?  enableGpu ? "-gpu" : "";
-            var exeName = "ecm_gpu.exe";
+            // string b2Switch = effectiveB2 >0 ?  enableGpu ? "-gpu" : "";
+            var exeName = gpuSwitch ? "ecm_gpu.exe" : "ecm.exe";
             if (!string.IsNullOrEmpty(algo))
             {
                 algo = $" {algo}";
             }
-            string curveSwitch =  effectiveCurves> 0 ? $"-c {effectiveCurves}" : "";
+            string curveSwitch = effectiveCurves > 0 ? $"-c {effectiveCurves}" : "";
 
             //TODO: stage exe in stand-alone directory to allow multiple instances to run
             //var workingDirectory = @"E:\Source\Repos\NumTheory\msieve\HigginsSoft\gmp-ecm-alexhiggins732\bin\x64\Release";
