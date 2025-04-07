@@ -672,7 +672,7 @@ namespace HigginsSoft.Math.Lib
             if (n <= 2)
             {
                 if (n == 2) return PrimalityType.Prime;
-                return PrimalityType.Error; ;
+                return PrimalityType.Error; 
             }
             GmpInt t = new GmpInt(n);
             var result = is_mpz_prp(t, num_witnesses);

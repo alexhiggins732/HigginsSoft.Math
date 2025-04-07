@@ -50,6 +50,15 @@ namespace HigginsSoft.Math.Lib
             Prime = PRP_PRIME,
         }
 
+        public enum DbPrimalityType
+        {
+            Error = -1,
+            Unknown = -2,
+            Composite = 0,
+            ProbablePrime = 1,
+            Prime = 2,
+        }
+
         public static bool IsBSmooth(int n, int[] primes)
             => IsBSmooth(n, primes, primes.Max());
         public static bool IsBSmooth(int n, int[] primes, int MaxPrime)
