@@ -60,6 +60,8 @@
 
 
   <ItemGroup>
+    <None Remove="binaries\ecm.exe" />
+    <None Remove="binaries\ecm.pdb" />
     <None Remove="binaries\ecm_gpu.exe" />
     <None Remove="binaries\ecm_gpu.pdb" />
     <None Remove="binaries\yafu-x64.exe" />
@@ -68,6 +70,12 @@
 
 
   <ItemGroup>
+    <Content Include="binaries\ecm.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="binaries\ecm.pdb">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="binaries\ecm_gpu.exe">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
