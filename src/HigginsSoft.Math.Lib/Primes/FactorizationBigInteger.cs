@@ -78,6 +78,10 @@ namespace HigginsSoft.Math.Lib
             public bool skipPM1 = true;
             public bool skipECM = true;
             public bool skipQS = true;
+            public int? B1 = null;
+            public int? B2 = null;
+            public int? Curves = null;
+            public int? Digits = null;
         }
 
         static FactorConfig? commandLineConfig = null;
@@ -86,27 +90,72 @@ namespace HigginsSoft.Math.Lib
             if (commandLineConfig is null)
             {
                 commandLineConfig = new FactorConfig();
-                var args = Environment.GetCommandLineArgs().Select(x=> x.Trim());
+                var args = Environment.GetCommandLineArgs().Select(x => x.Trim().ToLower()).ToList();
+
+                int idx = -1;
+                if (args.Contains("digits"))
+                {
+                    idx = args.IndexOf("digits");
+                    if (idx < args.Count - 1 && int.TryParse(args[idx + 1], out var digits))
+                    {
+                        commandLineConfig.Digits = digits;
+                    }
+                }
+
                 foreach (var arg in args)
                 {
+                    bool missed = true;
                     if (arg.Equals("fermat", StringComparison.CurrentCultureIgnoreCase))
-                        commandLineConfig.skipFermat = false;
+                        commandLineConfig.skipFermat = missed = false;
                     if (arg.Equals("rho", StringComparison.CurrentCultureIgnoreCase))
-                        commandLineConfig.skipRho = false;
+                        commandLineConfig.skipRho = missed = false;
                     if (arg.Equals("rhop2", StringComparison.CurrentCultureIgnoreCase))
-                        commandLineConfig.skipRhoP2 = false;
+                        commandLineConfig.skipRhoP2 = missed = false;
                     if (arg.Equals("rhop3", StringComparison.CurrentCultureIgnoreCase))
-                        commandLineConfig.skipRhoP3 = false;
+                        commandLineConfig.skipRhoP3 = missed = false;
                     if (arg.Equals("rhoz", StringComparison.CurrentCultureIgnoreCase))
-                        commandLineConfig.skipRhoZ = false;
+                        commandLineConfig.skipRhoZ = missed = false;
                     if (arg.Equals("pp1", StringComparison.CurrentCultureIgnoreCase))
-                        commandLineConfig.skipPP1 = false;
+                        commandLineConfig.skipPP1 = missed = false;
                     if (arg.Equals("pm1", StringComparison.CurrentCultureIgnoreCase))
-                        commandLineConfig.skipPM1 = false;
+                        commandLineConfig.skipPM1 = missed = false;
                     if (arg.Equals("ecm", StringComparison.CurrentCultureIgnoreCase))
-                        commandLineConfig.skipECM = false;
+                        commandLineConfig.skipECM = missed = false;
                     if (arg.Equals("qs", StringComparison.CurrentCultureIgnoreCase))
-                        commandLineConfig.skipQS = false;
+                        commandLineConfig.skipQS = missed = false;
+                    if (arg.Equals("tdiv", StringComparison.CurrentCultureIgnoreCase))
+                        commandLineConfig.skipTrialDivide = missed = false;
+
+                    if (!missed && arg == "ecm" || arg == "pp1" || arg == "pm1")
+                    {
+                        var allArgs = new[] { "fermat", "rho", "rhop2", "rhop3", "rhoz", "pp1", "pm1", "ecm", "qs", "tdiv" }.ToList();
+                        var hit = args.First(x => allArgs.Contains(x, StringComparer.CurrentCultureIgnoreCase));
+                        idx = args.IndexOf(hit);
+
+                        if (idx < args.Count - 3 && arg == "ecm"
+                            && int.TryParse(args[idx + 1], out int b1)
+                            && int.TryParse(args[idx + 2], out int b2)
+                            && int.TryParse(args[idx + 3], out int curves)
+                            )
+                        {
+                            commandLineConfig.B1 = b1;
+                            commandLineConfig.B2 = b2;
+                            commandLineConfig.Curves = curves;
+                        }
+
+                        // test for b1 and b2 following the arg
+                        else if (idx < args.Count - 2 && int.TryParse(args[idx + 1], out b1) && int.TryParse(args[idx + 2], out b2))
+                        {
+                            commandLineConfig.B1 = b1;
+                            commandLineConfig.B2 = b2;
+                        }
+                        else if (idx < args.Count - 1 && int.TryParse(args[idx + 1], out b1))
+                        {
+                            commandLineConfig.B1 = b1;
+
+                        }
+
+                    }
                 }
             }
             return commandLineConfig;
@@ -122,7 +171,7 @@ namespace HigginsSoft.Math.Lib
             bool skipRhoP3 = false,
             bool skipRhoZ = false,
             bool skipPP1 = false,
-            bool skipPM1= false,
+            bool skipPM1 = false,
             bool skipECM = false,
             bool skipQS = false,
             int autoSiqsLimit = 50)
@@ -168,9 +217,11 @@ namespace HigginsSoft.Math.Lib
 
                 }
 
-     
+
                 int maxRuns = 1;
                 int run = 0;
+
+                var config = GetCommandLineConfig();
 
                 Func<bool> factoredFermat = () =>
                 {
@@ -250,7 +301,13 @@ namespace HigginsSoft.Math.Lib
 
                 Func<bool> factoredPP1 = () =>
                 {
-                    using var pp1 = ecm.PP1(n);
+                    using var pp1 = ecm.PP1(
+                        n,
+                        targetDigits: config.Digits,
+                        B1: config.B1,
+                        B2: config.B2
+                    );
+
                     if (pp1.Factors.Count > 1)
                     {
                         res.Add(pp1);
@@ -262,7 +319,13 @@ namespace HigginsSoft.Math.Lib
 
                 Func<bool> factoredPM1 = () =>
                 {
-                    using var pp1 = ecm.PM1(n);
+                    using var pp1 = ecm.PM1(
+                        n,
+                        targetDigits: config.Digits,
+                        B1: config.B1,
+                        B2: config.B2
+                    );
+
                     if (pp1.Factors.Count > 1)
                     {
                         res.Add(pp1);
@@ -274,7 +337,14 @@ namespace HigginsSoft.Math.Lib
 
                 Func<bool> factoredECM = () =>
                 {
-                    using var pp1 = ecm.ECM(n);
+                    using var pp1 = ecm.ECM(
+                        n,
+                        targetDigits: config.Digits,
+                        B1: config.B1,
+                        B2: config.B2,
+                        curves: config.Curves
+                    );
+
                     if (pp1.Factors.Count > 1)
                     {
                         res.Add(pp1);
@@ -286,11 +356,18 @@ namespace HigginsSoft.Math.Lib
 
                 Func<bool> factoredQS = () =>
                 {
+                    using var qs = new NumericsYafu().QS(n);
+                    if (qs.Factors.Count > 1)
+                    {
+                        res.Add(qs);
+                        res.FoundBy = FactorizationMethod.QS;
+                        factored = true;
+                    }
                     return factored;
                 };
 
 
-                var config = GetCommandLineConfig();
+
                 List<Func<bool>> factoredMethods = new();
                 if (!skipFermat || !config.skipFermat)
                     factoredMethods.Add(factoredFermat);
@@ -304,7 +381,7 @@ namespace HigginsSoft.Math.Lib
                     factoredMethods.Add(factoredRhoZ);
                 if (!skipPP1 || !config.skipPP1)
                     factoredMethods.Add(factoredPP1);
-                if (!skipPM1|| !config.skipPM1)
+                if (!skipPM1 || !config.skipPM1)
                     factoredMethods.Add(factoredPP1);
                 if (!skipECM || !config.skipECM)
                     factoredMethods.Add(factoredECM);
@@ -395,8 +472,8 @@ namespace HigginsSoft.Math.Lib
 
 
             }
-            
-            
+
+
             return res;
         }
 

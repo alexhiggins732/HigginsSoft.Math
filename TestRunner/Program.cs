@@ -409,13 +409,14 @@ namespace TestRunner
                 startId = unFactored.Max(x => x.Id) + 1;
                 var factorWatch = Stopwatch.StartNew();
 
+
                 foreach (var fact in unFactored)
                 {
                     fact.Factors.Where(x => x.Type == PrimalityType.Unknown).ToList()
                          .ForEach(x => x.Type = (PrimalityType)(int)GmpInt.Primality(BigInteger.Parse(x.P)));
 
                     idx++;
-                    if (idx % 10 == 0)
+                    if (batchSize < 10 || idx % 10 == 0)
                     {
                         Console.Title = $"({idx}) Id {fact.Id} Count: {factorCount}";
                     }
@@ -434,7 +435,7 @@ namespace TestRunner
                         var n = BigInteger.Parse(smallFactor.P);
                         var thisfactorWatch = Stopwatch.StartNew();
                         // get algorithms from the command line or use one rho algo at random
-                        using var factored = FactorizationBigInteger.Factor(n, false, true, skipFermat: true, skipRho: true, skipRhoP2: true, skipRhoP3: true, skipRhoZ: true);
+                        using var factored = FactorizationBigInteger.Factor(n, false, true, skipFermat: true, skipRho: true, skipRhoP2: true, skipRhoP3: true, skipRhoZ: true, skipPP1: true, skipPM1: true, skipECM: true, skipQS: true);
                         thisfactorWatch.Stop();
 
                         fermat = fermat.Add(factored.FermatWatch.Elapsed);
@@ -443,7 +444,7 @@ namespace TestRunner
                         rhoP3 = rhoP3.Add(factored.RhoP3Watch.Elapsed);
                         rhoz = rhoz.Add(factored.RhoZWatch.Elapsed);
 
-                       
+
 
                         if (factored.Factors.Count > 1)
                         {
