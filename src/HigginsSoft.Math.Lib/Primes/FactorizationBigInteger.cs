@@ -63,6 +63,7 @@ namespace HigginsSoft.Math.Lib
             public const string ECM = nameof(ECM);
             public const string QS = nameof(QS);
             public const string TDiv = nameof(TDiv);
+            public const string Fact = nameof(Fact);
         }
 
         public class FactorConfig
@@ -78,6 +79,7 @@ namespace HigginsSoft.Math.Lib
             public bool skipPM1 = true;
             public bool skipECM = true;
             public bool skipQS = true;
+            public bool skipFact = true;
             public int? B1 = null;
             public int? B2 = null;
             public int? Curves = null;
@@ -85,7 +87,7 @@ namespace HigginsSoft.Math.Lib
         }
 
         static FactorConfig? commandLineConfig = null;
-        static FactorConfig GetCommandLineConfig()
+        public static FactorConfig GetCommandLineConfig()
         {
             if (commandLineConfig is null)
             {
@@ -125,6 +127,8 @@ namespace HigginsSoft.Math.Lib
                         commandLineConfig.skipQS = missed = false;
                     if (arg.Equals("tdiv", StringComparison.CurrentCultureIgnoreCase))
                         commandLineConfig.skipTrialDivide = missed = false;
+                    if (arg.Equals("fact", StringComparison.CurrentCultureIgnoreCase))
+                        commandLineConfig.skipFact = missed = false;
 
                     if (!missed && arg == "ecm" || arg == "pp1" || arg == "pm1")
                     {
@@ -174,6 +178,7 @@ namespace HigginsSoft.Math.Lib
             bool skipPM1 = false,
             bool skipECM = false,
             bool skipQS = false,
+            bool skipFact = false,
             int autoSiqsLimit = 50)
         {
             var sw = Stopwatch.StartNew();
@@ -363,6 +368,25 @@ namespace HigginsSoft.Math.Lib
                         res.FoundBy = FactorizationMethod.QS;
                         factored = true;
                     }
+                    else
+                    {
+                        Console.WriteLine($"QS failed to factor {n}.");
+                    }
+                    return factored;
+                };
+                Func<bool> factoredFact = () =>
+                {
+                    using var qs = new NumericsYafu().Factor(n, config.Digits);
+                    if (qs.Factors.Count > 1)
+                    {
+                        res.Add(qs);
+                        res.FoundBy = FactorizationMethod.Fact;
+                        factored = true;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"QS failed to factor {n}.");
+                    }
                     return factored;
                 };
 
@@ -387,6 +411,8 @@ namespace HigginsSoft.Math.Lib
                     factoredMethods.Add(factoredECM);
                 if (!skipQS || !config.skipQS)
                     factoredMethods.Add(factoredQS);
+                if (!skipQS || !config.skipFact)
+                    factoredMethods.Add(factoredFact);
 
                 if (factoredMethods.Count == 0)
                 {

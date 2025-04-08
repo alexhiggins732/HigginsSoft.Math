@@ -1,12 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Xml;
 using static HigginsSoft.Math.Lib.FactorizationBigInteger;
+using static HigginsSoft.Math.Lib.NumericsYafu;
 
 namespace HigginsSoft.Math.Lib
 {
@@ -747,7 +751,48 @@ namespace HigginsSoft.Math.Lib
     public class NumericsYafu
     {
 
- 
+
+        FactorizationBigInteger GetFactorization(BigInteger n, FactorResult factorResult)
+        {
+
+            FactorizationBigInteger result = new();
+
+            try
+            {
+                if (factorResult.factorsprime != null && factorResult.factorsprime.Length > 0)
+                {
+                    var bigN = n;
+                    foreach (var factor in factorResult.factorsprime)
+                    {
+                        var bigFactor = BigInteger.Parse(factor);
+                        var f = new Factor<BigInteger>(bigFactor, 0);
+                        using var fact = new FactorizationBigInteger();
+                        while (bigN % f.P == 0)
+                        {
+                            bigN /= f.P;
+                            f.Power++;
+                        }
+                        if (f.Power > 0)
+                        {
+                            fact.Factors.Add(f);
+                        }
+
+                        result.Add(fact);
+                    }
+                    if (bigN > 1)
+                    {
+                        result.Add(bigN, 0);
+                    }
+
+                }
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error parsing factors: {ex.Message}");
+            }
+            return result;
+        }
         /// <summary>
         /// Run the Yafu QS factorization algorithm
         /// </summary>
@@ -755,23 +800,47 @@ namespace HigginsSoft.Math.Lib
         /// <returns></returns>
         public FactorizationBigInteger QS(BigInteger n)
         {
-
-
-            var result = Run(n, 0, 0, 0, false, algo: FactorizationMethod.QS);
-            //var di = Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "EcmTests"));
-            //var output = Path.Combine(di.FullName, $"{n}-ecm-test.log");
-            //File.WriteAllText(output, result.Output);
-
             FactorizationBigInteger f = new();
             try
             {
-                f = ParseFactors(result);
+                var factorResult = Run(n, 0, 0, 0, false, 30, algo: FactorizationMethod.QS);
+                f = GetFactorization(n, factorResult);
 
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error parsing factors: {ex.Message}");
-                Console.WriteLine($"Output: {result.Output}");
+            }
+            if (f.Factors.Count < 1)
+            {
+                Console.WriteLine($"QS error: No factors found for {n}");
+            }
+            return f;
+        }
+
+        /// <summary>
+        /// Run the Yafu QS factorization algorithm
+        /// </summary>
+        /// <param name="n"></param>
+        /// <returns></returns>
+        public FactorizationBigInteger Factor(BigInteger n, int? tdiv)
+        {
+            if (tdiv == null)
+                tdiv = 30;
+            FactorizationBigInteger f = new();
+            try
+            {
+                var factorResult = Run(n, 0, 0, 0, false, effectiveDigits: tdiv.Value, algo: FactorizationMethod.Fact);
+                f = GetFactorization(n, factorResult);
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error parsing factors: {ex.Message}");
+            }
+            if (f.Factors.Count < 1)
+            {
+                Console.WriteLine($"QS error: No factors found for {n}");
             }
             return f;
         }
@@ -908,19 +977,26 @@ namespace HigginsSoft.Math.Lib
             for (var i = 0; i < lines.Length; i++)
             {
                 var line = lines[i].Trim();
-                var idx = line.IndexOf(" = 4");
+                var idx = line.IndexOf(" = ");
                 if (idx > -1)
                 {
-                    var str = line.Substring(idx + 1).Trim();
+                    var key = line.Substring(0, idx).Trim();
+                    var str = line.Substring(idx + 3);
+                    if (key == "ans" && str == "1")
+                    {
+                        break;
+                    }
+
+
                     var f = BigInteger.Parse(str);
                     result.Add(f, 1);
-                    break;
+                    //break;
                 }
             }
             return result;
         }
 
-        private ProcessResult Run(BigInteger n, long effectiveB1, long effectiveB2, int effectiveCurves, bool enableGpu, string algo = "")
+        private FactorResult Run(BigInteger n, long effectiveB1, long effectiveB2, int effectiveCurves, bool enableGpu, int effectiveDigits, string algo = "")
         {
             // -I f increment B1 by f*sqrt(B1) on each run
             // docs suggest f=10 for B1 < 10^6, f=5 for B1 < 10^9, f=2 for B1 < 10^12
@@ -941,17 +1017,197 @@ namespace HigginsSoft.Math.Lib
             var workingDirectory = Path.Combine(AppContext.BaseDirectory, "binaries");
 
             var cmd = $"{exeName} {gpuSwitch}{algo} {curveSwitch} {effectiveB1} {effectiveB2}";
+            var arguments = "";
             if (algo == FactorizationMethod.QS)
             {
-                cmd = $"{exeName} siqs({n})";
+                arguments = $"siqs({n})";
             }
-
-
+            else if (algo == FactorizationMethod.Fact)
+            {
+                arguments = $"factor({n}) -pretest {effectiveDigits}";
+            }
+            else
+            {
+                arguments = $"{gpuSwitch}{algo} {curveSwitch} {effectiveB1} {effectiveB2}";
+            }
+            cmd = $"{exeName} {arguments}";
             //Console.WriteLine(cmd);
             //todo us DotMpi, for now use process helper
-            var result = ProcessHelper.RunProcess(cmd, workingDirectory);
-            return result;
 
+
+            if (algo == FactorizationMethod.Fact)
+            {
+                if (File.Exists(Path.Combine(workingDirectory, "factor.json")))
+                    File.Delete(Path.Combine(workingDirectory, "factor.json"));
+
+            }
+            else if (algo == FactorizationMethod.QS)
+            {
+                if (File.Exists(Path.Combine(workingDirectory, "factor.log")))
+                    File.Delete(Path.Combine(workingDirectory, "factor.log"));
+            }
+
+            var process = new System.Diagnostics.Process
+            {
+                StartInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c {cmd}",
+                    WorkingDirectory = workingDirectory
+                }
+            };
+            var startTime = DateTime.Now;
+            var sw = Stopwatch.StartNew();
+            process.Start();
+            process.WaitForExit();
+            System.Threading.Thread.Sleep(1);
+            sw.Stop();
+            var endTime = DateTime.Now;
+            if (process.ExitCode == 0)
+            {
+                if (algo == FactorizationMethod.Fact)
+                {
+
+
+                    var factorsJsonFile = Path.Combine(workingDirectory, "factor.json");
+                    var stringN = n.ToString();
+                    using (var sr = new StreamReader(factorsJsonFile))
+                    {
+                        var line = sr.ReadLine();
+                        var factorResult = JsonSerializer.Deserialize<FactorResult>(line);
+                        if (factorResult.inputdecimal == stringN)
+                            return factorResult;
+                        //Console.WriteLine(json);
+                    }
+                }
+                else if (algo == FactorizationMethod.QS)
+                {
+
+                    var factorResult = new FactorResult();
+                    var factorLog = Path.Combine(workingDirectory, "factor.log");
+                    var stringN = n.ToString();
+                    var output = string.Empty;
+                    using (var sr = new StreamReader(factorLog))
+                    {
+
+
+                        while (!sr.EndOfStream)
+                        {
+                            var line = sr.ReadLine();
+                            if (line.Contains("starting", StringComparison.CurrentCultureIgnoreCase)
+                               && line.Contains(stringN, StringComparison.CurrentCultureIgnoreCase))
+                            {
+                                var sb = new StringBuilder();
+                                while (!sr.EndOfStream)
+                                {
+                                    line = sr.ReadLine();
+                                    sb.AppendLine(line);
+                                    if (line.Contains("****************************"))
+                                    {
+                                        break;
+                                    }
+                                }
+                                output = sb.ToString();
+                                break;
+                            }
+                        }
+                        var outputLines = output.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+                        var linesWithoutTimestamps = outputLines.Select(x => x.Split(',')).Where(x => x.Length > 1).Select(x => x[1].Trim().Replace(" cofactor", "")).ToArray();
+                        var factorLines = linesWithoutTimestamps.Where(x => (x.StartsWith("c") || x.StartsWith("p")) &&
+                                x.Contains(" = ", StringComparison.CurrentCultureIgnoreCase) && !x.Contains(stringN));
+                        var factorStrings = factorLines.Select(x => x.Substring(x.IndexOf(" = ") + 3).Trim()).ToArray();
+                        List<string> factors = new();
+                        foreach (var f in factorStrings)
+                        {
+                            if (BigInteger.TryParse(f, out var bigFactor))
+                            {
+                                factors.Add(f);
+                            }
+                        }
+
+                        factorResult.inputdecimal = stringN;
+                        factorResult.inputexpression = arguments;
+                        factorResult.inputargumentstring = arguments;
+                        factorResult.factorsprime = factors.ToArray();
+                        factorResult.runtime = new Runtime { total = float.Parse(sw.Elapsed.TotalSeconds.ToString("N3")) };
+                        factorResult.timestart = startTime.ToString("yyyy-MM-dd HH:mm:ss");
+                        factorResult.timeend = endTime.ToString("yyyy-MM-dd HH:mm:ss");
+                        factorResult.info = new Info
+                        {
+                            compiler = "MSVC 1934",
+                            ECMversion = "7.0.6-dev",
+                            MPIRversion = "3.0.0",
+                            yafuversion = "2.11"
+                        };
+                        ;
+
+                        //Console.WriteLine(json);
+                    }
+                    return factorResult;
+                }
+            }
+            return new FactorResult { inputdecimal = n.ToString() }; // TODO: return the actual result from the process
+
+        }
+
+        /*
+        {
+          "input-expression": "factor(4577487232847279791)",
+          "input-decimal": "4577487232847279791",
+          "input-argument-string": "factor(4577487232847279791) ",
+          "factors-prime": [
+            "1393262831",
+            "3285444161"
+          ],
+          "runtime": {
+            "total": 0.029
+          },
+          "time-start": "2025-04-08  02:33:33",
+          "time-end": "2025-04-08  02:33:33",
+          "info": {
+            "compiler": "MSVC 1934",
+            "ECM-version": "7.0.6-dev",
+            "MPIR-version": "3.0.0",
+            "yafu-version": "2.11"
+          }
+        }  
+        * */
+        public class FactorResult
+        {
+            [JsonPropertyName("input-expression")]
+            public string inputexpression { get; set; }
+            [JsonPropertyName("input-decimal")]
+            public string inputdecimal { get; set; }
+            [JsonPropertyName("input-argument-string")]
+            public string inputargumentstring { get; set; }
+            [JsonPropertyName("factors-prime")]
+            public string[] factorsprime { get; set; }
+            [JsonPropertyName("runtime")]
+            public Runtime runtime { get; set; }
+            [JsonPropertyName("time-start")]
+            public string timestart { get; set; }
+            [JsonPropertyName("time-end")]
+            public string timeend { get; set; }
+            [JsonPropertyName("info")]
+            public Info info { get; set; }
+        }
+
+        public class Runtime
+        {
+            [JsonPropertyName("total")]
+            public float total { get; set; }
+        }
+
+        public class Info
+        {
+            [JsonPropertyName("compiler")]
+            public string compiler { get; set; }
+            [JsonPropertyName("ECM-version")]
+            public string ECMversion { get; set; }
+            [JsonPropertyName("MPIR-version")]
+            public string MPIRversion { get; set; }
+            [JsonPropertyName("yafu-version")]
+            public string yafuversion { get; set; }
         }
 
     }
@@ -974,9 +1230,10 @@ namespace HigginsSoft.Math.Lib
                 }
             };
             process.Start();
+            process.WaitForExit();
             string output = process.StandardOutput.ReadToEnd();
             string error = process.StandardError.ReadToEnd();
-            process.WaitForExit();
+
             var result = new ProcessResult
             {
                 Output = output,
