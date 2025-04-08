@@ -64,6 +64,8 @@
     <None Remove="binaries\ecm.pdb" />
     <None Remove="binaries\ecm_gpu.exe" />
     <None Remove="binaries\ecm_gpu.pdb" />
+    <None Remove="binaries\README.gmp-ecm.txt" />
+    <None Remove="binaries\README.yafu.txt" />
     <None Remove="binaries\vcomp140d.dll" />
     <None Remove="binaries\yafu-x64.exe" />
   </ItemGroup>
@@ -81,6 +83,12 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="binaries\ecm_gpu.pdb">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="binaries\README.gmp-ecm.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="binaries\README.yafu.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="binaries\vcomp140d.dll">
