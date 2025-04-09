@@ -759,12 +759,22 @@ namespace HigginsSoft.Math.Lib
 
             try
             {
+                var factors = new List<string>();
                 if (factorResult.factorsprime != null && factorResult.factorsprime.Length > 0)
+                    factors.AddRange(factorResult.factorsprime);
+
+                if (factorResult.factorscomposite != null && factorResult.factorscomposite.Length > 0)
+                    factors.AddRange(factorResult.factorscomposite);
+
+                if (factors.Count > 0)
                 {
                     var bigN = n;
-                    foreach (var factor in factorResult.factorsprime)
+
+                    foreach (var factor in factors)
                     {
                         var bigFactor = BigInteger.Parse(factor);
+                        if (bigFactor == n)
+                            continue;
                         var f = new Factor<BigInteger>(bigFactor, 0);
                         using var fact = new FactorizationBigInteger();
                         while (bigN % f.P == 0)
@@ -1182,6 +1192,8 @@ namespace HigginsSoft.Math.Lib
             public string inputargumentstring { get; set; }
             [JsonPropertyName("factors-prime")]
             public string[] factorsprime { get; set; }
+            [JsonPropertyName("factors-composite")]
+            public string[] factorscomposite { get; set; }
             [JsonPropertyName("runtime")]
             public Runtime runtime { get; set; }
             [JsonPropertyName("time-start")]
