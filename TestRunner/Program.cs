@@ -136,7 +136,7 @@ namespace TestRunner
 
         public void VerifyFactorBase()
         {
-            setConnectionString();
+            SetConnectionString();
             using var serviceProvider = new ServiceCollection()
                        .AddDbContext<FactorDbContext>(options => options.UseSqlServer(FactorDbContext.DbConnectionString))
                        .BuildServiceProvider();
