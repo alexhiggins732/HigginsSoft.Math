@@ -18,8 +18,12 @@ namespace TestRunner
 
             var efTests = new FactorTest();
 
-            //efTests.UpdateFactorizationPrimality();
 
+
+            //efTests.VerifyFactorBase();
+            //return;
+            //efTests.ProcessUnknownFactors();
+            //efTests.UpdateFactorizationPrimality();
             /*
              * var FactorBaseSiever = new FactorBaseSiever();
             FactorBaseSiever.SieveDbPrimes();
@@ -128,6 +132,140 @@ namespace TestRunner
          "Server=192.168.2.170;Database=Factors;user=factor;password=F@act0#1;MultipleActiveResultSets=true;TrustServerCertificate=True;Command Timeout=300";
 
         }
+
+
+        public void VerifyFactorBase()
+        {
+            setConnectionString();
+            using var serviceProvider = new ServiceCollection()
+                       .AddDbContext<FactorDbContext>(options => options.UseSqlServer(FactorDbContext.DbConnectionString))
+                       .BuildServiceProvider();
+
+            var startId = 0;
+            int idx = 0;
+            while (true)
+            {
+                var sw = Stopwatch.StartNew();
+                List<DbFactorization> unFactored = new();
+                using var scope = serviceProvider.CreateScope();
+                using var dbContext = scope.ServiceProvider.GetRequiredService<FactorDbContext>();
+                var selectWatch = Stopwatch.StartNew();
+                int sleep = 10;
+                for (var retry = 0; retry < 10; retry++)
+                {
+                    try
+                    {
+
+                        unFactored = dbContext.Factorizations
+                              .Include(x => x.Factors)
+                              .OrderBy(x => x.Id)
+                              .Where(x => x.Id >= startId)
+                              .Take(10000)
+
+                              .ToList();
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"[{DateTime.Now}] Select DbError {retry + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
+                        System.Threading.Thread.Sleep(sleep);
+                        sleep *= 2;
+                    }
+                }
+                selectWatch.Stop();
+                if (!unFactored.Any())
+                    break;
+                startId = unFactored.Max(x => x.Id) + 1;
+                var factorWatch = Stopwatch.StartNew();
+                bool hasUpdates = false;
+                foreach (var dbFactorization in unFactored)
+                {
+
+                    var precheck = dbFactorization.Factors.Select(x => BigInteger.Pow(BigInteger.Parse(x.P), x.Power)).Aggregate((a, b) => a * b);
+                    if (precheck == BigInteger.Parse(dbFactorization.N))
+                    {
+                        continue;
+                    }
+
+                    hasUpdates = true;
+                    var check = new FactorizationBigInteger();
+                    var bigN = BigInteger.Parse(dbFactorization.N);
+
+                    var distinctFactors = dbFactorization.Factors.ToLookup(x => x.P).Select(x => x.First()).ToList();
+                    foreach (var dbFact in distinctFactors)
+                    {
+                        var bigInt = BigInteger.Parse(dbFact.P);
+                        var f = new Factor<BigInteger>(bigInt, 0);
+
+                        while (bigN % bigInt == 0 && bigN > 1)
+                        {
+                            bigN /= bigInt;
+                            f.Power++;
+                        }
+                        if (f.Power > 0)
+                        {
+                            check.Add(bigInt, f.Power);
+                        }
+                    }
+
+                    if (bigN > 1)
+                    {
+                        var f = new Factor<BigInteger>(bigN, 1);
+                        check.Add(bigN, f.Power);
+                    }
+
+                    check.Factors.ForEach(x => x.FactorType = (MathLib.PrimalityType)(int)GmpInt.Primality(x.P));
+                    var value = check.GetProduct();
+                    if (value.ToString() != dbFactorization.N)
+                    {
+                        Console.WriteLine($"[{DateTime.Now}] Error {dbFactorization.Id} {dbFactorization.N} != {value}");
+                        continue;
+                    }
+                    dbFactorization.Factors.Clear();
+                    dbFactorization.Factors.AddRange(check.Factors.OrderBy(x => x.P.GetBitLength()).ThenBy(x => x.P.ToString()).Select(x => new DbFactor
+                    {
+                        P = x.P.ToString(),
+                        Power = x.Power,
+                        Type = (PrimalityType)(int)x.FactorType,
+                        Digits = x.P.ToString().Length,
+                        Bits = MathLib.BitLength(x.P)
+                    }));
+                    dbFactorization.Type = dbFactorization.Factors.All(x => (int)x.Type > 0) ? PrimalityType.ProbablePrime : PrimalityType.Composite;
+                }
+
+
+                factorWatch.Stop();
+                Stopwatch saveWatch = Stopwatch.StartNew();
+                if (hasUpdates)
+                {
+
+                    sleep = 10;
+                    for (var i = 0; i < 10; i++)
+                    {
+                        try
+                        {
+                            dbContext.SaveChanges();
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            Log($"[{DateTime.Now}] Save DbError {i + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
+                            System.Threading.Thread.Sleep(sleep);
+                            sleep *= 2;
+                        }
+                    }
+
+
+                }
+                saveWatch.Stop();
+                sw.Stop();
+                Log($"[{DateTime.Now}] {unFactored.Last().Id.ToString("N0")} Factored {unFactored.Count.ToString("N0")} factors in {sw.Elapsed} - factor {factorWatch.Elapsed} select {selectWatch.Elapsed} save - {saveWatch.Elapsed}");
+
+
+            }
+
+        }
+
         public void ProcessUnknownFactors()
         {
             SetConnectionString();
@@ -363,6 +501,12 @@ namespace TestRunner
 
             int fermatCount = 0, rhoCount = 0, rhoP2Count = 0, rhoP3Count = 0, rhozCount = 0;
             fermat = rho = rhoP2 = rhoP3 = rhoz = TimeSpan.Zero;
+            var config = FactorizationBigInteger.GetCommandLineConfig();
+
+            const int maxEffectiveDigits = 256;
+            int effectiveDigits = config.Digits.HasValue && (config.skipFact == false || config.skipECM == false) ? config.Digits.Value : maxEffectiveDigits;
+            var commandLineArgs = string.Join(" ", Environment.GetCommandLineArgs().Skip(1));
+
             while (true)
             {
                 var sw = Stopwatch.StartNew();
@@ -378,7 +522,7 @@ namespace TestRunner
                     {
                         unFactored = dbContext.Factorizations
                               .Include(x => x.Factors)
-                              .Where(x => x.Id > startId &&
+                              .Where(x => x.Id > startId && x.TDiv < effectiveDigits &&
                                x.Factors.Any(f => f.Digits >= minDigits && f.Digits <= maxDigits && (f.Type == PrimalityType.Unknown || f.Type == PrimalityType.Composite))
                                    //&& (x.Type == PrimalityType.Unknown || x.Type == PrimalityType.Composite)
                                    )
@@ -408,7 +552,7 @@ namespace TestRunner
 
                 }
 
-                Log($"[{DateTime.Now}] Running batch - {unFactored.Min(x => x.Id)} - {unFactored.Max(x => x.Id)}");
+                Log($"[{DateTime.Now}] Running batch - {unFactored.Min(x => x.Id)} - {unFactored.Max(x => x.Id)} - {commandLineArgs}");
 
                 startId = unFactored.Max(x => x.Id) + 1;
                 var factorWatch = Stopwatch.StartNew();
@@ -416,13 +560,15 @@ namespace TestRunner
 
                 foreach (var fact in unFactored)
                 {
+                    if (fact.TDiv > effectiveDigits)
+                        continue;
                     fact.Factors.Where(x => x.Type == PrimalityType.Unknown).ToList()
                          .ForEach(x => x.Type = (PrimalityType)(int)GmpInt.Primality(BigInteger.Parse(x.P)));
 
                     idx++;
                     if (batchSize < 10 || idx % 10 == 0)
                     {
-                        Console.Title = $"({idx}) Id {fact.Id} Count: {factorCount}";
+                        Console.Title = $"({idx.ToString("N0")}) Id {fact.Id.ToString("N0")} Count: {factorCount.ToString("N0")} - {commandLineArgs}";
                     }
                     var smallFactors = fact.Factors.Where(x => x.Digits >= minDigits && x.Digits <= maxDigits && (x.Type == PrimalityType.Unknown || x.Type == PrimalityType.Composite)).ToList();
 
@@ -513,6 +659,10 @@ namespace TestRunner
 
                     smallFactors.Clear();
                     smallFactors = null;
+                    if (fact.TDiv < effectiveDigits && effectiveDigits<=maxEffectiveDigits)
+                    {
+                        fact.TDiv = effectiveDigits;
+                    }
                     fact.Type = fact.Factors.All(x => x.Type > 0) ? PrimalityType.ProbablePrime : PrimalityType.Composite;
                 }
 
