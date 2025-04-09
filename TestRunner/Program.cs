@@ -24,10 +24,36 @@ namespace TestRunner
                 efTests.VerifyFactorBase();
                 return;
             }
-            if(args.Any(x=> x == "dbfactorbasesieve"))
+            if (args.Any(x => x == "dbfactorbasesieve"))
             {
                 var FactorBaseSiever = new FactorBaseSiever();
                 FactorBaseSiever.SieveDbPrimes();
+                return;
+            }
+            if (args.Length > 2 && args.Any(x => x == "add") && int.TryParse(args[1], out int factorizationId) && !string.IsNullOrWhiteSpace(args[2]))
+            {
+                var factorString = args[2];
+                if (bool.Parse(bool.FalseString))
+                {
+                    factorizationId = 5;
+                    factorString = "3646462392280632369106560642497975540630143537"; //args[2]
+                }
+                var helper = new FactorDbHelper();
+                helper.AddFactor(factorizationId, factorString);
+                return;
+            }
+            if (args.Length > 2 && args.Any(x => x == "tdiv") && int.TryParse(args[1], out factorizationId) && int.TryParse(args[1], out int tDiv))
+            {
+                var factorString = args[2];
+                if (bool.Parse(bool.FalseString))
+                {
+                    factorizationId = 5;
+                    //factored with ecm_gpu -gpu -c 4 -i 10 43e6
+                    // actual curves was 4352, supposedly calculated by cuda per GMP-ECM readme.
+                    tDiv = 50;
+                }
+                var helper = new FactorDbHelper();
+                helper.SetTDiv(factorizationId, tDiv);
                 return;
             }
 
@@ -204,7 +230,7 @@ namespace TestRunner
                                 f.Type = (PrimalityType)(int)fCheckType;
                                 hasUpdates = true;
                             }
-                          
+
                         }
                         var checkType = dbFactorization.Factors.All(x => (int)x.Type > 0) ? PrimalityType.ProbablePrime : PrimalityType.Composite;
                         if ((int)dbFactorization.Type != (int)checkType)
@@ -574,7 +600,7 @@ namespace TestRunner
                     initWatch.Stop();
                     Log($"[{DateTime.Now}] Initialized test {nameof(ProcessDbFactors)}(minDigits={minDigits}, maxDigits={maxDigits}, batchSize={batchSize}) in {initWatch.Elapsed}");
                 }
-                
+
                 selectWatch.Stop();
 
 
