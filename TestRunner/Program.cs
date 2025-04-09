@@ -24,6 +24,12 @@ namespace TestRunner
                 efTests.VerifyFactorBase();
                 return;
             }
+            if(args.Any(x=> x == "dbfactorbasesieve"))
+            {
+                var FactorBaseSiever = new FactorBaseSiever();
+                FactorBaseSiever.SieveDbPrimes();
+                return;
+            }
 
             //return;
             //efTests.ProcessUnknownFactors();
