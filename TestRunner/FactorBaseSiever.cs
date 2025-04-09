@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO.Pipelines;
 using System.Linq;
 using System.Numerics;
 using System.Text;
@@ -18,6 +20,7 @@ namespace TestRunner
         internal void SieveDbPrimes()
         {
             var primes = GetDbPrimes();
+            primes.Sort();
 
             var services = new ServiceCollection();
 
@@ -27,12 +30,28 @@ namespace TestRunner
 
             using var app = provider.CreateScope();
             using var dbContext = app.ServiceProvider.GetRequiredService<FactorDbContext>();
-
+            int startPrime = 5754043;
             for (var i = 0; i < primes.Count; i++)
             {
-                var prime = primes[i];
-                List<int> missingIds = GetMissingIds(prime);
 
+                var prime = primes[i];
+                if (prime <= startPrime)
+                {
+                    continue;
+                }
+                var sw = Stopwatch.StartNew();
+                //Console.WriteLine($"{DateTime.Now} ({(i + 1).ToString("N0")} of {primes.Count.ToString("N0")}) Processing {prime.ToString("N0")}");
+
+                List<int> missingIds = GetMissingIds(prime);
+                if (missingIds.Count == 0)
+                {
+                    sw.Stop();
+                    if (i % 50 == 0)
+                        dbContext.SaveChanges();
+                    //Console.WriteLine($"{DateTime.Now} ({(i + 1).ToString("N0")} of {primes.Count.ToString("N0")}) Verified {prime.ToString("N0")} in {sw.Elapsed}");
+                    continue;
+                }
+                Console.WriteLine($"{DateTime.Now} ({(i + 1).ToString("N0")} of {primes.Count.ToString("N0")}) - {prime.ToString("N0")} : Found {missingIds.Count.ToString("N0")} missing factors");
                 var factorizations = dbContext.Factorizations
                     .Include(x => x.Factors)
                     .Where(x => missingIds.Contains(x.Id))
@@ -40,21 +59,21 @@ namespace TestRunner
                 foreach (var factorization in factorizations)
                 {
 
-                    var factors = factorization.Factors.Where(x => (int)x.Type < 0).ToList();
-                    foreach (var factor in factors)
+                    var compositeFactors = factorization.Factors.Where(x => (int)x.Type < 1).ToList();
+                    foreach (var composite in compositeFactors)
                     {
-                        var n = BigInteger.Parse(factorization.N);
+                        var n = BigInteger.Parse(composite.P);
 
                         var fact = new Factor<BigInteger>(prime, 0);
                         fact.FactorType = MathLib.PrimalityType.Prime;
                         while (n % prime == 0)
                         {
-                            factor.Power++;
+                            fact.Power++;
                             n /= prime;
                         }
                         if (fact.Power > 0)
                         {
-                            factorization.Factors.Remove(factor);
+                            factorization.Factors.Remove(composite);
                             factorization.Factors.Add(new DbFactor()
                             {
                                 P = n.ToString(),
@@ -71,68 +90,107 @@ namespace TestRunner
                                 Digits = fact.P.ToString().Length,
                                 Bits = MathLib.BitLength(fact.P)
                             });
-                            break;
+                            //break;
                         }
 
                     }
-             
+
+                    var newValue = factorization.Factors.Select(x => BigInteger.Pow(BigInteger.Parse(x.P), x.Power)).Aggregate((a, b) => a * b);
+                    var newValueString = newValue.ToString();
+                    var nValueString = factorization.N.ToString();
+                    if (newValueString != nValueString)
+                    {
+                        string bp = "Invalid factorization";
+                    }
+
+                    factorization.Type = factorization.Factors.All(x => (int)x.Type > 0) ? PrimalityType.ProbablePrime : PrimalityType.Composite;
                 }
-                dbContext.SaveChanges();
+                if (i % 50 == 0)
+                    dbContext.SaveChanges();
             }
+            dbContext.SaveChanges();
         }
 
         private List<int> GetMissingIds(int prime)
         {
-            var found = GetDbFactors(prime);
-
-            var class1 = found.Min(x => x.DbFactorizationId);
-            var class2 = found.Max(x => x.DbFactorizationId);
-
-            while (class1 - prime > 0)
+            var classWatch = Stopwatch.StartNew();
+            var classes = GetDbResidueClasses(prime);
+            classWatch.Stop();
+            if (classes.Count == 0)
             {
-                class1 -= prime;
+                Console.WriteLine($"[{DateTime.Now}] Warning could not find class for prime {prime}");
+                return new();
             }
 
-            while (class2 - prime > 0)
+
+            var class1 = classes.Min();
+            var class2 = classes.Max();
+
+            if (class1 == class2)
             {
-                class2 -= prime;
+                if (prime == 1)
+                {
+                    class1 = 2;
+                }
+                Console.WriteLine($"[{DateTime.Now}] Warning found only 1 class for prime {prime}");
             }
 
-            var class1Ids = new List<int>();
-            var class2Ids = new List<int>();
-
-            var maxId = 10_000_000;
-
-            while (class1 < maxId)
-            {
-                class1Ids.Add(class1);
-                class1 += prime;
-            }
-
-            while (class2 < maxId)
-            {
-                class2Ids.Add(class2);
-                class2 += prime;
-            }
-
-            var allClassIds = class1Ids.Union(class2Ids).ToList();
-            var allClassIdsString = string.Join(",", allClassIds);
+            //var allClassIds = class1Ids.Union(class2Ids).ToList();
+            var allClassIdsString = string.Join(",", classes.Distinct());
 
             var query = @$"SELECT z.id
                     FROM Factorizations z -- join factors f on z.id=f.DbFactorizationId
-	                    where z.Id in ({allClassIdsString})
+	                    where z.Id% {prime} in ({allClassIdsString})
                       AND NOT EXISTS (
                           SELECT 1 FROM Factors f
                           WHERE f.DbFactorizationId = z.Id
                             AND f.P = '{prime}' 
                       )";
-
+            var idWatch = Stopwatch.StartNew();
+            List<int> missingIds = new();
             using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
             {
-
-                var missingIds = conn.Query<int>(query).ToList();
-                return missingIds;
+                missingIds = conn.Query<int>(query).ToList();
             }
+            idWatch.Stop();
+
+            //Console.WriteLine($"[{DateTime.Now}] - Verification {prime}: Found class in {classWatch} for {missingIds.Count} in {idWatch.Elapsed}");
+            return missingIds;
+        }
+
+        Dictionary<int, List<int>>? residueClasses = null;
+        Dictionary<int, List<int>> ResidueClasses
+        {
+            get
+            {
+                if (residueClasses == null)
+                {
+                    using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
+                    {
+                        var query = "select distinct cast(p as int), z.id %(cast(p as int)) as ClassId from Factorizations z join Factors f on z.Id=f.DbFactorizationId where f.Bits<32";
+                        var intPrimes = conn.Query<(int, int)>(query).ToList();
+                        residueClasses = new();
+                        foreach (var item in intPrimes)
+                        {
+                            if (!residueClasses.ContainsKey(item.Item1))
+                            {
+                                residueClasses.Add(item.Item1, new());
+                            }
+                            residueClasses[item.Item1].Add(item.Item2);
+                        }
+
+                    }
+                }
+                return residueClasses;
+            }
+        }
+
+        public List<int> GetDbResidueClasses(int prime)
+        {
+            if (ResidueClasses.ContainsKey(prime))
+                return ResidueClasses[prime];
+            return new();
+
         }
 
         public List<(int Id, int DbFactorizationId)> GetDbFactors(int prime)
@@ -141,8 +199,8 @@ namespace TestRunner
             test.SetConnectionString();
             using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
             {
-                var query = "SELECT Id, DbFactorizationId FROM factors f where p=@p and DbFactorizationId is not null";
-                var intPrimes = conn.Query<(int Id, int DbFactorizationId)>(query, new { p = prime }).ToList();
+                var query = "SELECT Id, DbFactorizationId FROM factors f where f.bits<=31 and p=@p and DbFactorizationId is not null";
+                var intPrimes = conn.Query<(int Id, int DbFactorizationId)>(query, new { p = prime.ToString() }).ToList();
                 return intPrimes;
             }
         }
@@ -153,7 +211,7 @@ namespace TestRunner
 
             using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
             {
-                var query = "SELECT DISTINCT cast(p as int) FROM factors f where bits<32";
+                var query = "SELECT DISTINCT cast(p as int) FROM factors f where bits<32 and DbFactorizationId is not null ";
                 var intPrimes = conn.Query<int>(query).ToList();
                 return intPrimes;
             }
