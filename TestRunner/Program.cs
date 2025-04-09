@@ -20,6 +20,10 @@ namespace TestRunner
 
             //efTests.UpdateFactorizationPrimality();
 
+            /*
+             * var FactorBaseSiever = new FactorBaseSiever();
+            FactorBaseSiever.SieveDbPrimes();
+            */
             efTests.ProcessUnknownFactors();
             if (args.Length >= 3 && int.TryParse(args[0], out int minDigits) && int.TryParse(args[1], out int maxDigits) && int.TryParse(args[2], out int batchSize))
             {
@@ -118,7 +122,7 @@ namespace TestRunner
             }
         }
 
-        void setConnectionString()
+        public void SetConnectionString()
         {
             FactorDbContext.DbConnectionString =
          "Server=192.168.2.170;Database=Factors;user=factor;password=F@act0#1;MultipleActiveResultSets=true;TrustServerCertificate=True;Command Timeout=300";
@@ -126,7 +130,7 @@ namespace TestRunner
         }
         public void ProcessUnknownFactors()
         {
-            setConnectionString();
+            SetConnectionString();
             using var serviceProvider = new ServiceCollection()
                        .AddDbContext<FactorDbContext>(options => options.UseSqlServer(FactorDbContext.DbConnectionString))
                        .BuildServiceProvider();
@@ -262,7 +266,7 @@ namespace TestRunner
 
         public void UpdateFactorizationPrimality()
         {
-            setConnectionString();
+            SetConnectionString();
             using var serviceProvider = new ServiceCollection()
                        .AddDbContext<FactorDbContext>(options => options.UseSqlServer(FactorDbContext.DbConnectionString))
                        .BuildServiceProvider();
@@ -342,7 +346,7 @@ namespace TestRunner
         public void ProcessDbFactors(int minDigits = 0, int maxDigits = 30, int batchSize = 100)
         {
             Log($"[{DateTime.Now}] Starting test {nameof(ProcessDbFactors)}(minDigits={minDigits}, maxDigits={maxDigits}, batchSize={batchSize})");
-            setConnectionString();
+            SetConnectionString();
             using var serviceProvider = new ServiceCollection()
                        .AddDbContext<FactorDbContext>(options => options.UseSqlServer(FactorDbContext.DbConnectionString))
                        .BuildServiceProvider();
@@ -473,11 +477,12 @@ namespace TestRunner
                             var composites = factored.Factors.Where(x => x.P.ToString().Length <= 20 && (x.FactorType != MathLib.PrimalityType.ProbablePrime && x.FactorType != MathLib.PrimalityType.Prime)).ToList();
                             foreach (var c in composites)
                             {
-                                factored.Factors.Remove(c);
+                              
                                 thisfactorWatch.Start();
                                 using var subfac = FactorizationBigInteger.Factor(c.P, false, true);
                                 if (subfac.Factors.Count > 1)
                                 {
+                                    factored.Factors.Remove(c);
                                     thisfactorWatch.Stop();
                                     if (c.Power > 1)
                                     {
