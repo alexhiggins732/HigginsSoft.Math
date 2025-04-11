@@ -788,10 +788,10 @@ namespace HigginsSoft.Math.Lib
 
     }
 
-    public class NumericsYafu
+    public class NumericsYafu : IDisposable
     {
 
-
+        Process? factorProcess = null;
         FactorizationBigInteger GetFactorization(BigInteger n, FactorResult factorResult)
         {
 
@@ -1061,14 +1061,14 @@ namespace HigginsSoft.Math.Lib
 
             string gpuSwitch = enableGpu ? " -gpu" : "";
             // string b2Switch = effectiveB2 >0 ?  enableGpu ? "-gpu" : "";
-       
+
             string curveSwitch = effectiveCurves > 0 ? $"-c {effectiveCurves}" : "";
 
             //TODO: stage exe in stand-alone directory to allow multiple instances to run
             //var workingDirectory = @"E:\Source\Repos\NumTheory\msieve\HigginsSoft\gmp-ecm-alexhiggins732\bin\x64\Release";
             //var workingDirectory = Path.Combine(AppContext.BaseDirectory, "binaries");
 
-           
+
             var arguments = "";
             if (algo == FactorizationMethod.QS)
             {
@@ -1102,7 +1102,7 @@ namespace HigginsSoft.Math.Lib
                     File.Delete(factorLogPath);
             }
 
-            Console.WriteLine($"Starting process {cmd} in {cwd}");
+            //Console.WriteLine($"Starting process {cmd} in {cwd}");
             var process = new System.Diagnostics.Process
             {
                 StartInfo = new System.Diagnostics.ProcessStartInfo
@@ -1112,7 +1112,7 @@ namespace HigginsSoft.Math.Lib
                     WorkingDirectory = cwd
                 }
             };
-           
+            factorProcess = process;
 
 
 
@@ -1133,14 +1133,22 @@ namespace HigginsSoft.Math.Lib
                 {
 
 
-                
+
                     var stringN = n.ToString();
                     using (var sr = new StreamReader(factorJsonPath))
                     {
                         var line = sr.ReadLine();
-                        var factorResult = JsonSerializer.Deserialize<FactorResult>(line);
-                        if (factorResult.inputdecimal == stringN)
-                            return factorResult;
+                        try
+                        {
+                            var factorResult = JsonSerializer.Deserialize<FactorResult>(line.Replace("{,\"", "{\""));
+                            if (factorResult.inputdecimal == stringN)
+                                return factorResult;
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(ex.ToString());
+                        }
+                       
                         //Console.WriteLine(json);
                     }
                 }
@@ -1213,6 +1221,24 @@ namespace HigginsSoft.Math.Lib
 
         }
 
+        public void Dispose()
+        {
+            if (factorProcess != null)
+            {
+                try
+                {
+                    if (!factorProcess.HasExited) factorProcess.Kill();
+                }
+                catch { }
+                try
+                {
+                    factorProcess.Dispose();
+                }
+                catch { }
+                factorProcess = null;
+
+            }
+        }
         /*
         {
           "input-expression": "factor(4577487232847279791)",
@@ -1329,17 +1355,18 @@ namespace HigginsSoft.Math.Lib
         {
             if (config.ProcessorIndex != null)
             {
-                var idx= config.ProcessorIndex.Value;
-                if (idx < 0 || idx > Environment.ProcessorCount)
+                var idx = config.ProcessorIndex.Value;
+                if (idx < 0) // || idx > Environment.ProcessorCount) <-- bug some cpus are returning 0 processors
                 {
-                    throw new ArgumentOutOfRangeException($"ProcessorIndex {idx} is out of range. Must be between 0 and {Environment.ProcessorCount - 1}.");
+                    throw new ArgumentOutOfRangeException($"ProcessorIndex {idx} is out of range. Must be between >0)");
                 }
                 process.ProcessorAffinity = (IntPtr)(1L << idx);
-                Console.WriteLine($"Set process {process.Id} affinity to processor " + config.ProcessorIndex.Value);
+                process.PriorityClass = ProcessPriorityClass.BelowNormal;
+                //Console.WriteLine($"Set process {process.Id} affinity to processor " + config.ProcessorIndex.Value);
             }
             else
             {
-                Console.WriteLine("Skipping Set Process Affinity - Process affinity not set.");
+                //Console.WriteLine("Skipping Set Process Affinity - Process affinity not set.");
             }
 
         }

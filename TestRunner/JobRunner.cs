@@ -119,7 +119,7 @@ namespace TestRunner
                 var threadEndDigit = startDigit + ((i + 1) * (endDigit - startDigit + 1) / totalJobs) - 1;
                 //p.StartInfo.Arguments = $"{startDigit} {endDigit} {batchSize} {algo}";
                 var optionalArgs = string.Join(" ", optionalArguments.Select(x => x.Replace("{i}", $"{i}")));
-                var jobCommandArguments = $"{threadStartDigit} {threadEndDigit} {batchSize} {optionalArgs} test";
+                var jobCommandArguments = $"{threadStartDigit} {threadEndDigit} {batchSize} {optionalArgs}";
 
                 var jobDirectory = Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "Jobs", $"{config.JobName}_{i}"));
 
