@@ -122,6 +122,9 @@ namespace TestRunner
                 var jobCommandArguments = $"{threadStartDigit} {threadEndDigit} {batchSize} {optionalArgs}";
 
                 var jobDirectory = Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "Jobs", $"{config.JobName}_{i}"));
+                //var ini = Path.Combine(jobDirectory.FullName, "yafu.ini");
+                //if (File.Exists(ini))
+                //    File.Delete(ini);
 
                 Console.WriteLine($"[{DateTime.Now}] Starting job {i + 1}/{totalJobs} with arguments: {exeName} {jobCommandArguments} in {jobDirectory.FullName}");
 

@@ -1149,7 +1149,7 @@ namespace HigginsSoft.Math.Lib
                         catch (Exception ex)
                         {
                             
-                            Console.WriteLine($"Error parsing {factorJsonPath} - {ex.ToString()}\r\n{line}");
+                            Console.WriteLine($"Error parsing {factorJsonPath}\r\n{line}\r\n");
                             File.AppendAllText(factorJsonPath + ".error.txt", $"{n}\r\n{line}\r\n\r\n");
                         }
 
