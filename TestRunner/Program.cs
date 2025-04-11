@@ -699,7 +699,7 @@ namespace TestRunner
                         var n = BigInteger.Parse(smallFactor.P);
                         var thisfactorWatch = Stopwatch.StartNew();
                         // get algorithms from the command line or use one rho algo at random
-                        using var factored = FactorizationBigInteger.Factor(n, false, true, skipFermat: true, skipRho: true, skipRhoP2: true, skipRhoP3: true, skipRhoZ: true, skipPP1: true, skipPM1: true, skipECM: true, skipQS: true);
+                        using var factored = FactorizationBigInteger.Factor(n, false, true, skipFermat: true, skipRho: true, skipRhoP2: true, skipRhoP3: true, skipRhoZ: true, skipPP1: true, skipPM1: true, skipECM: true, skipQS: true, skipFact:true);
                         thisfactorWatch.Stop();
 
 
