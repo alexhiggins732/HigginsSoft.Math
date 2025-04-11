@@ -1137,18 +1137,22 @@ namespace HigginsSoft.Math.Lib
                     var stringN = n.ToString();
                     using (var sr = new StreamReader(factorJsonPath))
                     {
-                        var line = sr.ReadLine();
+                        var line = sr.ReadLine() ?? "";
                         try
                         {
-                            var factorResult = JsonSerializer.Deserialize<FactorResult>(line.Replace("{,\"", "{\""));
+                            var cleanedLine = line.Replace("{,", "{");
+                            var factorResult = JsonSerializer.Deserialize<FactorResult>(cleanedLine);
+
                             if (factorResult.inputdecimal == stringN)
                                 return factorResult;
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine(ex.ToString());
+                            
+                            Console.WriteLine($"Error parsing {factorJsonPath} - {ex.ToString()}\r\n{line}");
+                            File.AppendAllText(factorJsonPath + ".error.txt", $"{n}\r\n{line}\r\n\r\n");
                         }
-                       
+
                         //Console.WriteLine(json);
                     }
                 }

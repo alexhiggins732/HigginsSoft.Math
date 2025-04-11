@@ -643,7 +643,7 @@ namespace TestRunner
                     catch (Exception ex)
                     {
 
-                        Log("Select DbError {retry + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
+                        Log($"Select DbError {retry + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
                         System.Threading.Thread.Sleep(sleep);
                         sleep *= 2;
                     }
@@ -652,7 +652,7 @@ namespace TestRunner
                 {
                     init = true;
                     initWatch.Stop();
-                    Log("Initialized test {nameof(ProcessDbFactors)}(minDigits={minDigits}, maxDigits={maxDigits}, batchSize={batchSize}) in {initWatch.Elapsed}");
+                    Log($"Initialized test {nameof(ProcessDbFactors)}(minDigits={minDigits}, maxDigits={maxDigits}, batchSize={batchSize}) in {initWatch.Elapsed}");
                 }
 
                 selectWatch.Stop();
@@ -661,7 +661,7 @@ namespace TestRunner
 
                 if (!unFactored.Any())
                 {
-                    Log("No more factors to process after Id={startId}");
+                    Log($"No more factors to process after Id={startId}");
                     break;
                 }
 
@@ -726,7 +726,7 @@ namespace TestRunner
                                     thisfactorWatch.Stop();
                                     if (c.Power > 1)
                                     {
-                                        Log("Need to handle powers");
+                                        Log($"Need to handle powers");
                                     }
                                     subfac.Factors.ForEach(x => x.FactorType = (MathLib.PrimalityType)(int)GmpInt.Primality(x.P));
                                     factored.Add(subfac);
@@ -779,7 +779,7 @@ namespace TestRunner
                     catch (Exception ex)
                     {
 
-                        Log("Save DbError {i + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
+                        Log($"Save DbError {i + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
                         System.Threading.Thread.Sleep(sleep);
                         sleep *= 2;
                     }
