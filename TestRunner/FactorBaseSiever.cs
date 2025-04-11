@@ -30,7 +30,7 @@ namespace TestRunner
 
             using var app = provider.CreateScope();
             using var dbContext = app.ServiceProvider.GetRequiredService<FactorDbContext>();
-            int startPrime = 5754043;
+            int startPrime = 6990679;
             for (var i = 0; i < primes.Count; i++)
             {
 
@@ -224,6 +224,7 @@ namespace TestRunner
         {
             if (tDiv < MaxTDiv)
             {
+                Console.Write("Setting TDiv to {0} for factorization {1}", tDiv, factorizationId);
                 var t = new FactorTest();
                 t.SetConnectionString();
                 using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
@@ -285,6 +286,7 @@ namespace TestRunner
                         }
                         if (f.Power > 0)
                         {
+                            Console.WriteLine($"Adding factor {f.P} to {factorizationId}");
                             // Remove the old factor
                             var deleteQuery = "update factors set dbFactorizationId = null where Id = @Id";
                             conn.Execute(deleteQuery, new { Id = factor.Id }, transaction: trans);

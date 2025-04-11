@@ -66,104 +66,7 @@ namespace HigginsSoft.Math.Lib
             public const string Fact = nameof(Fact);
         }
 
-        public class FactorConfig
-        {
-            public bool checkPrimality = true;
-            public bool skipTrialDivide = true;
-            public bool skipFermat = true;
-            public bool skipRho = true;
-            public bool skipRhoP2 = true;
-            public bool skipRhoP3 = true;
-            public bool skipRhoZ = true;
-            public bool skipPP1 = true;
-            public bool skipPM1 = true;
-            public bool skipECM = true;
-            public bool skipQS = true;
-            public bool skipFact = true;
-            public int? B1 = null;
-            public int? B2 = null;
-            public int? Curves = null;
-            public int? Digits = null;
-        }
-
-        static FactorConfig? commandLineConfig = null;
-        public static FactorConfig GetCommandLineConfig()
-        {
-            if (commandLineConfig is null)
-            {
-                commandLineConfig = new FactorConfig();
-                var args = Environment.GetCommandLineArgs().Select(x => x.Trim().ToLower()).ToList();
-
-                int idx = -1;
-                if (args.Contains("digits"))
-                {
-                    idx = args.IndexOf("digits");
-                    if (idx < args.Count - 1 && int.TryParse(args[idx + 1], out var digits))
-                    {
-                        commandLineConfig.Digits = digits;
-                    }
-                }
-
-                foreach (var arg in args)
-                {
-                    bool missed = true;
-                    if (arg.Equals("fermat", StringComparison.CurrentCultureIgnoreCase))
-                        commandLineConfig.skipFermat = missed = false;
-                    if (arg.Equals("rho", StringComparison.CurrentCultureIgnoreCase))
-                        commandLineConfig.skipRho = missed = false;
-                    if (arg.Equals("rhop2", StringComparison.CurrentCultureIgnoreCase))
-                        commandLineConfig.skipRhoP2 = missed = false;
-                    if (arg.Equals("rhop3", StringComparison.CurrentCultureIgnoreCase))
-                        commandLineConfig.skipRhoP3 = missed = false;
-                    if (arg.Equals("rhoz", StringComparison.CurrentCultureIgnoreCase))
-                        commandLineConfig.skipRhoZ = missed = false;
-                    if (arg.Equals("pp1", StringComparison.CurrentCultureIgnoreCase))
-                        commandLineConfig.skipPP1 = missed = false;
-                    if (arg.Equals("pm1", StringComparison.CurrentCultureIgnoreCase))
-                        commandLineConfig.skipPM1 = missed = false;
-                    if (arg.Equals("ecm", StringComparison.CurrentCultureIgnoreCase))
-                        commandLineConfig.skipECM = missed = false;
-                    if (arg.Equals("qs", StringComparison.CurrentCultureIgnoreCase))
-                        commandLineConfig.skipQS = missed = false;
-                    if (arg.Equals("tdiv", StringComparison.CurrentCultureIgnoreCase))
-                        commandLineConfig.skipTrialDivide = missed = false;
-                    if (arg.Equals("fact", StringComparison.CurrentCultureIgnoreCase))
-                        commandLineConfig.skipFact = missed = false;
-
-                    if (!missed && arg == "ecm" || arg == "pp1" || arg == "pm1")
-                    {
-                        var allArgs = new[] { "fermat", "rho", "rhop2", "rhop3", "rhoz", "pp1", "pm1", "ecm", "qs", "tdiv" }.ToList();
-                        var hit = args.First(x => allArgs.Contains(x, StringComparer.CurrentCultureIgnoreCase));
-                        idx = args.IndexOf(hit);
-
-                        if (idx < args.Count - 3 && arg == "ecm"
-                            && int.TryParse(args[idx + 1], out int b1)
-                            && int.TryParse(args[idx + 2], out int b2)
-                            && int.TryParse(args[idx + 3], out int curves)
-                            )
-                        {
-                            commandLineConfig.B1 = b1;
-                            commandLineConfig.B2 = b2;
-                            commandLineConfig.Curves = curves;
-                        }
-
-                        // test for b1 and b2 following the arg
-                        else if (idx < args.Count - 2 && int.TryParse(args[idx + 1], out b1) && int.TryParse(args[idx + 2], out b2))
-                        {
-                            commandLineConfig.B1 = b1;
-                            commandLineConfig.B2 = b2;
-                        }
-                        else if (idx < args.Count - 1 && int.TryParse(args[idx + 1], out b1))
-                        {
-                            commandLineConfig.B1 = b1;
-
-                        }
-
-                    }
-                }
-            }
-            return commandLineConfig;
-        }
+        
 
         static NumericsEcm ecm = new();
         public static FactorizationBigInteger Factor(BigInteger n,
@@ -226,7 +129,7 @@ namespace HigginsSoft.Math.Lib
                 int maxRuns = 1;
                 int run = 0;
 
-                var config = GetCommandLineConfig();
+                var config = FactorConfig.GetCommandLineConfig();
 
                 Func<bool> factoredFermat = () =>
                 {
@@ -324,16 +227,16 @@ namespace HigginsSoft.Math.Lib
 
                 Func<bool> factoredPM1 = () =>
                 {
-                    using var pp1 = ecm.PM1(
+                    using var pm1 = ecm.PM1(
                         n,
                         targetDigits: config.Digits,
                         B1: config.B1,
                         B2: config.B2
                     );
 
-                    if (pp1.Factors.Count > 1)
+                    if (pm1.Factors.Count > 1)
                     {
-                        res.Add(pp1);
+                        res.Add(pm1);
                         res.FoundBy = FactorizationMethod.PM1;
                         factored = true;
                     }
@@ -342,17 +245,18 @@ namespace HigginsSoft.Math.Lib
 
                 Func<bool> factoredECM = () =>
                 {
-                    using var pp1 = ecm.ECM(
+                    using var ecm = FactorizationBigInteger.ecm.ECM(
                         n,
                         targetDigits: config.Digits,
                         B1: config.B1,
                         B2: config.B2,
-                        curves: config.Curves
+                        curves: config.Curves,
+                        enableGpu: config.EnableGpu
                     );
 
-                    if (pp1.Factors.Count > 1)
+                    if (ecm.Factors.Count > 1)
                     {
-                        res.Add(pp1);
+                        res.Add(ecm);
                         res.FoundBy = FactorizationMethod.ECM;
                         factored = true;
                     }
@@ -433,72 +337,35 @@ namespace HigginsSoft.Math.Lib
                     }
 
 
-                    /*
-                    res.FermatWatch.Start();
-                    factored = Fermat.Resume(resumable, 10000);
-                    res.FermatWatch.Stop();
-                    if (factored)
+                }
+                if (factored)
+                {
+                    var f = new FactorizationBigInteger();
+                    foreach (var factor in res.Factors)
                     {
-                        res.Add(resumable.P, 1);
-                        res.Add(resumable.Q, 1);
-                        res.FoundBy = FactorizationMethod.Fermat;
-                    }
-                    else
-                    {
-                        res.RhoWatch.Start();
-                        var Rho = MathLib.PollardRhoC(n, 1, 1000);
-                        res.RhoWatch.Stop();
-                        if (Rho != n)
+                        var fact = new Factor<BigInteger>(factor.P, 0);
+                        while(n %factor.P == 0)
                         {
-                            res.Add(Rho, 1);
-                            res.Add(n / Rho, 1);
-                            factored = true;
-                            res.FoundBy = FactorizationMethod.Rho;
-                            break;
+                            fact.Power++;
+                            n /= factor.P;
                         }
-
-                        res.RhoP2Watch.Start();
-                        Rho = MathLib.PollardRhoC(n, 2, 1000);
-                        res.RhoP2Watch.Stop();
-                        if (Rho != n)
+                        if (fact.Power > 0)
                         {
-                            res.Add(Rho, 1);
-                            res.Add(n / Rho, 1);
-                            factored = true;
-                            res.FoundBy = FactorizationMethod.RhoP2;
-                            break;
-                        }
-
-                        res.RhoP3Watch.Start();
-                        Rho = MathLib.PollardRhoC(n, 3, 1000);
-                        res.RhoP3Watch.Stop();
-                        if (Rho != n)
-                        {
-                            res.Add(Rho, 1);
-                            res.Add(n / Rho, 1);
-                            factored = true;
-                            res.FoundBy = FactorizationMethod.RhoP3;
-                            break;
-                        }
-                        res.RhoZWatch.Start();
-                        Rho = MathLib.PollardRhoZOld(n, 200000);
-                        res.RhoZWatch.Stop();
-                        if (Rho != n)
-                        {
-                            res.Add(Rho, 1);
-                            res.Add(n / Rho, 1);
-                            factored = true;
-                            res.FoundBy = FactorizationMethod.RhoZ;
-                            break;
+                            f.Factors.Add(fact);
                         }
                     }
-                    */
-
+                    if (f.Factors.Count > 0)
+                    {
+                        if(n > 1)
+                        {
+                            f.Add(n, 1);
+                        }
+                    }
+                    res = f;
                 }
 
-
             }
-
+           
 
             return res;
         }

@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.Versioning;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -412,6 +413,8 @@ namespace HigginsSoft.Math.Lib
         public static readonly Dictionary<int, (long B1, long B2, int Curves)> Defaults =
              new Dictionary<int, (long B1, long B2, int Curves)>
              {
+                { 10, (B1: 2000,      B2: 147396,        Curves: 74) },
+                { 15, (B1: 5000,      B2: 600786,       Curves: 74) },
                 { 20, (B1: 11000,     B2: 1900000,     Curves: 74) },
                 { 25, (B1: 50000,     B2: 13000000,    Curves: 221) },
                 { 30, (B1: 250000,    B2: 130000000,   Curves: 453) },
@@ -581,8 +584,7 @@ namespace HigginsSoft.Math.Lib
             FactorizationBigInteger f = new();
             try
             {
-                f = ParseFactors(result);
-
+                f = enableGpu.Value ? ParseGpuFactors(result) : ParseFactors(result);
             }
             catch (Exception ex)
             {
@@ -637,10 +639,8 @@ namespace HigginsSoft.Math.Lib
             var factorization = new Factorization();
             // Parse the output of the GMP-ECM process to extract the factors.
 
-
-            var factorParts = result.Output.Split("********** Factor found");
             var f = new FactorizationBigInteger();
-
+            var factorParts = result.Output.Split("********** Factor found");
             if (factorParts.Length > 1)
             {
                 for (var p = 1; p < factorParts.Length; p++)
@@ -656,6 +656,40 @@ namespace HigginsSoft.Math.Lib
             }
             return f;
         }
+
+        private FactorizationBigInteger ParseGpuFactors(ProcessResult result)
+        {
+            var factorization = new Factorization();
+            // Parse the output of the GMP-ECM process to extract the factors.
+
+            var f = new FactorizationBigInteger();
+
+            var lines = result.Output.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Where(x => x.StartsWith("GPU: factor ")).ToList();
+            if (lines.Count > 0)
+            {
+                var uniqueFactors = new List<BigInteger>();
+                var factors = lines.Select(x => x.Substring("GPU: factor ".Length).Split(' ').First());
+                foreach (var factor in factors)
+                {
+                    if (BigInteger.TryParse(factor, out BigInteger b))
+                    {
+                        if (!uniqueFactors.Contains(b))
+                        {
+                            uniqueFactors.Add(b);
+                        }
+                    }
+                }
+                foreach (var item in uniqueFactors)
+                {
+                    f.Add(item, 1);
+                }
+            }
+
+
+
+            return f;
+        }
+
 
         private FactorizationBigInteger ParseCoFactor(string factorPart)
         {
@@ -714,6 +748,7 @@ namespace HigginsSoft.Math.Lib
             return result;
         }
 
+
         private ProcessResult RunBigIntegerEcm(BigInteger n, long effectiveB1, long effectiveB2, int effectiveCurves, bool enableGpu, string algo = "")
         {
             // -I f increment B1 by f*sqrt(B1) on each run
@@ -725,23 +760,24 @@ namespace HigginsSoft.Math.Lib
                 TLevel += 5 digits;
             */
 
-            string gpuSwitch = enableGpu ? "-gpu" : "";
+            string gpuSwitch = enableGpu ? " -gpu" : "";
             // string b2Switch = effectiveB2 >0 ?  enableGpu ? "-gpu" : "";
             var exeName = !string.IsNullOrEmpty(gpuSwitch) ? "ecm_gpu.exe" : "ecm.exe";
             if (!string.IsNullOrEmpty(algo))
             {
                 algo = $" {algo}";
             }
-            string curveSwitch = effectiveCurves > 0 ? $"-c {effectiveCurves}" : "";
+            string curveSwitch = enableGpu == false && effectiveCurves > 0 ? $" -c {effectiveCurves}" : "";
 
             //TODO: stage exe in stand-alone directory to allow multiple instances to run
             //var workingDirectory = @"E:\Source\Repos\NumTheory\msieve\HigginsSoft\gmp-ecm-alexhiggins732\bin\x64\Release";
             var workingDirectory = Path.Combine(AppContext.BaseDirectory, "binaries");
-            var cmd = $"echo \"{n}\" | {exeName} {gpuSwitch}{algo} {curveSwitch} {effectiveB1} {effectiveB2}";
+            var cmd = $"echo \"{n}\" | {exeName}{gpuSwitch}{algo}{curveSwitch} {effectiveB1} {effectiveB2}";
 
             //Console.WriteLine(cmd);
             //todo us DotMpi, for now use process helper
-            var result = ProcessHelper.RunProcess(cmd, workingDirectory);
+            bool waitForExit = enableGpu ? false : true;
+            var result = ProcessHelper.RunProcess(cmd, workingDirectory, WaitForExit: waitForExit);
             return result;
 
         }
@@ -1006,6 +1042,8 @@ namespace HigginsSoft.Math.Lib
             return result;
         }
 
+
+        static FactorConfig config = FactorConfig.GetCommandLineConfig();
         private FactorResult Run(BigInteger n, long effectiveB1, long effectiveB2, int effectiveCurves, bool enableGpu, int effectiveDigits, string algo = "")
         {
             // -I f increment B1 by f*sqrt(B1) on each run
@@ -1066,9 +1104,17 @@ namespace HigginsSoft.Math.Lib
                     WorkingDirectory = workingDirectory
                 }
             };
+           
+
+
+
             var startTime = DateTime.Now;
             var sw = Stopwatch.StartNew();
+
+
+
             process.Start();
+            ProcessHelper.SetProcessAffinity(process);
             process.WaitForExit();
             System.Threading.Thread.Sleep(1);
             sw.Stop();
@@ -1224,9 +1270,16 @@ namespace HigginsSoft.Math.Lib
 
     }
 
+    [SupportedOSPlatform("windows")]
     public class ProcessHelper
     {
-        public static ProcessResult RunProcess(string cmd, string workingDirectory)
+        static FactorConfig config = FactorConfig.GetCommandLineConfig();
+        public static ProcessResult RunProcess(string cmd, string workingDirectory,
+          bool RedirectStandardOutput = true,
+          bool RedirectStandardError = true,
+          bool UseShellExecute = false,
+          bool CreateNoWindow = true,
+          bool WaitForExit = true)
         {
             var process = new System.Diagnostics.Process
             {
@@ -1234,17 +1287,25 @@ namespace HigginsSoft.Math.Lib
                 {
                     FileName = "cmd.exe",
                     Arguments = $"/c {cmd}",
-                    RedirectStandardOutput = true,
+                    RedirectStandardOutput = RedirectStandardOutput,
                     RedirectStandardError = true,
+                    RedirectStandardInput = true,
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     WorkingDirectory = workingDirectory
                 }
             };
+            process.StartInfo.CreateNoWindow = false;
+
+
             process.Start();
-            process.WaitForExit();
+
+            SetProcessAffinity(process);
+            if (WaitForExit) process.WaitForExit();
             string output = process.StandardOutput.ReadToEnd();
             string error = process.StandardError.ReadToEnd();
+
+
 
             var result = new ProcessResult
             {
@@ -1256,7 +1317,23 @@ namespace HigginsSoft.Math.Lib
 
 
         }
+
+        public static void SetProcessAffinity(Process process)
+        {
+            if (config.ProcessorIndex != null)
+            {
+                var idx= config.ProcessorIndex.Value;
+                if (idx < 0 || idx > Environment.ProcessorCount)
+                {
+                    throw new ArgumentOutOfRangeException($"ProcessorIndex {idx} is out of range. Must be between 0 and {Environment.ProcessorCount - 1}.");
+                }
+                process.ProcessorAffinity = (IntPtr)(1L << idx);
+                Console.WriteLine($"Set process {process.Id} affinity to processor " + config.ProcessorIndex.Value);
+            }
+
+        }
     }
+
     public class ProcessResult
     {
         public string Output { get; set; }
