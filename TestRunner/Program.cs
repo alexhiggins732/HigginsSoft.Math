@@ -17,11 +17,22 @@ namespace TestRunner
     {
         static void Main(string[] args)
         {
+            Console.WriteLine($"Running {AppContext.BaseDirectory}{Path.GetFileName(Process.GetCurrentProcess().ProcessName)}.exe - args: {string.Join(" ", args)}");
+            Console.WriteLine($"[{DateTime.Now}] Starting test {nameof(Program)} with working directory {Path.GetFullPath(".")}");
+
             CommandLine.SetArguments(args);
 
             ProcessHelper.SetProcessAffinity(Process.GetCurrentProcess());
-            var efTests = new FactorTest();
 
+
+            if (args.Any(x => x == "test"))
+            {
+                var n = BigInteger.Parse("1234567890123456789012345678901234567890");
+                using var factor = FactorizationBigInteger.Factor(n, false, true, skipFermat: true, skipRho: true, skipRhoP2: true, skipRhoP3: true, skipRhoZ: true, skipPP1: true, skipPM1: true, skipECM: true, skipQS: true, skipFact: false);
+                Console.WriteLine($"[{DateTime.Now}] {n} = {string.Join(" * ", factor.Factors.Select(x => x.P))} - {factor.Factors.Count} factors - {factor.GetProduct()}");
+                return;
+            }
+            var efTests = new FactorTest();
 
             if (args.Any(x => x == "verify"))
             {
@@ -30,7 +41,7 @@ namespace TestRunner
             }
             if (args.Any(x => x == "job"))
             {
-                var runner= new JobRunner();
+                var runner = new JobRunner();
                 runner.RunJob(args);
                 return;
             }
@@ -120,12 +131,26 @@ namespace TestRunner
 
     public class FactorTest
     {
-        void Log(string message)
+
+
+
+        void Log(string message, bool appendDate = true, bool appendThread = true)
         {
+            if (appendThread)
+            {
+                message = $"[{Thread}] {message}";
+            }
+
+            if (appendDate)
+            {
+                message = $"[{DateTime.Now}] {message}";
+            }
+
             Debug.WriteLine(message);
             Console.WriteLine(message);
 
         }
+
         IEnumerable<int> GetPrimesTo(int max)
         {
             var gen = new PrimeGenerator((int)max);
@@ -233,7 +258,7 @@ namespace TestRunner
                     }
                     catch (Exception ex)
                     {
-                        Log($"[{DateTime.Now}] Select DbError {retry + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
+                        Log($"Select DbError {retry + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
                         System.Threading.Thread.Sleep(sleep);
                         sleep *= 2;
                     }
@@ -333,7 +358,7 @@ namespace TestRunner
                         }
                         catch (Exception ex)
                         {
-                            Log($"[{DateTime.Now}] Save DbError {i + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
+                            Log($"Save DbError {i + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
                             System.Threading.Thread.Sleep(sleep);
                             sleep *= 2;
                         }
@@ -343,7 +368,7 @@ namespace TestRunner
                 }
                 saveWatch.Stop();
                 sw.Stop();
-                Log($"[{DateTime.Now}] {unFactored.Last().Id.ToString("N0")} Factored {unFactored.Count.ToString("N0")} factors in {sw.Elapsed} - factor {factorWatch.Elapsed} select {selectWatch.Elapsed} save - {saveWatch.Elapsed}");
+                Log($"{unFactored.Last().Id.ToString("N0")} Factored {unFactored.Count.ToString("N0")} factors in {sw.Elapsed} - factor {factorWatch.Elapsed} select {selectWatch.Elapsed} save - {saveWatch.Elapsed}");
 
 
             }
@@ -384,7 +409,7 @@ namespace TestRunner
                     }
                     catch (Exception ex)
                     {
-                        Log($"[{DateTime.Now}] Select DbError {retry + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
+                        Log($"Select DbError {retry + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
                         System.Threading.Thread.Sleep(sleep);
                         sleep *= 2;
                     }
@@ -471,7 +496,7 @@ namespace TestRunner
                     }
                     catch (Exception ex)
                     {
-                        Log($"[{DateTime.Now}] Save DbError {i + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
+                        Log($"Save DbError {i + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
                         System.Threading.Thread.Sleep(sleep);
                         sleep *= 2;
                     }
@@ -479,7 +504,7 @@ namespace TestRunner
 
                 saveWatch.Stop();
                 sw.Stop();
-                Log($"[{DateTime.Now}] {unFactored.Last().Id.ToString("N0")} Factored {unFactored.Count.ToString("N0")} factors in {sw.Elapsed} - factor {factorWatch.Elapsed} select {selectWatch.Elapsed} save - {saveWatch.Elapsed}");
+                Log($"{unFactored.Last().Id.ToString("N0")} Factored {unFactored.Count.ToString("N0")} factors in {sw.Elapsed} - factor {factorWatch.Elapsed} select {selectWatch.Elapsed} save - {saveWatch.Elapsed}");
 
 
             }
@@ -518,7 +543,7 @@ namespace TestRunner
                     }
                     catch (Exception ex)
                     {
-                        Log($"[{DateTime.Now}] Select DbError {retry + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
+                        Log($"Select DbError {retry + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
                         System.Threading.Thread.Sleep(sleep);
                         sleep *= 2;
                     }
@@ -527,12 +552,12 @@ namespace TestRunner
                 selectWatch.Stop();
                 if (!unFactored.Any())
                 {
-                    Log($"[{DateTime.Now}] No more factors to process after Id={startId}");
+                    Log($"No more factors to process after Id={startId}");
                     break;
                 }
 
 
-                Log($"[{DateTime.Now}] Running batch - {unFactored.Min(x => x.Id)} - {unFactored.Max(x => x.Id)}");
+                Log($"Running batch - {unFactored.Min(x => x.Id)} - {unFactored.Max(x => x.Id)}");
 
                 startId = unFactored.Max(x => x.Id) + 1;
                 foreach (var dbFact in unFactored)
@@ -557,7 +582,7 @@ namespace TestRunner
                     }
                     catch (Exception ex)
                     {
-                        Log($"[{DateTime.Now}] Save DbError {i + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
+                        Log($"Save DbError {i + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
                         System.Threading.Thread.Sleep(sleep);
                         sleep *= 2;
                     }
@@ -565,9 +590,16 @@ namespace TestRunner
             }
         }
 
+        public int Thread = -1;
         public void ProcessDbFactors(int minDigits = 0, int maxDigits = 30, int batchSize = 100)
         {
-            Log($"[{DateTime.Now}] Starting test {nameof(ProcessDbFactors)}(minDigits={minDigits}, maxDigits={maxDigits}, batchSize={batchSize})");
+
+
+            var config = FactorConfig.GetCommandLineConfig();
+            var commandLineArgs = string.Join(" ", Environment.GetCommandLineArgs().Skip(1));
+            this.Thread = config.ProcessorIndex.HasValue ? config.ProcessorIndex.Value : -1;
+
+            Log($"Starting test {nameof(ProcessDbFactors)}(minDigits={minDigits}, maxDigits={maxDigits}, batchSize={batchSize}) args: {commandLineArgs}");
             var initWatch = Stopwatch.StartNew();
             var init = false;
             SetConnectionString();
@@ -579,11 +611,10 @@ namespace TestRunner
             int idx = 0;
             int factorCount = 0;
 
-            var config = FactorConfig.GetCommandLineConfig();
 
             const int maxEffectiveDigits = 256;
             int effectiveDigits = config.Digits.HasValue && (config.skipFact == false || config.skipECM == false) ? config.Digits.Value : maxEffectiveDigits;
-            var commandLineArgs = string.Join(" ", Environment.GetCommandLineArgs().Skip(1));
+
 
             while (true)
             {
@@ -612,7 +643,7 @@ namespace TestRunner
                     catch (Exception ex)
                     {
 
-                        Log($"[{DateTime.Now}] Select DbError {retry + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
+                        Log("Select DbError {retry + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
                         System.Threading.Thread.Sleep(sleep);
                         sleep *= 2;
                     }
@@ -621,7 +652,7 @@ namespace TestRunner
                 {
                     init = true;
                     initWatch.Stop();
-                    Log($"[{DateTime.Now}] Initialized test {nameof(ProcessDbFactors)}(minDigits={minDigits}, maxDigits={maxDigits}, batchSize={batchSize}) in {initWatch.Elapsed}");
+                    Log("Initialized test {nameof(ProcessDbFactors)}(minDigits={minDigits}, maxDigits={maxDigits}, batchSize={batchSize}) in {initWatch.Elapsed}");
                 }
 
                 selectWatch.Stop();
@@ -630,13 +661,12 @@ namespace TestRunner
 
                 if (!unFactored.Any())
                 {
-                    Log($"[{DateTime.Now}] No more factors to process after Id={startId}");
+                    Log("No more factors to process after Id={startId}");
                     break;
-
                 }
 
                 int batchFactored = 0;
-                Log($"[{DateTime.Now}] Running batch of {unFactored.Count} ({unFactored.Min(x => x.Id).ToString("N0")} - {unFactored.Max(x => x.Id).ToString("N0")}) - {commandLineArgs}");
+                Log($"Running batch of {unFactored.Count} ({unFactored.Min(x => x.Id).ToString("N0")} - {unFactored.Max(x => x.Id).ToString("N0")}) - {commandLineArgs}");
 
                 startId = unFactored.Max(x => x.Id) + 1;
                 var factorWatch = Stopwatch.StartNew();
@@ -696,7 +726,7 @@ namespace TestRunner
                                     thisfactorWatch.Stop();
                                     if (c.Power > 1)
                                     {
-                                        Console.WriteLine("Need to handle powers");
+                                        Log("Need to handle powers");
                                     }
                                     subfac.Factors.ForEach(x => x.FactorType = (MathLib.PrimalityType)(int)GmpInt.Primality(x.P));
                                     factored.Add(subfac);
@@ -749,15 +779,15 @@ namespace TestRunner
                     catch (Exception ex)
                     {
 
-                        Log($"[{DateTime.Now}] Save DbError {i + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
+                        Log("Save DbError {i + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
                         System.Threading.Thread.Sleep(sleep);
                         sleep *= 2;
                     }
                 }
                 saveWatch.Stop();
                 sw.Stop();
-                Log(Console.Title);
-                Log($"[{DateTime.Now}] {unFactored.Last().Id.ToString("N0")} Factored {batchFactored} of {unFactored.Count.ToString("N0")} factors in {sw.Elapsed} - factor {factorWatch.Elapsed} select {selectWatch.Elapsed} save - {saveWatch.Elapsed}");
+                Log($"{Console.Title}");
+                Log($"{unFactored.Last().Id.ToString("N0")} Factored {batchFactored} of {unFactored.Count.ToString("N0")} factors in {sw.Elapsed} - factor {factorWatch.Elapsed} select {selectWatch.Elapsed} save - {saveWatch.Elapsed}");
                 dbContext.Dispose();
                 scope.Dispose();
             }
@@ -768,10 +798,10 @@ namespace TestRunner
 
         public void TestTrialDivide()
         {
-            Log($"[{DateTime.Now}] Starting test {nameof(TestTrialDivide)}");
+            Log($"Starting test {nameof(TestTrialDivide)}");
             if (bool.Parse(bool.FalseString))
             {
-                Log($"[{DateTime.Now}] Seeding database {nameof(TestTrialDivide)}");
+                Log($"Seeding database {nameof(TestTrialDivide)}");
                 //EfSeedTest();
             }
             var services = new ServiceCollection();
@@ -780,22 +810,22 @@ namespace TestRunner
 
             var provider = services.BuildServiceProvider();
 
-            Log($"[{DateTime.Now}] Getting Primes {nameof(TestTrialDivide)}");
+            Log($"Getting Primes {nameof(TestTrialDivide)}");
             var primes = GetPrimesTo(1_000_000);
 
 
 
-            Log($"[{DateTime.Now}] Getting Factors {nameof(GetSmallFactors)}");
+            Log($"Getting Factors {nameof(GetSmallFactors)}");
             var smallFactors = GetSmallFactors();
 
-            Log($"[{DateTime.Now}] Filtering Primes {nameof(GetSmallFactors)}");
+            Log($"Filtering Primes {nameof(GetSmallFactors)}");
             var filtered = primes.Where(p => smallFactors.Contains(p)).ToList();
             primes = filtered;
             //}
 
             while (true)
             {
-                //Log($"[{DateTime.Now}] Processing Batch {nameof(TFTestPaged)}");
+                //Log2($"Processing Batch {nameof(TFTestPaged)}");
                 var sw = Stopwatch.StartNew();
                 var factWatch = new Stopwatch();
                 var dtoWatch = new Stopwatch();
@@ -824,17 +854,17 @@ namespace TestRunner
                         if (!rebuiltStats)
                         {
                             rebuiltStats = true;
-                            Log($"[{DateTime.Now}] Rebuilding stats after select timeout");
+                            Log($"Rebuilding stats after select timeout");
                             rebuildStats();
                         }
-                        Log($"[{DateTime.Now}] Select DbError {retry + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
+                        Log($"Select DbError {retry + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
                         System.Threading.Thread.Sleep(sleep);
                         sleep *= 2;
                     }
                 }
                 if (sleep != 10)
                 {
-                    Log($"[{DateTime.Now}] Resuming After Select DbError");
+                    Log($"Resuming After Select DbError");
                 }
                 selectWatch.Stop();
                 if (selectWatch.Elapsed > TimeSpan.FromSeconds(60))
@@ -845,7 +875,7 @@ namespace TestRunner
                     break;
 
                 Stopwatch saveWatch = new Stopwatch();
-                //Log($"[{DateTime.Now}] Processing {dbFacts.Count.ToString("N0")} Factors {nameof(TFTestPaged)}");
+                //Log2($"Processing {dbFacts.Count.ToString("N0")} Factors {nameof(TFTestPaged)}");
                 foreach (var dbFact in dbFacts)
                 {
 
@@ -913,11 +943,11 @@ namespace TestRunner
                         if (!rebuiltStats)
                         {
                             rebuiltStats = true;
-                            Log($"[{DateTime.Now}] Rebuilding stats after save timeout");
+                            Log($"Rebuilding stats after save timeout");
                             rebuildStats();
 
                         }
-                        Log($"[{DateTime.Now}] Save DbError {i + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
+                        Log($"Save DbError {i + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
                         System.Threading.Thread.Sleep(sleep);
                         sleep *= 2;
                     }
@@ -931,9 +961,9 @@ namespace TestRunner
                 sw.Stop();
                 if (sleep != 10)
                 {
-                    Log($"[{DateTime.Now}] Resuming After Save DbError");
+                    Log($"Resuming After Save DbError");
                 }
-                Log($"[{DateTime.Now}] {dbFacts.Last().Id.ToString("N0")} Factored {dbFacts.Count.ToString("N0")} factors in {sw.Elapsed} - factor {factWatch.Elapsed} select {selectWatch.Elapsed} save - {saveWatch.Elapsed} - dto {dtoWatch.Elapsed}");
+                Log($"{dbFacts.Last().Id.ToString("N0")} Factored {dbFacts.Count.ToString("N0")} factors in {sw.Elapsed} - factor {factWatch.Elapsed} select {selectWatch.Elapsed} save - {saveWatch.Elapsed} - dto {dtoWatch.Elapsed}");
 
 
                 app.Dispose();
@@ -963,7 +993,10 @@ namespace TestRunner
 
         public void RunFactorization2(Func<BigInteger, FactorizationBigInteger> factorIt, int minDigits = 0, int maxDigits = 30, int batchSize = 100)
         {
-            Log($"[{DateTime.Now}] Starting test {nameof(ProcessDbFactors)}(minDigits={minDigits},maxDigits={maxDigits},batchSize={batchSize})");
+            var config = FactorConfig.GetCommandLineConfig();
+            Thread = config.ProcessorIndex.HasValue ? config.ProcessorIndex.Value : -1;
+
+            Log($"Starting test {nameof(ProcessDbFactors)}(minDigits={minDigits},maxDigits={maxDigits},batchSize={batchSize})");
             var initWatch = Stopwatch.StartNew();
             var init = false;
             SetConnectionString();
@@ -977,7 +1010,7 @@ namespace TestRunner
 
 
 
-            var config = FactorConfig.GetCommandLineConfig();
+
 
             const int maxEffectiveDigits = 256;
             int effectiveDigits = config.Digits.HasValue && (config.skipFact == false || config.skipECM == false) ? config.Digits.Value : maxEffectiveDigits;
@@ -1010,7 +1043,7 @@ namespace TestRunner
                     catch (Exception ex)
                     {
 
-                        Log($"[{DateTime.Now}] Select DbError {retry + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
+                        Log($"Select DbError {retry + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
                         System.Threading.Thread.Sleep(sleep);
                         sleep *= 2;
                     }
@@ -1018,7 +1051,7 @@ namespace TestRunner
                 if (!init)
                 {
                     initWatch.Stop();
-                    Log($"[{DateTime.Now}] Initialized test {nameof(ProcessDbFactors)}(minDigits={minDigits}, maxDigits={maxDigits}, batchSize={batchSize}) in {initWatch.Elapsed}");
+                    Log($"Initialized test {nameof(ProcessDbFactors)}(minDigits={minDigits}, maxDigits={maxDigits}, batchSize={batchSize}) in {initWatch.Elapsed}");
                 }
 
                 selectWatch.Stop();
@@ -1027,12 +1060,12 @@ namespace TestRunner
 
                 if (!unFactored.Any())
                 {
-                    Log($"[{DateTime.Now}] No more factors to process after Id={startId}");
+                    Log($"No more factors to process after Id={startId}");
                     break;
 
                 }
 
-                Log($"[{DateTime.Now}] Running batch of {unFactored.Count} - {unFactored.Min(x => x.Id)} - {unFactored.Max(x => x.Id)} - {commandLineArgs}");
+                Log($"Running batch of {unFactored.Count} - {unFactored.Min(x => x.Id)} - {unFactored.Max(x => x.Id)} - {commandLineArgs}");
 
                 startId = unFactored.Max(x => x.Id) + 1;
                 var factorWatch = Stopwatch.StartNew();
@@ -1139,7 +1172,7 @@ namespace TestRunner
                     catch (Exception ex)
                     {
 
-                        Log($"[{DateTime.Now}] Save DbError {i + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
+                        Log($"Save DbError {i + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
                         System.Threading.Thread.Sleep(sleep);
                         sleep *= 2;
                     }
@@ -1147,7 +1180,7 @@ namespace TestRunner
                 saveWatch.Stop();
                 sw.Stop();
                 Log(Console.Title);
-                Log($"[{DateTime.Now}] {unFactored.Last().Id.ToString("N0")} Factored of {unFactored.Count.ToString("N0")} factors in {sw.Elapsed} - factor {factorWatch.Elapsed} select {selectWatch.Elapsed} save - {saveWatch.Elapsed}");
+                Log($"{unFactored.Last().Id.ToString("N0")} Factored of {unFactored.Count.ToString("N0")} factors in {sw.Elapsed} - factor {factorWatch.Elapsed} select {selectWatch.Elapsed} save - {saveWatch.Elapsed}");
 
                 dbContext.Dispose();
                 scope.Dispose();
@@ -1160,10 +1193,13 @@ namespace TestRunner
 
         public void RunFactorization(Func<BigInteger, FactorizationBigInteger> factorIt, int maxDbTDiv, int updateDbTDiv, int batchSize = 2000)
         {
-            Log($"[{DateTime.Now}] Starting test {nameof(TestTrialDivide)}");
+            var config = FactorConfig.GetCommandLineConfig();
+            Thread = config.ProcessorIndex.HasValue ? config.ProcessorIndex.Value : -1;
+
+            Log($"Starting test {nameof(RunFactorization)}");
             if (bool.Parse(bool.FalseString))
             {
-                Log($"[{DateTime.Now}] Seeding database {nameof(TestTrialDivide)}");
+                Log($"Seeding database {nameof(TestTrialDivide)}");
                 //EfSeedTest();
             }
             var services = new ServiceCollection();
@@ -1172,20 +1208,19 @@ namespace TestRunner
 
             var provider = services.BuildServiceProvider();
 
-            //Log($"[{DateTime.Now}] Getting Primes {nameof(TFTestPaged)}");
+            //Log2($"Getting Primes {nameof(TFTestPaged)}");
             // var primes = GetPrimesTo(1_000_000);
 
 
 
-            //Log($"[{DateTime.Now}] Getting Factors {nameof(GetSmallFactors)}");
+            //Log2($"Getting Factors {nameof(GetSmallFactors)}");
             //var smallFactors = GetSmallFactors();
 
-            //Log($"[{DateTime.Now}] Filtering Primes {nameof(GetSmallFactors)}");
+            //Log2($"Filtering Primes {nameof(GetSmallFactors)}");
             //var filtered = primes.Where(p => smallFactors.Contains(p)).ToList();
             //primes = filtered;
             //}
 
-            var config = FactorConfig.GetCommandLineConfig();
 
             const int maxEffectiveDigits = 256;
             int effectiveDigits = config.Digits.HasValue && (config.skipFact == false || config.skipECM == false) ? config.Digits.Value : maxEffectiveDigits;
@@ -1194,7 +1229,7 @@ namespace TestRunner
 
             while (true)
             {
-                //Log($"[{DateTime.Now}] Processing Batch {nameof(TFTestPaged)}");
+                //Log2($"Processing Batch {nameof(TFTestPaged)}");
                 var sw = Stopwatch.StartNew();
                 var factWatch = new Stopwatch();
                 var dtoWatch = new Stopwatch();
@@ -1224,17 +1259,17 @@ namespace TestRunner
                         if (!rebuiltStats)
                         {
                             rebuiltStats = true;
-                            Log($"[{DateTime.Now}] Rebuilding stats after select timeout");
+                            Log($"Rebuilding stats after select timeout");
                             rebuildStats();
                         }
-                        Log($"[{DateTime.Now}] Select DbError {retry + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
+                        Log($"Select DbError {retry + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
                         System.Threading.Thread.Sleep(sleep);
                         sleep *= 2;
                     }
                 }
                 if (sleep != 10)
                 {
-                    Log($"[{DateTime.Now}] Resuming After Select DbError");
+                    Log($"Resuming After Select DbError");
                 }
                 selectWatch.Stop();
                 if (selectWatch.Elapsed > TimeSpan.FromSeconds(60))
@@ -1243,17 +1278,17 @@ namespace TestRunner
                 }
                 if (!dbFacts.Any())
                 {
-                    Log($"[{DateTime.Now}] No more factors to process after Id={startId}");
+                    Log($"No more factors to process after Id={startId}");
                     break;
 
                 }
                 startId = dbFacts.Max(x => x.Id) + 1;
 
-                Log($"[{DateTime.Now}] Running batch of {dbFacts.Count} - {dbFacts.Min(x => x.Id)} - {dbFacts.Max(x => x.Id)} - {commandLineArgs}");
+                Log($"Running batch of {dbFacts.Count} - {dbFacts.Min(x => x.Id)} - {dbFacts.Max(x => x.Id)} - {commandLineArgs}");
 
 
                 int idx = 0;
-                //Log($"[{DateTime.Now}] Processing {dbFacts.Count.ToString("N0")} Factors {nameof(TFTestPaged)}");
+                //Log2($"Processing {dbFacts.Count.ToString("N0")} Factors {nameof(TFTestPaged)}");
                 int factored = 0;
                 foreach (var dbFact in dbFacts)
                 {
@@ -1331,11 +1366,11 @@ namespace TestRunner
                         if (!rebuiltStats)
                         {
                             rebuiltStats = true;
-                            Log($"[{DateTime.Now}] Rebuilding stats after save timeout");
+                            Log($"Rebuilding stats after save timeout");
                             rebuildStats();
 
                         }
-                        Log($"[{DateTime.Now}] Save DbError {i + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
+                        Log($"Save DbError {i + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
                         System.Threading.Thread.Sleep(sleep);
                         sleep *= 2;
                     }
@@ -1349,9 +1384,9 @@ namespace TestRunner
                 sw.Stop();
                 if (sleep != 10)
                 {
-                    Log($"[{DateTime.Now}] Resuming After Save DbError");
+                    Log($"Resuming After Save DbError");
                 }
-                Log($"[{DateTime.Now}] {dbFacts.Last().Id.ToString("N0")} Factored {dbFacts.Count.ToString("N0")} factors in {sw.Elapsed} - factor {factWatch.Elapsed} select {selectWatch.Elapsed} save - {saveWatch.Elapsed} - dto {dtoWatch.Elapsed}");
+                Log($"{dbFacts.Last().Id.ToString("N0")} Factored {dbFacts.Count.ToString("N0")} factors in {sw.Elapsed} - factor {factWatch.Elapsed} select {selectWatch.Elapsed} save - {saveWatch.Elapsed} - dto {dtoWatch.Elapsed}");
 
 
                 app.Dispose();

@@ -96,10 +96,11 @@ namespace TestRunner
                 optionalArguments.Add($"{config.Curves}");
             }
 
-            if (config.ProcessorIndex != null)
-            {
-                optionalArguments.Add($"thread {config.ProcessorIndex}");
-            }
+            //if (config.ProcessorIndex != null)
+            //{
+            //optionalArguments.Add($"thread {config.ProcessorIndex}");
+            optionalArguments.Add($"t {{i}}");
+            //}
             if (config.EnableGpu != null)
             {
                 optionalArguments.Add($"gpu {config.EnableGpu}");
@@ -113,12 +114,14 @@ namespace TestRunner
             bool runProcesses = bool.Parse(bool.TrueString);
             for (int i = 0; i < totalJobs; i++)
             {
+
                 var threadStartDigit = startDigit + (i * (endDigit - startDigit + 1) / totalJobs);
                 var threadEndDigit = startDigit + ((i + 1) * (endDigit - startDigit + 1) / totalJobs) - 1;
                 //p.StartInfo.Arguments = $"{startDigit} {endDigit} {batchSize} {algo}";
-                var jobCommandArguments = $"{threadStartDigit} {threadEndDigit} {batchSize} {string.Join(" ", optionalArguments)}";
+                var optionalArgs = string.Join(" ", optionalArguments.Select(x => x.Replace("{i}", $"{i}")));
+                var jobCommandArguments = $"{threadStartDigit} {threadEndDigit} {batchSize} {optionalArgs} test";
 
-                var jobDirectory  = Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "Jobs", $"{config.JobName}_{i}"));
+                var jobDirectory = Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "Jobs", $"{config.JobName}_{i}"));
 
                 Console.WriteLine($"[{DateTime.Now}] Starting job {i + 1}/{totalJobs} with arguments: {exeName} {jobCommandArguments} in {jobDirectory.FullName}");
 
@@ -133,7 +136,7 @@ namespace TestRunner
                     Console.WriteLine($"[{DateTime.Now}] Started job {i + 1}/{totalJobs} in {p.StartInfo.WorkingDirectory} with id {p.Id}");
                 }
 
-                
+
             }
 
             // Wait for all processes to finish

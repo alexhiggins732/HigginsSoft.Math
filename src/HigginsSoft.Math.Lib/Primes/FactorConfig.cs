@@ -13,6 +13,7 @@
 */
 
 using System;
+using static HigginsSoft.Math.Lib.FactorizationBigInteger;
 
 namespace HigginsSoft.Math.Lib
 {
@@ -148,7 +149,7 @@ namespace HigginsSoft.Math.Lib
 
 
 
-            var algos = (new[] { "fermat", "rho", "rhop2", "rhop3", "rhoz", "pp1", "pm1", "ecm", "qs", "siqs", "tdiv", "fact", "factor" })
+            var algos = (new[] { "fermat", "rho", "rhop2", "rhop3", "rhoz", "pp1", "pm1", "ecm", "qs", "siqs", "tdiv","trialdivide", "fact", "factor" })
                 .Select(x => x.ToLower()) // insensitive incase another developer uses a different case
                 .ToList();
 
@@ -156,7 +157,7 @@ namespace HigginsSoft.Math.Lib
             if (argCopy.Count > 0)
             {
 
-                algos.Contains(argCopy[0], StringComparer.CurrentCultureIgnoreCase);
+                if (algos.Contains(argCopy[0], StringComparer.CurrentCultureIgnoreCase));
                 var arg = argCopy[0].ToLower();
 
                 // De-alias the algorithm names to the short name
@@ -164,6 +165,36 @@ namespace HigginsSoft.Math.Lib
                 else if (arg == "siqs") arg = "qs"; // siqs is the same as qs
                 else if (arg == "trialdivide") arg = "tdiv"; // tdiv is the same as trialdivide
 
+                switch (arg)
+                {
+                    case FactorizationSwitches.fermat:
+                        commandLineConfig.skipFermat = false; break;
+                    case FactorizationSwitches.rho:
+                        commandLineConfig.skipRho = false; break;
+                    case FactorizationSwitches.rhop2:
+                        commandLineConfig.skipRhoP2 = false; break;
+                    case FactorizationSwitches.rhop3:
+                        commandLineConfig.skipRhoP3 = false; break;
+                    case FactorizationSwitches.rhoz:
+                        commandLineConfig.skipRhoZ = false; break;
+                    case FactorizationSwitches.pp1:
+                        commandLineConfig.skipPP1 = false; break;
+                    case FactorizationSwitches.pm1:
+                        commandLineConfig.skipPM1 = false; break;
+                    case FactorizationSwitches.ecm:
+                        commandLineConfig.skipECM = false; break;
+                    case FactorizationSwitches.qs:
+                    case FactorizationSwitches.siqs:
+                        commandLineConfig.skipQS = false; break;
+                    case FactorizationSwitches.tdiv:
+                    case FactorizationSwitches.trialdivide:
+                        commandLineConfig.skipTrialDivide = false; break;
+                    case FactorizationSwitches.fact:
+                    case FactorizationSwitches.factor:
+                        commandLineConfig.skipFact = false; break;
+                    default:
+                        break;
+                }
 
                 commandLineConfig.FactorAlgorithm = arg;
 
@@ -217,7 +248,7 @@ namespace HigginsSoft.Math.Lib
             {
                 commandLineConfig = new FactorConfig();
                 var args = CommandLine.Arguments.Select(x => x.Trim().ToLower()).ToList();
-                return GetFromCommandArgs(args);
+                commandLineConfig = GetFromCommandArgs(args);
 
             }
             return commandLineConfig;

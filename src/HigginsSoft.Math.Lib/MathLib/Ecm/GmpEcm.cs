@@ -374,8 +374,8 @@ namespace HigginsSoft.Math.Lib
                 TLevel += 5 digits;
             */
 
-            string gpuSwitch = enableGpu ? "-gpu" : "";
-            string b2Switch = enableGpu ? "-gpu" : "";
+            string gpuSwitch = enableGpu ? " -gpu" : "";
+            string b2Switch = enableGpu ? " -gpu" : "";
             var exeName = "ecm_gpu.exe";
             if (!string.IsNullOrEmpty(algo))
             {
@@ -383,8 +383,10 @@ namespace HigginsSoft.Math.Lib
             }
 
             //TODO: stage exe in stand-alone directory to allow multiple instances to run
-            var workingDirectory = @"E:\Source\Repos\NumTheory\msieve\HigginsSoft\gmp-ecm-alexhiggins732\bin\x64\Release";
-            var cmd = $"echo \"{n}\" | {exeName} {gpuSwitch}{algo} -c {effectiveCurves} {effectiveB1} {effectiveB2}";
+            //var workingDirectory = @"E:\Source\Repos\NumTheory\msieve\HigginsSoft\gmp-ecm-alexhiggins732\bin\x64\Release";
+            var exeFullPath = Path.Combine(AppContext.BaseDirectory, "binaries", exeName);
+            var workingDirectory = Path.GetFullPath(".");
+            var cmd = $"echo \"{n}\" | \"{exeFullPath}\"{gpuSwitch}{algo} -c {effectiveCurves} {effectiveB1} {effectiveB2}";
 
             //todo us DotMpi, for now use process helper
             var result = ProcessHelper.RunProcess(cmd, workingDirectory);
@@ -771,11 +773,13 @@ namespace HigginsSoft.Math.Lib
 
             //TODO: stage exe in stand-alone directory to allow multiple instances to run
             //var workingDirectory = @"E:\Source\Repos\NumTheory\msieve\HigginsSoft\gmp-ecm-alexhiggins732\bin\x64\Release";
-            var workingDirectory = Path.Combine(AppContext.BaseDirectory, "binaries");
-            var cmd = $"echo \"{n}\" | {exeName}{gpuSwitch}{algo}{curveSwitch} {effectiveB1} {effectiveB2}";
+            var exeFullName = Path.Combine(Path.GetFullPath("."), "binaries", exeName);
+            var workingDirectory = Path.GetFullPath(".");
+            var cmd = $"echo \"{n}\" | \"{exeFullName}\"{gpuSwitch}{algo}{curveSwitch} {effectiveB1} {effectiveB2}";
 
             //Console.WriteLine(cmd);
             //todo us DotMpi, for now use process helper
+
             bool waitForExit = enableGpu ? false : true;
             var result = ProcessHelper.RunProcess(cmd, workingDirectory, WaitForExit: waitForExit);
             return result;
@@ -1055,16 +1059,16 @@ namespace HigginsSoft.Math.Lib
                 TLevel += 5 digits;
             */
 
-            string gpuSwitch = enableGpu ? "-gpu" : "";
+            string gpuSwitch = enableGpu ? " -gpu" : "";
             // string b2Switch = effectiveB2 >0 ?  enableGpu ? "-gpu" : "";
-            var exeName = "yafu-x64.exe";
+       
             string curveSwitch = effectiveCurves > 0 ? $"-c {effectiveCurves}" : "";
 
             //TODO: stage exe in stand-alone directory to allow multiple instances to run
             //var workingDirectory = @"E:\Source\Repos\NumTheory\msieve\HigginsSoft\gmp-ecm-alexhiggins732\bin\x64\Release";
-            var workingDirectory = Path.Combine(AppContext.BaseDirectory, "binaries");
+            //var workingDirectory = Path.Combine(AppContext.BaseDirectory, "binaries");
 
-            var cmd = $"{exeName} {gpuSwitch}{algo} {curveSwitch} {effectiveB1} {effectiveB2}";
+           
             var arguments = "";
             if (algo == FactorizationMethod.QS)
             {
@@ -1076,32 +1080,36 @@ namespace HigginsSoft.Math.Lib
             }
             else
             {
-                arguments = $"{gpuSwitch}{algo} {curveSwitch} {effectiveB1} {effectiveB2}";
+                arguments = $"{algo}{gpuSwitch} {curveSwitch} {effectiveB1} {effectiveB2}";
             }
-            cmd = $"{exeName} {arguments}";
+            var exeName = "yafu-x64.exe";
+            var exeFullPath = Path.Combine(AppContext.BaseDirectory, "binaries", exeName);
+            var cmd = $"\"{exeFullPath}\" {arguments}";
             //Console.WriteLine(cmd);
             //todo us DotMpi, for now use process helper
-
-
+            var cwd = Path.GetFullPath(".");
+            var factorJsonPath = Path.Combine(cwd, "factor.json");
+            var factorLogPath = Path.Combine(cwd, "factor.log");
             if (algo == FactorizationMethod.Fact)
             {
-                if (File.Exists(Path.Combine(workingDirectory, "factor.json")))
-                    File.Delete(Path.Combine(workingDirectory, "factor.json"));
+                if (File.Exists(factorJsonPath))
+                    File.Delete(factorJsonPath);
 
             }
             else if (algo == FactorizationMethod.QS)
             {
-                if (File.Exists(Path.Combine(workingDirectory, "factor.log")))
-                    File.Delete(Path.Combine(workingDirectory, "factor.log"));
+                if (File.Exists(factorLogPath))
+                    File.Delete(factorLogPath);
             }
 
+            Console.WriteLine($"Starting process {cmd} in {cwd}");
             var process = new System.Diagnostics.Process
             {
                 StartInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "cmd.exe",
                     Arguments = $"/c {cmd}",
-                    WorkingDirectory = workingDirectory
+                    WorkingDirectory = cwd
                 }
             };
            
@@ -1125,9 +1133,9 @@ namespace HigginsSoft.Math.Lib
                 {
 
 
-                    var factorsJsonFile = Path.Combine(workingDirectory, "factor.json");
+                
                     var stringN = n.ToString();
-                    using (var sr = new StreamReader(factorsJsonFile))
+                    using (var sr = new StreamReader(factorJsonPath))
                     {
                         var line = sr.ReadLine();
                         var factorResult = JsonSerializer.Deserialize<FactorResult>(line);
@@ -1140,10 +1148,9 @@ namespace HigginsSoft.Math.Lib
                 {
 
                     var factorResult = new FactorResult();
-                    var factorLog = Path.Combine(workingDirectory, "factor.log");
                     var stringN = n.ToString();
                     var output = string.Empty;
-                    using (var sr = new StreamReader(factorLog))
+                    using (var sr = new StreamReader(factorLogPath))
                     {
 
 
@@ -1329,6 +1336,10 @@ namespace HigginsSoft.Math.Lib
                 }
                 process.ProcessorAffinity = (IntPtr)(1L << idx);
                 Console.WriteLine($"Set process {process.Id} affinity to processor " + config.ProcessorIndex.Value);
+            }
+            else
+            {
+                Console.WriteLine("Skipping Set Process Affinity - Process affinity not set.");
             }
 
         }

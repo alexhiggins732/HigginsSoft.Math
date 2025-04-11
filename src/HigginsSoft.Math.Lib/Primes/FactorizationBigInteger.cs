@@ -66,7 +66,25 @@ namespace HigginsSoft.Math.Lib
             public const string Fact = nameof(Fact);
         }
 
-        
+        public class FactorizationSwitches
+        {
+            public const string fermat = nameof(fermat);
+            public const string rho = nameof(rho);
+            public const string rhop2 = nameof(rhop2);
+            public const string rhop3 = nameof(rhop3);
+            public const string rhoz = nameof(rhoz);
+            public const string pp1 = nameof(pp1);
+            public const string pm1 = nameof(pm1);
+            public const string ecm = nameof(ecm);
+            public const string qs = nameof(qs);
+            public const string tdiv = nameof(tdiv);
+            public const string trialdivide = nameof(trialdivide);
+            public const string fact = nameof(fact);
+            public const string siqs = nameof(siqs);
+            public const string factor = nameof(factor);
+        }
+
+
 
         static NumericsEcm ecm = new();
         public static FactorizationBigInteger Factor(BigInteger n,
@@ -315,7 +333,7 @@ namespace HigginsSoft.Math.Lib
                     factoredMethods.Add(factoredECM);
                 if (!skipQS || !config.skipQS)
                     factoredMethods.Add(factoredQS);
-                if (!skipQS || !config.skipFact)
+                if (!skipFact || !config.skipFact)
                     factoredMethods.Add(factoredFact);
 
                 if (factoredMethods.Count == 0)
