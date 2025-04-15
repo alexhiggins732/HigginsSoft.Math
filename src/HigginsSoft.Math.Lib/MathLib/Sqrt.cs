@@ -9,6 +9,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace HigginsSoft.Math.Lib
 {
+    public static class BigIntegerExtensions
+    {
+        public static BigInteger Sqrt(this BigInteger d) => MathLib.Sqrt(d);
+    }
     public static partial class MathLib
     {
 
@@ -24,6 +28,7 @@ namespace HigginsSoft.Math.Lib
         public static double Sqrt(ulong d) => (ulong)System.Math.Sqrt(d);
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 
+   
         public static BigInteger Sqrt(BigInteger d)// => (BigInteger)Sqrt((GmpInt)d);
         {
             if (d < 0)

@@ -51,6 +51,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HigginsSoft.Math.Lib.Databa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestRunner", "TestRunner\TestRunner.csproj", "{718CBB49-8CF4-49FE-95D2-99F9666D134B}"
 EndProject
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "PythonQs", "PythonQs\PythonQs.pyproj", "{2DF5D9EC-FDB6-44A6-A8B8-AAEB2BC109DE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -133,6 +135,12 @@ Global
 		{718CBB49-8CF4-49FE-95D2-99F9666D134B}.Release|x64.Build.0 = Release|Any CPU
 		{718CBB49-8CF4-49FE-95D2-99F9666D134B}.Release|x86.ActiveCfg = Release|Any CPU
 		{718CBB49-8CF4-49FE-95D2-99F9666D134B}.Release|x86.Build.0 = Release|Any CPU
+		{2DF5D9EC-FDB6-44A6-A8B8-AAEB2BC109DE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2DF5D9EC-FDB6-44A6-A8B8-AAEB2BC109DE}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{2DF5D9EC-FDB6-44A6-A8B8-AAEB2BC109DE}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{2DF5D9EC-FDB6-44A6-A8B8-AAEB2BC109DE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2DF5D9EC-FDB6-44A6-A8B8-AAEB2BC109DE}.Release|x64.ActiveCfg = Release|Any CPU
+		{2DF5D9EC-FDB6-44A6-A8B8-AAEB2BC109DE}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -146,6 +154,7 @@ Global
 		{A0B80C36-61B8-4A29-85BF-8FEF5978572A} = {98101100-8357-4130-90F1-A0B438E6ED47}
 		{93092D6E-EC68-447B-9E32-DE1B1A7F1526} = {51BC2819-A9C1-465B-8572-895B50B7B9B2}
 		{718CBB49-8CF4-49FE-95D2-99F9666D134B} = {CEF1B2F7-5BAC-4451-A453-73C71A7E222A}
+		{2DF5D9EC-FDB6-44A6-A8B8-AAEB2BC109DE} = {CEF1B2F7-5BAC-4451-A453-73C71A7E222A}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {6EA3AC23-3EF3-4369-9D3D-913A004050BF}

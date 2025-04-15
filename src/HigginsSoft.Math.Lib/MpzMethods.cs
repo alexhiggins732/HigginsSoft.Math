@@ -667,15 +667,73 @@ namespace HigginsSoft.Math.Lib
             return is_mpz_prp(this, num_witnesses);
         }
 
+        /*
+         def rabin_miller_primality_test(a, iterations):
+    """ Rabin Miller primality test
+    """
+    r, s = 0, a - 1
+
+    while s % 2 == 0:
+        r += 1
+        s //= 2
+
+    for _ in range(iterations):
+        n = randint(2, a - 1)
+        x = pow(n, s, a)
+        if x == 1 or x == a - 1:
+            continue
+        for _ in range(r - 1):
+            x = pow(x, 2, a)
+            if x == a - 1:
+                break
+        else:
+            return False
+    return True
+         */
+        public static PrimalityType RabinMiller(BigInteger n, int iterations)
+        {
+            if (n <= 2)
+            {
+                if (n == 2) return PrimalityType.Prime;
+                return PrimalityType.Error;
+            }
+            int s = 0;
+            BigInteger a = -1;
+
+
+            var r = 0;
+
+            while (s % 2 == 0)
+            {
+                r += 1;
+                s /= 2;
+            }
+            for (int i = 0; i < iterations; i++)
+            {
+                a = Random.Shared.Next(2, (int)n - 1);
+                BigInteger x = BigInteger.ModPow(a, s, n);
+                if (x == 1 || x == n - 1)
+                    continue;
+                for (int j = 0; j < r - 1; j++)
+                {
+                    x = BigInteger.ModPow(x, 2, n);
+                    if (x == n - 1)
+                        break;
+                }
+                if (x != n - 1)
+                    return PrimalityType.Composite;
+            }
+            return PrimalityType.ProbablePrime;
+        }
         public static PrimalityType Primality(BigInteger n, int num_witnesses = 20)
         {
             if (n <= 2)
             {
                 if (n == 2) return PrimalityType.Prime;
-                return PrimalityType.Error; 
+                return PrimalityType.Error;
             }
             using GmpInt t = new GmpInt(n);
-            var result = is_mpz_prp(t, num_witnesses);
+            var result = is_mpz_prp(t.Data, num_witnesses);
             mpz_clear(t.Data);
             return result;
         }
@@ -728,7 +786,7 @@ namespace HigginsSoft.Math.Lib
             long d = 5, p = 1, q = 0;
             int max_d = 1000000;
             int jacobi = 0;
-          
+
 
             if (mpz_cmp_ui(n, 2) < 0)
                 return PRP_COMPOSITE;
@@ -812,7 +870,7 @@ namespace HigginsSoft.Math.Lib
 
         public static int mpz_stronglucas_prp(mpz_t n, long p, long q)
         {
-    
+
             long d = p * p - 4 * q;
             ulong r = 0;
             int ret = 0;
@@ -1111,7 +1169,7 @@ namespace HigginsSoft.Math.Lib
             long d = 5, p = 1, q = 0;
             int max_d = 1000000;
             int jacobi = 0;
-          
+
 
             if (mpz_cmp_ui(n, 2) < 0)
                 return PRP_COMPOSITE;
@@ -1199,7 +1257,7 @@ namespace HigginsSoft.Math.Lib
          * *******************************************************************************/
         public static int mpz_lucas_prp(mpz_t n, long p, long q)
         {
-          
+
             int s = 0, j = 0;
             int ret = 0;
             long d = p * p - 4 * q;
@@ -1353,7 +1411,7 @@ namespace HigginsSoft.Math.Lib
             }
 
             mpz_mod(res, uh, n); /* uh contains our return value */
-         
+
 
             if (mpz_cmp_ui(res, 0) == 0)
             {

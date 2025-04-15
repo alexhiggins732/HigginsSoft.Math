@@ -116,7 +116,7 @@ namespace HigginsSoft.Math.Lib
                 throw new ArgumentException($"End value ({endValue}) must be greater than start value ({startValue})");
             }
 
-            //Make sure maxPrime is an actual prime to prevent over enumerating and arithemtic overlflows with long.maxvalue
+            //Make sure maxPrime is an actual prime to prevent over enumerating and arithmetic overflows with long.MaxValue
             if (!MathUtil.IsProbablePrime(endValue))
             {
                 maxPrime = MathUtil.GetPreviousPrime(endValue);

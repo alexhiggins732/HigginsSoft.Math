@@ -1,4 +1,5 @@
 ﻿using Dapper;
+using FactoringAlgorithms;
 using HigginsSoft.Math.Lib;
 using HigginsSoft.Math.Lib.Database;
 using MathGmp.Native;
@@ -9,6 +10,7 @@ using Microsoft.SqlServer.Server;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Numerics;
+
 
 namespace TestRunner
 {
@@ -24,6 +26,8 @@ namespace TestRunner
 
             ProcessHelper.SetProcessAffinity(Process.GetCurrentProcess());
 
+            var efTests = new FactorTest();
+
 
             if (args.Any(x => x == "test"))
             {
@@ -32,7 +36,12 @@ namespace TestRunner
                 Console.WriteLine($"[{DateTime.Now}] {n} = {string.Join(" * ", factor.Factors.Select(x => x.P))} - {factor.Factors.Count} factors - {factor.GetProduct()}");
                 return;
             }
-            var efTests = new FactorTest();
+            if (args.Any(x => x == "updateoffsets"))
+            {
+                var FactorBaseSiever = new DbFactorBaseSieve();
+                FactorBaseSiever.SaveOffsets();
+                return;
+            }
 
             if (args.Any(x => x == "verify"))
             {
@@ -46,9 +55,60 @@ namespace TestRunner
                 return;
             }
 
+            if (args.Any(x => x == "tonelli"))
+            {
+                efTests.TestTonelli();
+                return;
+            }
+
+            if (args.Any(x => x == "factorbasesieve"))
+            {
+                int startBits = 0;
+                int endBits = 15;
+
+                if (args.Length > 1 && int.TryParse(args[1], out startBits)) { }
+                if (args.Length > 2 && int.TryParse(args[2], out endBits)) { }
+                var FactorBaseSiever = new FactorBaseSiever();
+                FactorBaseSiever.SieveFactorBaseIntPrimes(startBits, endBits);
+                return;
+            }
+
+            if (args.Any(x => x == "factorbasesieveuint"))
+            {
+                int bit = 32;
+                if (args.Length > 1 && int.TryParse(args[1], out bit)) { }
+                var FactorBaseSiever = new FactorBaseSieverUint();
+                FactorBaseSiever.SieveFactorBaseUintPrimes(bit);
+                return;
+            }
+            if (args.Any(x => x == "factorbasesievelong"))
+            {
+                int bit = 33;
+                if (args.Length > 1 && int.TryParse(args[1], out bit)) { }
+                var FactorBaseSiever = new FactorBaseSieverLong();
+                FactorBaseSiever.SieveFactorBaseLongPrimes(bit);
+                return;
+            }
+            if (args.Any(x => x == "factorbasesievelongmod3"))
+            {
+                int bit = 33;
+                if (args.Length > 1 && int.TryParse(args[1], out bit)) { }
+                var FactorBaseSiever = new FactorBaseSieverLongMod3();
+                FactorBaseSiever.SieveFactorBaseLongPrimes(bit);
+                return;
+            }
+            if (args.Any(x => x == "factorbasesievebig"))
+            {
+                int bit = 33;
+                if (args.Length > 1 && int.TryParse(args[1], out bit)) { }
+                var FactorBaseSiever = new FactorBaseSieverNumerics();
+                FactorBaseSiever.SieveFactorBase(bit);
+                return;
+            }
+
             if (args.Any(x => x == "dbfactorbasesieve"))
             {
-                var FactorBaseSiever = new FactorBaseSiever();
+                var FactorBaseSiever = new DbFactorBaseSieve();
                 FactorBaseSiever.SieveDbPrimes();
                 return;
             }
@@ -64,6 +124,22 @@ namespace TestRunner
                 test.TinyEcm();
                 return;
             }
+            if (args.Any(x => x == "offsets"))
+            {
+                if (BigInteger.TryParse(args[1], out BigInteger p))
+                {
+                    var n = RsaChallenge.Rsa1024BigInt;
+                    var offsets = MathLib.TonelliShanksPy.GetFactorBaseOffsets(n, p);
+                    Console.WriteLine($"0: {offsets.Item1}");
+                    Console.WriteLine($"2: {offsets.Item2}");
+                }
+                else
+                {
+                    Console.WriteLine($"[{DateTime.Now}] Error parsing {args[1]}");
+                }
+                return;
+            }
+
             if (args.Any(x => x == "factortdiv"))
             {
                 var test = new FactorTest();
@@ -132,7 +208,48 @@ namespace TestRunner
     public class FactorTest
     {
 
+        public void TestTonelli()
+        {
+            var n = RsaChallenge.Rsa1024BigInt;
+            var offsets = MathLib.TonelliShanksPy.GetFactorBaseOffsets(n);
+            foreach (var solution in offsets)
+            {
+                Console.WriteLine($"{solution.Key}\t{solution.Value.First()}\t{solution.Value.Last()}");
+            }
 
+
+
+            MathLib.TonelliShanksPy.Factorize(n);
+
+
+            var sqrt = n.Sqrt();
+            var smallPrimes = GetPrimesTo(1000);
+            var modRoots = smallPrimes.Select(x => new { P = x, Offset = MathLib.TonelliShanks2.ModSqrt(n, x) })
+                .Where(x => x.Offset > -1).ToList();
+            var solutions = modRoots.Select(x =>
+             {
+                 var solutions2 = MathLib.TonelliShanks2.SolveResidueOffsets(n, x.Offset, x.P);
+                 var solutions = MathLib.TonelliShanks.GetSolutions(n, x.P);
+                 var solutions3 = MathLib.TonelliShanksPy.TonelliShanksAlgo(n, x.P);
+
+                 return new
+                 {
+                     x.P,
+                     x.Offset,
+                     Class1 = solutions2.a,
+                     Class2 = solutions2.b,
+                 };
+             }).ToList();
+
+
+
+            foreach (var solution in solutions)
+            {
+                Console.WriteLine($"{solution.P}: {solution.Offset} - Class1: {solution.Class1} - Class2: {solution.Class2}");
+            }
+
+
+        }
 
         void Log(string message, bool appendDate = true, bool appendThread = true)
         {
@@ -220,7 +337,7 @@ namespace TestRunner
         public void SetConnectionString()
         {
             FactorDbContext.DbConnectionString =
-         "Server=192.168.2.170;Database=Factors;user=factor;password=F@act0#1;MultipleActiveResultSets=true;TrustServerCertificate=True;Command Timeout=300";
+         "Server=192.168.2.170;Database=Factors;user=factor;password=F@act0#1;MultipleActiveResultSets=true;TrustServerCertificate=True;Command Timeout=1000";
 
         }
 
@@ -699,7 +816,7 @@ namespace TestRunner
                         var n = BigInteger.Parse(smallFactor.P);
                         var thisfactorWatch = Stopwatch.StartNew();
                         // get algorithms from the command line or use one rho algo at random
-                        using var factored = FactorizationBigInteger.Factor(n, false, true, skipFermat: true, skipRho: true, skipRhoP2: true, skipRhoP3: true, skipRhoZ: true, skipPP1: true, skipPM1: true, skipECM: true, skipQS: true, skipFact:true);
+                        using var factored = FactorizationBigInteger.Factor(n, false, true, skipFermat: true, skipRho: true, skipRhoP2: true, skipRhoP3: true, skipRhoZ: true, skipPP1: true, skipPM1: true, skipECM: true, skipQS: true, skipFact: true);
                         thisfactorWatch.Stop();
 
 

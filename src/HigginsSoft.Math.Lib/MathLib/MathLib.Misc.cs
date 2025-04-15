@@ -324,6 +324,59 @@ namespace HigginsSoft.Math.Lib
             return randomBig;
         }
 
+        public static int LegendreSymbol(GmpInt n, int p)
+        {
+            // TODO: Implement modular exponentiation using GMP to compute:
+            // r = n^((p-1)/2) mod p, and return 1 if r == 1, -1 if r == p-1, else 0.
+            // For now, return 1 as a placeholder.
+            var pHalf = p >> 1;
+            var res = (GmpInt)n.PowerMod(pHalf, p);
+            if (res.IsOne)
+                return 1;
+            if (res == p - 1)
+                return -1;
+            return 0;
+
+        }
+
+        public static int LegendreSymbol(BigInteger n, int p)
+        {
+            // TODO: Implement modular exponentiation using GMP to compute:
+            // r = n^((p-1)/2) mod p, and return 1 if r == 1, -1 if r == p-1, else 0.
+            // For now, return 1 as a placeholder.
+            var pHalf = p >> 1;
+            var res = MathLib.PowerMod(n, pHalf, p);
+            if (res.IsOne)
+                return 1;
+            if (res == p - 1)
+                return -1;
+            return 0;
+
+        }
+
+        public static int LegendreSymbol(BigInteger n, BigInteger p)
+        {
+            // TODO: Implement modular exponentiation using GMP to compute:
+            // r = n^((p-1)/2) mod p, and return 1 if r == 1, -1 if r == p-1, else 0.
+            // For now, return 1 as a placeholder.
+            var pHalf = p >> 1;
+            var res = BigInteger.ModPow(n, pHalf, p);
+            if (res.IsOne)
+                return 1;
+            if (res == p - 1)
+                return -1;
+            return 0;
+
+        }
+
+        public static bool IsQuadraticResidue(GmpInt n, int p)
+        => LegendreSymbol(n, p) == 1;
+
+        public static bool IsQuadraticResidue(BigInteger n, int p)
+           => LegendreSymbol(n, p) == 1;
+
+        public static bool IsQuadraticResidue(BigInteger n, BigInteger p)
+            => LegendreSymbol(n, p) == 1;
 
 
 
@@ -337,7 +390,7 @@ namespace HigginsSoft.Math.Lib
         public static Func<BigInteger, uint[]> BigIntGetBitsReflection = (src) =>
         {
             var getter = typeof(BigInteger).GetField("_bits", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            return (uint[])getter.GetValue( src);
+            return (uint[])getter.GetValue(src);
         };
 
 
@@ -370,7 +423,7 @@ namespace HigginsSoft.Math.Lib
 
             return lambdaExpression.Compile();
         }
-        
+
 
 
         /// <summary>
@@ -406,7 +459,7 @@ namespace HigginsSoft.Math.Lib
 
         public static uint[] ToUintArray(BigInteger src)
         {
-            if (src.Sign > 1)  return new uint[] { (uint)src.Sign };
+            if (src.Sign > 1) return new uint[] { (uint)src.Sign };
             else if (src.IsZero || src.IsOne) return new uint[] { (uint)src.Sign };
 
             //can get the bits directly but then need to worry about handling the sign being packed.

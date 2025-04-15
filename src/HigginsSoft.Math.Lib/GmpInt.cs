@@ -153,8 +153,9 @@ namespace HigginsSoft.Math.Lib
         {
             if (Data.Pointer == IntPtr.Zero) return "uninitialized";
             if (IsZero) return "0";
-            char_ptr s = gmp_lib.mpz_get_str(char_ptr.Zero, @base, Data);
+            using char_ptr s = gmp_lib.mpz_get_str(char_ptr.Zero, @base, Data);
             var value = s.ToString().Replace(" ", "").TrimStart('0');
+            s.Dispose();
             return value;
         }
 

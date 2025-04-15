@@ -38,6 +38,7 @@ namespace HigginsSoft.Math.Lib.Database
         public DbSet<DbFactorization> Factorizations { get; set; }
 
         public DbSet<DbFactor> Factors { get; set; }
+        public DbSet<FactorQueue> FactorQueue { get; set; }
     }
 
     public class BaseEntity
@@ -80,5 +81,15 @@ namespace HigginsSoft.Math.Lib.Database
         Composite = PRP_COMPOSITE,
         ProbablePrime = PRP_PRP,
         Prime = PRP_PRIME,
+    }
+
+    public class FactorQueue
+    {
+        public int Id { get; set; }
+        public int FactorizationId { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public bool Processed { get; set; } = false;
+
+        public string Prime { get; set; } = null!;
     }
 }
