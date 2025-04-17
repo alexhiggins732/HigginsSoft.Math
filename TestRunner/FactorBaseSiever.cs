@@ -18,41 +18,12 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics.Arm;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
 namespace TestRunner
 {
-    public class BitRange
-    {
-        public readonly BigInteger StartValue;
-        public readonly BigInteger EndValue;
-        public readonly int StartBit;
-        public readonly int EndBit;
-        public BitRange(int bits)
-            : this(bits, bits)
-        {
-
-        }
-        public BitRange(int startBit, int endBit)
-        {
-            StartBit = startBit;
-            EndBit = endBit;
-            var one = BigInteger.One;
-            StartValue = one << (startBit - 1);
-            EndValue = (one << endBit) - 1;
-        }
-
-        internal void ValidateBounds(BigInteger rangeMinValue, BigInteger rangeMaxValue)
-        {
-            // validate range start and end don't overflow as uint.max.Value
-            if (StartValue < rangeMinValue || EndValue > rangeMaxValue || StartValue >= EndValue)
-            {
-                throw new ArgumentOutOfRangeException($"Range {StartValue} - {EndValue} is out of bounds of {rangeMinValue} - {rangeMaxValue}");
-            }
-        }
-    }
     public class FactorBaseSieverBase
     {
         public Dictionary<int, HashSet<T>> GetFactorLookup<T>(int minBits, int maxBits, Func<string, T> parse)
@@ -771,6 +742,308 @@ namespace TestRunner
 
     }
 
+    public class FactorBaseSieverLongQueue : FactorBaseSieverBase
+    {
+
+        public Dictionary<int, HashSet<long>> GetFactorLookup(int bits)
+        {
+            return base.GetFactorLookup(bits, bits, long.Parse);
+        }
+
+
+        /// <summary>
+        /// returns the next prime number greater than or equal to z
+        /// </summary>
+        /// <param name="z"></param>
+        public static void GetNextPrime(GmpInt z)
+        {
+            if (gmp_lib.mpz_even_p(z.Data) > 0)
+            {
+                gmp_lib.mpz_add_ui(z.Data, z.Data, 1);
+            }
+
+            //TODO: only test candidates that +/-1 mod 6
+            var test = gmp_lib.mpz_probab_prime_p(z.Data, 20);
+            while (test == 0)
+            {
+                gmp_lib.mpz_add_ui(z.Data, z.Data, 2);
+                test = gmp_lib.mpz_probab_prime_p(z.Data, 20);
+            }
+        }
+        IEnumerable<long> NaiveLongPrimeGenerator(ulong nextPrime, ulong maxPrime)
+        {
+            using GmpInt current = (nextPrime + 1ul);
+            using GmpInt max = (maxPrime + 1ul);
+            while (true)
+            {
+                GetNextPrime(current);
+                if (gmp_lib.mpz_sizeinbase(current.Data, 2) > 63 ||
+                     gmp_lib.mpz_cmp(current.Data, max.Data) >= 0)
+                    break;
+                yield return (long)current;
+                gmp_lib.mpz_add_ui(current.Data, current.Data, 2u);
+            }
+
+        }
+
+        internal void SieveFactorBaseLongPrimes(int bits = 32)
+        {
+            var n = RsaChallenge.Rsa1024BigInt;
+
+            var maxDbId = 10_000_000;
+         
+            int factored = 0;
+
+
+            var range = new BitRange(bits);
+            range.ValidateBounds(0, long.MaxValue);
+            // validate range start and end don't overflow as uint.max.Value
+
+            // validate that the range is valid
+            if (range.StartBit < 0 || range.EndBit > 63 || range.StartBit > range.EndBit)
+            {
+                throw new ArgumentOutOfRangeException($"Range {range.StartBit} - {range.EndBit} is out of bounds for uint");
+            }
+
+            var minPrime = (long)range.StartValue;
+            var maxPrime = (long)range.EndValue;
+
+            var sw = Stopwatch.StartNew();
+
+            var test = new FactorTest();
+            test.SetConnectionString();
+
+            Log($"Executing {nameof(SieveFactorBaseLongPrimes)} Sieve loop - {sw.Elapsed}");
+
+            Dictionary<int, HashSet<long>> factorLookup = new();
+
+
+            factorLookup = GetFactorLookup(bits);
+
+
+
+
+
+            var services = new ServiceCollection();
+            services.AddDbContext<FactorDbContext>(options => options.UseSqlServer(FactorDbContext.DbConnectionString));
+            var provider = services.BuildServiceProvider();
+
+            var args = CommandLine.GetFactorArguments();
+            var queue = new BlockingCollection<(long prime, (BigInteger r1, BigInteger r2) roots)>(boundedCapacity: 10000);
+
+            long firstPrime = 0;
+            long lastPrime = 0;
+
+            ConcurrentDictionary<int, BigInteger> jobTracker = new();
+            Dictionary<int, string> checkpointFiles = new();
+            var producer = Task.Run(() =>
+            {
+                var root = n.Sqrt();
+
+                var jobCount = args.TotalJobs;
+                if (jobCount < 1)
+                    jobCount = 1;
+
+                var jobName = args.JobName;
+
+
+                var threads = args.TotalThreads == 0 ? 1 : args.TotalThreads;
+                var thread = args.ProcessorIndex ?? 1;
+
+                // valid thread between 0 and total threads.
+
+
+                if (threads < 1)
+                    threads = 1;
+
+                if (thread < 0 || thread > threads - 1)
+                {
+                    Log($"Error Job - Thread {thread} is out of range for {threads} threads");
+                    return;
+                }
+
+
+                var checkPointFilename = $"{(args.JobName ?? "job")}-{thread}-of-{threads}_{range.StartBit}-{range.EndBit}";
+                if (string.IsNullOrEmpty(jobName))
+                    jobName = checkPointFilename;
+
+                // for 2^P want split job across t threads.
+                // for example, if P=32, want to split 2^32 across 4 threads
+                // so each thread gets 2^30
+                // for example, if p=42, want to split 2^42 across 4 threads
+                // so each thread gets 2^40
+                // calculate each threads range from the total range size
+
+                var rangeSize = range.EndValue - range.StartValue;
+                var threadRangeSize = rangeSize / threads;
+
+                // split the thread range size across jobs
+                // for example, if p=32, our thread range size = 2^30.
+                // and for example, our job size is 24
+                // so we want to split the range size across 24 jobs that will run in a parallel for
+                var jobSize = threadRangeSize / jobCount;
+
+
+                //split range.StartValue / range.EndValue across jobs
+                //var jobSize = rangeSize / jobCount;
+
+                // calculate the range for the thread
+                var threadStart = range.StartValue + (thread * threadRangeSize);
+                var threadEnd = threadStart + threadRangeSize;
+
+
+                var checkPointWatch = new Stopwatch();
+                int i = 0;
+                Parallel.For(i, jobCount, (j) =>
+                {
+                    //var jobStartPrime = range.StartValue + (j * jobSize);
+                    var jobStartPrime = threadStart + (j * jobSize);
+                    var jobEndPrime = jobStartPrime + jobSize;
+                    if (j == jobCount - 1)
+                        //jobEndPrime = range.EndValue;
+                        jobEndPrime = threadEnd;
+
+                    if (j == 0)
+                        firstPrime = (long)jobStartPrime;
+                    if (j == jobCount - 1)
+                        lastPrime = (long)jobStartPrime;
+
+                    Log($"Job {j} - {jobStartPrime} - {jobEndPrime}");
+
+                    var checkpointFile = $"{checkPointFilename}-thread-{j}-of-{jobCount}.json";
+                    checkpointFiles.Add(j, checkpointFile);
+                    ulong resumeFrom = (ulong)JobManager.GetJobStart(j, thread, jobStartPrime, jobEndPrime, checkpointFile);
+                    if (resumeFrom > jobStartPrime)
+                    {
+                        Log($"Resuming Job {j} from {resumeFrom}");
+                    }
+                    jobTracker.TryAdd(j, jobStartPrime);
+                    var gen = NaiveLongPrimeGenerator(resumeFrom, (ulong)jobEndPrime);
+
+                    foreach (var prime in gen)
+                    {
+                        jobTracker[j] = prime;
+                        //try
+                        //{
+                        if (j == 0)
+                            firstPrime = prime;
+                        if (j == jobCount - 1)
+                            lastPrime = prime;
+
+                        if (prime > jobEndPrime)
+                            break;
+                        if (prime == 2 || !MathLib.IsQuadraticResidue(n, prime))
+                            continue;
+                        var roots = MathLib.TonelliShanksPy.GetFactorBaseOffsets(n, prime, root, false);
+                        queue.Add((prime, (roots.Item1, roots.Item2)));
+
+                    }
+
+                });
+                /*
+                //todo split minPrime / maxPrime across threads and run in parallel
+                var gen = NaiveLongPrimeGenerator((ulong)minPrime, (ulong)maxPrime);
+                foreach (var prime in gen)
+                {
+                    if (prime > maxPrime)
+                        break;
+                    if (prime == 2 || !MathLib.IsQuadraticResidue(n, prime))
+                        continue;
+                    var roots = MathLib.TonelliShanksPy.GetFactorBaseOffsets(n, prime, root, false);
+                    queue.Add((prime, (roots.Item1, roots.Item2)));
+                }
+                */
+                queue.CompleteAdding();
+            });
+
+
+
+            long primeCount = 0;
+            Log($"Entering {nameof(SieveFactorBaseLongPrimes)} loop - {sw.Elapsed}");
+            DateTime lastLog = DateTime.MinValue;
+
+            long nextPrime = minPrime;
+
+            int saveBatchSize = 1000;
+            ConcurrentBag<(int FactorizationId, BigInteger Prime)> factors = new();
+            var consumer = Task.Run(() =>
+            {
+                var saveTimeout = Stopwatch.StartNew();
+                Action<bool> saveFactors = (completed) =>
+                {
+                    if (factors.Any())
+                    {
+                        FactoringQueue.QueueFactors(factors.ToList());
+                        factors.Clear();
+                    }
+
+                    foreach(var pair in checkpointFiles)
+                    {
+                        if(jobTracker.TryGetValue(pair.Key, out var lastPrime))
+                        {
+                            JobManager.Update(pair.Value, lastPrime, completed);
+                        }
+                    }
+                    saveTimeout.Restart();
+                };
+
+
+                foreach (var (primeFactor, roots) in queue.GetConsumingEnumerable())
+                {
+                    if (primeFactor >= maxPrime)
+                        break;
+                    if (primeFactor < minPrime)
+                        continue;
+                    primeCount++;
+
+                    if (primeCount % 10 == 0 && (DateTime.Now - lastLog).TotalSeconds > 1)
+                    {
+                        //message = $"{DateTime.Now} ({i.ToString("N0")}) Factored {factored.ToString("N0")} - Prime {primeFactor.ToString("N0")}  {sw.Elapsed}";
+                        Log($"({primeCount.ToString("N0")}) {factored.ToString("N0")} Factors: {firstPrime.ToString("N0")} - {lastPrime.ToString("N0")} in {sw.Elapsed}");
+                        lastLog = DateTime.Now;
+                    }
+                    var solutions = roots;
+                    foreach (var residue in new[] { solutions.Item1, solutions.Item2 })
+                    {
+
+                        if (residue >= maxDbId || residue == 0) continue;
+                        var offset = (int)residue;
+                        if (factorLookup.TryGetValue(offset, out var ids))
+                        {
+                            if (!ids.Contains(primeFactor))
+                            {
+                                factored++;
+                                factors.Add((offset, primeFactor));
+                            }
+                        }
+                    }
+
+                    if (factors.Count >= saveBatchSize || saveTimeout.Elapsed.TotalMinutes > 5)
+                    {
+                        saveFactors(false);
+                    }
+                }
+
+                if (factors.Any())
+                {
+                    saveFactors(true);
+                }
+
+                Log($"({primeCount.ToString("N0")}) Factored {factored.ToString("N0")} - {sw.Elapsed}");
+
+            });
+
+
+            Task.WaitAll(producer, consumer);
+
+
+
+            Log($"Total time elapsed: {sw.Elapsed}");
+        }
+
+
+    }
+
     public class FactorBaseSieverLongMod3 : FactorBaseSieverBase
     {
 
@@ -893,7 +1166,7 @@ namespace TestRunner
                     k = (prime / 4);
                     Q = BigInteger.ModPow(n, k + 1, prime) % prime;
 
-                    var roots = MathLib.TonelliShanksPy.GetFactorBaseOffsets(n, prime, root,Q, false);
+                    var roots = MathLib.TonelliShanksPy.GetFactorBaseOffsets(n, prime, root, Q, false);
                     //var roots= MathLib.TonelliShanksPy.GetFactorBaseOffsets(n, prime, root, false);
                     queue.Add((prime, (roots.Item1, roots.Item2)));
                 }
@@ -1636,143 +1909,5 @@ namespace TestRunner
             dbContext.SaveChanges();
         }
 
-    }
-
-    public class FactorDbHelper()
-    {
-        const int MaxTDiv = 256;
-        internal void SetTDiv(int factorizationId, int tDiv)
-        {
-            if (tDiv < MaxTDiv)
-            {
-                Console.Write("Setting TDiv to {0} for factorization {1}", tDiv, factorizationId);
-                var t = new FactorTest();
-                t.SetConnectionString();
-                using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
-                {
-                    var query = "UPDATE Factorizations SET TDiv = @TDiv WHERE Id = @Id";
-                    conn.Execute(query, new { TDiv = tDiv, Id = factorizationId });
-                }
-            }
-
-        }
-        internal void AddFactor(int factorizationId, string factorString)
-        {
-            var t = new FactorTest();
-            t.SetConnectionString();
-            using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
-            {
-
-                var dbFactorization = conn.QueryFirstOrDefault<(int id, string n)?>("SELECT id, n FROM Factorizations WHERE Id = @DbFactorizationId",
-                    new { DbFactorizationId = factorizationId, P = factorString });
-
-                if (dbFactorization is null)
-                {
-                    Console.WriteLine($"DbFactorization {factorizationId} not found");
-                    return;
-                }
-                else if (dbFactorization.Value.n == factorString)
-                {
-                    Console.WriteLine($"Factor {factorString} already exists as N for the DbFactorization {factorizationId}");
-                    return;
-                }
-                var factors = conn.Query<(int Id, string P, int Power, int Type)>("SELECT id, p, power, type FROM Factors WHERE DbFactorizationId = @DbFactorizationId",
-                    new { DbFactorizationId = factorizationId, P = factorString });
-
-                var bigN = BigInteger.Parse(dbFactorization.Value.n);
-                var newFactor = BigInteger.Parse(factorString);
-                var newFactorPrimalityType = (MathLib.PrimalityType)(int)GmpInt.Primality(newFactor);
-
-                conn.Open();
-                var trans = conn.BeginTransaction();
-                try
-                {
-
-
-                    foreach (var factor in factors)
-                    {
-
-                        var dbFactor = BigInteger.Pow(BigInteger.Parse(factor.P), factor.Power);
-
-                        if (dbFactor <= newFactor)
-                            continue;
-                        // don't  
-                        var f = new Factor<BigInteger>(newFactor, 0);
-                        f.FactorType = newFactorPrimalityType;
-
-                        while (dbFactor % newFactor == 0)
-                        {
-                            f.Power++;
-                            dbFactor /= newFactor;
-                        }
-                        if (f.Power > 0)
-                        {
-                            Console.WriteLine($"Adding factor {f.P} to {factorizationId}");
-                            // Remove the old factor
-                            var deleteQuery = "update factors set dbFactorizationId = null where Id = @Id";
-                            conn.Execute(deleteQuery, new { Id = factor.Id }, transaction: trans);
-                            // Add the new factor
-                            var insertQuery = "INSERT INTO Factors (DbFactorizationId, P, Power, Type, Digits, Bits) VALUES (@DbFactorizationId, @P, @Power, @Type, @Digits, @Bits)";
-                            var pParams = new
-                            {
-                                DbFactorizationId = factorizationId,
-                                P = f.P.ToString(),
-                                Power = f.Power,
-                                Type = (int)f.FactorType,
-                                Digits = f.P.ToString().Length,
-                                Bits = MathLib.BitLength(f.P)
-                            };
-                            conn.Execute(insertQuery, pParams, transaction: trans);
-
-                            if (dbFactor > 1)
-                            {
-                                var nParams = new
-                                {
-                                    DbFactorizationId = factorizationId,
-                                    P = dbFactor.ToString(),
-                                    Power = 1,
-                                    Type = (int)GmpInt.Primality(dbFactor),
-                                    Digits = dbFactor.ToString().Length,
-                                    Bits = MathLib.BitLength(dbFactor)
-                                };
-                                conn.Execute(insertQuery, nParams, transaction: trans);
-                            }
-                        }
-
-
-                    }
-
-                    // get updated factors from the database
-                    // get updated factors from the database
-                    factors = conn.Query<(int Id, string P, int Power, int Type)>("SELECT id, p, power, type FROM Factors WHERE DbFactorizationId = @DbFactorizationId",
-                            new { DbFactorizationId = factorizationId, P = factorString }, trans);
-
-                    var newFactorValue = factors.Select(x => BigInteger.Pow(BigInteger.Parse(x.P), x.Power)).Aggregate((a, b) => a * b);
-                    if (newFactorValue != bigN)
-                    {
-                        var message = $"Invalid factorization for {factorizationId}: {newFactorValue} != {bigN}";
-                        Console.WriteLine(message);
-                        throw new Exception(message);
-                    }
-                    else
-                    {
-                        var newPrimalityType = factors.All(x => (int)x.Type > 0) ? PrimalityType.ProbablePrime : PrimalityType.Composite;
-                        var updateQuery = "UPDATE Factorizations SET Type = @newPrimalityType WHERE Id = @factorizationId";
-                        conn.Execute(updateQuery, new { factorizationId, newPrimalityType }, trans);
-                        trans.Commit();
-                    }
-
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error adding factor: {ex}");
-                    try
-                    {
-                        trans.Rollback();
-                    }
-                    catch { }
-                }
-            }
-        }
     }
 }

@@ -43,6 +43,7 @@ namespace HigginsSoft.Math.Lib
         public int? StartDigit { get; private set; }
         public int? EndDigit { get; private set; }
         public int? BatchSize { get; private set; }
+        public int TotalThreads { get; private set; }
 
         static FactorConfig? commandLineConfig = null;
         public static FactorConfig GetFromCommandArgs(List<string> args)
@@ -76,6 +77,20 @@ namespace HigginsSoft.Math.Lib
 
                 }
             }
+
+            if (argCopy.Contains("threads", StringComparer.OrdinalIgnoreCase) )
+            {
+                idx = argCopy.Select(x => x.ToLower()).ToList().IndexOf("threads");
+                if (idx < argCopy.Count - 1 && int.TryParse(argCopy[idx + 1], out var totalThreads))
+                {
+                    commandLineConfig.TotalThreads = totalThreads;
+                }
+                // remove the args from the list
+                argCopy.RemoveAt(idx + 1);
+                argCopy.RemoveAt(idx);
+
+            }
+
             if (argCopy.Contains("thread", StringComparer.OrdinalIgnoreCase) || argCopy.Contains("t", StringComparer.OrdinalIgnoreCase))
             {
                 idx = argCopy.Select(x => x.ToLower()).ToList().IndexOf("thread");
@@ -93,9 +108,9 @@ namespace HigginsSoft.Math.Lib
             {
                 idx = argCopy.Select(x => x.ToLower()).ToList().IndexOf("job");
                 commandLineConfig.JobName = argCopy[idx + 1];
-                if (idx < argCopy.Count - 2 && int.TryParse(argCopy[idx + 2], out var jobNumber))
+                if (idx < argCopy.Count - 2 && int.TryParse(argCopy[idx + 2], out var jobCount))
                 {
-                    commandLineConfig.TotalJobs = jobNumber;
+                    commandLineConfig.TotalJobs = jobCount;
 
                     // remove the args from the list
                     argCopy.RemoveAt(idx + 2);
@@ -258,6 +273,9 @@ namespace HigginsSoft.Math.Lib
     public class CommandLine
     {
         public static string[] Arguments { get; private set; } = Array.Empty<string>();
+
+        public static FactorConfig GetFactorArguments() => FactorConfig.GetCommandLineConfig();
+
         public static void SetArguments(string[] args)
         {
             Arguments = args;

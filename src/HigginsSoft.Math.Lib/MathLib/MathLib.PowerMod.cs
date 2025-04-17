@@ -20,7 +20,7 @@ namespace HigginsSoft.Math.Lib
     public static partial class MathLib
     {
         public static long PowerMod(
-            long @base, 
+            long @base,
             int exponent,
             long modulus
             )
@@ -38,7 +38,7 @@ namespace HigginsSoft.Math.Lib
         }
 
         public static int PowerMod(
-            int @base, 
+            int @base,
             int exponent,
             int modulus
             )
@@ -87,6 +87,23 @@ namespace HigginsSoft.Math.Lib
 
                 exponent = exponent >> 1;
                 @base = (@base * @base) % modulus;
+            }
+            return result;
+        }
+        public static long PowerModBig(
+           long @base,
+           long exponent,
+           long modulus
+           )
+        {
+            var result = 1L;
+            while (exponent > 0)
+            {
+                if ((exponent & 1) == 1)
+                    result = (long)(((BigInteger)result * @base) % modulus);
+
+                exponent = exponent >> 1;
+                @base = (long)(((BigInteger)@base * @base) % modulus);
             }
             return result;
         }

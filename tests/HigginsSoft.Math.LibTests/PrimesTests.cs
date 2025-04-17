@@ -18,11 +18,11 @@
 //some tests take several seconds and up to a minute to complete.
 // These tests are disabled using SKIP_LONG_TESTS to keep unit testing short, and enable efficient Live Unit Testing
 using DotMpi;
+using MathGmp.Native;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
-using System.Diagnostics;
 using System.Drawing;
 using System.Reflection;
 
@@ -110,10 +110,10 @@ namespace HigginsSoft.Math.Lib.Tests
             {
 
                 var counts = PrimeData.Counts90;
-                foreach(var bit in counts.Keys.ToList().OrderBy(x=> x))
+                foreach (var bit in counts.Keys.ToList().OrderBy(x => x))
                 {
                     var data = counts[bit];
-                    GmpFloat n = (GmpFloat)(((GmpInt) 1) << bit);
+                    GmpFloat n = (GmpFloat)(((GmpInt)1) << bit);
                     GmpFloat count = (GmpFloat)data.Count;
                     var density = count / n;
                     var d = (double)density;
@@ -173,7 +173,7 @@ namespace HigginsSoft.Math.Lib.Tests
                         {
                             Assert.AreEqual(expected, actual, $"Count failed for range {start} - {end}");
                         }
-                       
+
                     }
                 }
             }
@@ -1838,6 +1838,13 @@ namespace HigginsSoft.Math.Lib.Tests
             }
 
         }
+    }
+
+    namespace PrimeGeneratorTests
+    {
+
+     
+
     }
 }
 

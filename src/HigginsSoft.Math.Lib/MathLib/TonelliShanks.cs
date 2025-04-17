@@ -216,6 +216,8 @@ namespace HigginsSoft.Math.Lib
                 {
                     // sqrt_N
                     var root = TonelliShanksAlgo(n, p);
+                    if (root == -1)
+                        return (0, 0);
                     //if (root == 0) continue;
                     roots.Add(root);
                     roots.Add(p - root);
@@ -583,7 +585,8 @@ namespace HigginsSoft.Math.Lib
                     z++;
                     if (z > 100)
                     {
-                        throw new ArithmeticException("Failed to find z");
+                        //throw new ArithmeticException("Failed to find z");
+                        return -1;
                     }
                 }
 
@@ -625,7 +628,9 @@ namespace HigginsSoft.Math.Lib
                     {
                         temp = BigInteger.ModPow(temp, 2, p);
                         i++;
-                        if (i == S) throw new ArithmeticException("Failed to converge");
+                        if (i == S)
+                            //throw new ArithmeticException("Failed to converge");
+                            return -1;
                     }
                     BigInteger b = BigInteger.ModPow(c, BigInteger.Pow(2, S - i - 1), p);
                     R = (R * b) % p;

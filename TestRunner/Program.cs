@@ -27,6 +27,7 @@ namespace TestRunner
             ProcessHelper.SetProcessAffinity(Process.GetCurrentProcess());
 
             var efTests = new FactorTest();
+            
 
 
             if (args.Any(x => x == "test"))
@@ -45,15 +46,15 @@ namespace TestRunner
 
             if (args.Any(x => x == "verify"))
             {
-                efTests.VerifyFactorBase();
+                bool verifyPrimality = false;
+                if (args.Length > 1)
+                {
+                    bool.TryParse(args[1], out verifyPrimality);
+                }
+                efTests.VerifyFactorBase(verifyPrimality);
                 return;
             }
-            if (args.Any(x => x == "job"))
-            {
-                var runner = new JobRunner();
-                runner.RunJob(args);
-                return;
-            }
+
 
             if (args.Any(x => x == "tonelli"))
             {
@@ -73,6 +74,12 @@ namespace TestRunner
                 return;
             }
 
+            if (args.Any(x => x == "processqueue"))
+            {
+                FactoringQueue.ProcessQueue();
+                return;
+            }
+
             if (args.Any(x => x == "factorbasesieveuint"))
             {
                 int bit = 32;
@@ -89,6 +96,16 @@ namespace TestRunner
                 FactorBaseSiever.SieveFactorBaseLongPrimes(bit);
                 return;
             }
+
+            if (args.Any(x => x == "factorbasesievelongqueue"))
+            {
+                int bit = 37;
+                if (args.Length > 1 && int.TryParse(args[1], out bit)) { }
+                var FactorBaseSiever = new FactorBaseSieverLongQueue();
+                FactorBaseSiever.SieveFactorBaseLongPrimes(bit);
+                return;
+            }
+
             if (args.Any(x => x == "factorbasesievelongmod3"))
             {
                 int bit = 33;
@@ -103,6 +120,13 @@ namespace TestRunner
                 if (args.Length > 1 && int.TryParse(args[1], out bit)) { }
                 var FactorBaseSiever = new FactorBaseSieverNumerics();
                 FactorBaseSiever.SieveFactorBase(bit);
+                return;
+            }
+
+            if (args.Any(x => x == "job"))
+            {
+                var runner = new JobRunner();
+                runner.RunJob(args);
                 return;
             }
 
@@ -342,14 +366,14 @@ namespace TestRunner
         }
 
 
-        public void VerifyFactorBase()
+        public void VerifyFactorBase(bool verifyPrimality, int startId = 0)
         {
             SetConnectionString();
             using var serviceProvider = new ServiceCollection()
                        .AddDbContext<FactorDbContext>(options => options.UseSqlServer(FactorDbContext.DbConnectionString))
                        .BuildServiceProvider();
 
-            var startId = 770000;
+            //var startId = 770000;
             int idx = 0;
             while (true)
             {
@@ -368,7 +392,7 @@ namespace TestRunner
                               .Include(x => x.Factors)
                               .OrderBy(x => x.Id)
                               .Where(x => x.Id >= startId)
-                              .Take(10000)
+                              .Take(250_000)
 
                               .ToList();
                         break;
@@ -386,6 +410,7 @@ namespace TestRunner
                 startId = unFactored.Max(x => x.Id) + 1;
                 var factorWatch = Stopwatch.StartNew();
                 bool hasUpdates = false;
+
                 foreach (var dbFactorization in unFactored)
                 {
                     var bigN = BigInteger.Parse(dbFactorization.N);
@@ -393,13 +418,17 @@ namespace TestRunner
 
                     if (precheck == bigN)
                     {
+                        if (!verifyPrimality)
+                            continue;
                         foreach (var f in dbFactorization.Factors)
                         {
                             var bigFi = BigInteger.Parse(f.P);
                             var fCheckType = GmpInt.Primality(bigFi);
-                            if ((int)f.Type != (int)fCheckType)
+                            var ifCheckType = (int)fCheckType;
+                            var ifType = (int)f.Type;
+                            if (ifType != ifCheckType)
                             {
-                                f.Type = (PrimalityType)(int)fCheckType;
+                                f.Type = (PrimalityType)ifCheckType;
                                 hasUpdates = true;
                             }
 
@@ -854,15 +883,20 @@ namespace TestRunner
                             composites.Clear();
                             composites = null;
 
-                            fact.Factors.Remove(smallFactor);
-                            fact.Factors.AddRange(factored.Factors.Select(x => new DbFactor
+                            foreach(var f in factored.Factors)
                             {
-                                P = x.P.ToString(),
-                                Power = x.Power,
-                                Type = (PrimalityType)x.FactorType,
-                                Digits = x.P.ToString().Length,
-                                Bits = MathLib.BitLength(x.P)
-                            }));
+                                FactoringQueue.RemovePrimeFactor(fact, f.P.ToString());
+
+                            }
+                            //fact.Factors.Remove(smallFactor);
+                            //fact.Factors.AddRange(factored.Factors.Select(x => new DbFactor
+                            //{
+                            //    P = x.P.ToString(),
+                            //    Power = x.Power,
+                            //    Type = (PrimalityType)x.FactorType,
+                            //    Digits = x.P.ToString().Length,
+                            //    Bits = MathLib.BitLength(x.P)
+                            //}));
 
                         }
                         factored.Dispose();

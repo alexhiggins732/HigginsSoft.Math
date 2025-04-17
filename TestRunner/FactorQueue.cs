@@ -3,14 +3,18 @@ using HigginsSoft.Math.Lib;
 using HigginsSoft.Math.Lib.Database;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace TestRunner
 {
@@ -35,71 +39,300 @@ namespace TestRunner
         public static void QueueFactors(List<int> factorizationIds, BigInteger prime)
         {
             var table = new DataTable();
-            table.Columns.Add("Prime", typeof(int));
+            table.Columns.Add("Prime", typeof(string));
             table.Columns.Add("FactorizationId", typeof(int));
 
             foreach (var id in factorizationIds)
             {
 
                 var row = table.NewRow();
-                row["Prime"] = prime;
+                row["Prime"] = prime.ToString();
                 row["FactorizationId"] = id;
                 table.Rows.Add(row);
 
             }
-
-            using var conn = new SqlConnection(FactorDbContext.DbConnectionString);
-            conn.Open();
-
-            using var bulk = new SqlBulkCopy(conn)
+            ExecuteWithRetry(() =>
             {
-                DestinationTableName = "FactorQueue"
-            };
-            bulk.ColumnMappings.Add("Prime", "Prime");
-            bulk.ColumnMappings.Add("FactorizationId", "FactorizationId");
-            bulk.WriteToServer(table);
+                using var conn = new SqlConnection(FactorDbContext.DbConnectionString);
+                conn.Open();
+
+                using var bulk = new SqlBulkCopy(conn)
+                {
+                    DestinationTableName = "FactorQueue"
+                };
+                bulk.ColumnMappings.Add("Prime", "Prime");
+                bulk.ColumnMappings.Add("FactorizationId", "FactorizationId");
+                bulk.WriteToServer(table);
+            });
         }
 
+        public static void QueueFactors(List<(int FactorizationId, BigInteger Prime)> factors)
+        {
+            var table = new DataTable();
+            table.Columns.Add("Prime", typeof(string));
+            table.Columns.Add("FactorizationId", typeof(int));
+
+            foreach (var factor in factors)
+            {
+
+                var row = table.NewRow();
+                row["Prime"] = factor.Prime.ToString();
+                row["FactorizationId"] = factor.FactorizationId;
+                table.Rows.Add(row);
+
+            }
+
+            ExecuteWithRetry(() =>
+            {
+                using var conn = new SqlConnection(FactorDbContext.DbConnectionString);
+                conn.Open();
+
+                using var bulk = new SqlBulkCopy(conn)
+                {
+                    DestinationTableName = "FactorQueue"
+                };
+                bulk.ColumnMappings.Add("Prime", "Prime");
+                bulk.ColumnMappings.Add("FactorizationId", "FactorizationId");
+                bulk.WriteToServer(table);
+                Console.WriteLine($"[{DateTime.Now}] - Queued {factors.Count} factors");
+            });
+        }
+
+        static void ExecuteWithRetry(Action act, int numRetries = 20)
+        {
+            int sleep = 10;
+            for (int i = 0; i < numRetries; i++)
+            {
+                try
+                {
+                    act();
+                    return;
+                }
+                catch (SqlException ex)
+                {
+                    if (ex.Number == 1205) // deadlock
+                    {
+                        Console.WriteLine($"[{DateTime.Now}] - Deadlock detected, retrying in {sleep}ms");
+                        Thread.Sleep(sleep);
+                        sleep *= 2;
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+            }
+
+        }
+
+        public static void ProcessQueue()
+        {
+            if (bool.Parse(bool.TrueString))
+            {
+                ProcesseQueueBatched();
+                return;
+            }
+            var test = new FactorTest();
+            test.SetConnectionString();
+            // todo: use status to mark as picked up and completed to allow concurrency.
+            string nextQueuedIdQuery = "select top 1000 factorizationId, prime from factorqueue where processed=0";
+            var sw = Stopwatch.StartNew();
+            int count = 0;
+            using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
+            {
+
+                var batch = conn.Query<(int FactorizationId, string Prime)>(nextQueuedIdQuery).ToList();
+
+                while (batch.Count > 0)
+                {
+                    sw.Restart();
+                    List<int> failed = new();
+                    foreach (var item in batch)
+                    {
+                        count++;
+                        if (count % 100 == 0)
+                            Console.WriteLine($"[{DateTime.Now}] - Processed {count} factors");
+
+                        bool processed = ProcessFactor(item);
+                        if (!processed)
+                            failed.Add(item.FactorizationId);
+
+                        //conn.Execute($"update factorqueue set processed=1 where factorizationId={item.FactorizationId}");
+
+                    }
+                    var processedIds = batch.Where(x => !failed.Contains(x.FactorizationId)).Select(x => x.FactorizationId).ToList();
+                    if (processedIds.Count == 0)
+                    {
+                        Console.WriteLine($"[{DateTime.Now}] - No factors processed");
+                        break;
+                    }
+                    string ids = string.Join(", ", processedIds);
+                    conn.Execute($"update factorqueue set processed=1 where factorizationId in ({ids})");
+
+                    sw.Stop();
+                    Console.WriteLine($"[{DateTime.Now}] Factored {batch.Count} items in {sw.Elapsed}");
+                    batch = conn.Query<(int FactorizationId, string Prime)>(nextQueuedIdQuery).ToList();
+                }
+
+            }
+        }
+
+
+        private static bool ProcessFactor((int FactorizationId, string Prime) item)
+        {
+            var services = new ServiceCollection();
+            services.AddDbContext<FactorDbContext>(options => options.UseSqlServer(FactorDbContext.DbConnectionString));
+            var provider = services.BuildServiceProvider();
+            using var app = provider.CreateScope();
+            using var _db = app.ServiceProvider.GetRequiredService<FactorDbContext>();
+            List<int> errorIds = new();
+            var sw = Stopwatch.StartNew();
+
+            var factorization = _db.Factorizations
+                .Include(fz => fz.Factors)
+                .FirstOrDefault(fz => fz.Id == item.FactorizationId);
+
+            if (factorization == null)
+            {
+                return false;
+            }
+
+            var result = RemovePrimeFactor(factorization, item.Prime);
+            if (result.hasError)
+                return false;
+
+            if (result.isDirty && !result.hasError)
+            {
+                _db.SaveChanges();
+            }
+
+            app.Dispose();
+            _db.Dispose();
+            return true;
+        }
 
         /// <summary>
         /// Processes the queue of factors to be removed from the database.
         /// </summary>
-        public void ProcessQueue()
+        public static void ProcesseQueueBatched(int batchSize = 100)
         {
-            using var _db = new FactorDbContext();
+            var test = new FactorTest();
+            test.SetConnectionString();
+            // todo: use status to mark as picked up and completed to allow concurrency.
+            string nextQueuedIdQuery = "select top 1000 factorizationId, prime from factorqueue where processed=0";
+            var sw = Stopwatch.StartNew();
+            int count = 0;
 
-            var queue = _db.FactorQueue
-                .Where(q => !q.Processed)
-                .OrderBy(q => q.Id)
-                .Take(1000)
-                .ToList();
-
-            foreach (var item in queue)
+            var services = new ServiceCollection();
+            services.AddDbContext<FactorDbContext>(options => options.UseSqlServer(FactorDbContext.DbConnectionString));
+            var provider = services.BuildServiceProvider();
+            using var app = provider.CreateScope();
+            using var _db = app.ServiceProvider.GetRequiredService<FactorDbContext>();
+            var helper = new FactorDbHelper();
+            bool useFactorHelper = bool.Parse(bool.TrueString);
+            using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
             {
-                var factorization = _db.Factorizations
-                    .Include(fz => fz.Factors)
-                    .FirstOrDefault(fz => fz.Id == item.FactorizationId);
 
-                if (factorization == null)
+                var batch = conn.Query<(int FactorizationId, string Prime)>(nextQueuedIdQuery)
+                    .ToLookup(x => x.FactorizationId)
+                        .ToDictionary(x => x.Key, x => x.First().Prime);
+
+                DateTime LastAdd = DateTime.Now;
+                while (batch.Count > 0)
                 {
-                    item.Processed = true;
-                    continue;
+                    sw.Restart();
+                    List<int> failed = new();
+
+                    var batchIds = batch.Select(x => x.Key).ToList();
+
+                    if (useFactorHelper)
+                    {
+                        var helperWatch = Stopwatch.StartNew();
+                        foreach (var item in batch)
+                        {
+                            count++;
+                            if (count % 100 == 0)
+                            {
+                                var message = $"[{DateTime.Now}] - Processed {count.ToString("N0")} factors in {DateTime.Now.Subtract(LastAdd)}";
+                                Console.WriteLine(message);
+                                Console.Title = message;
+                                LastAdd = DateTime.Now;
+                            }
+
+                            bool added = helper.AddFactor(item.Key, item.Value);
+                            if (!added)
+                                failed.Add(item.Key);
+
+                            if (bool.Parse(bool.FalseString))
+                            {
+                                var gen = new PrimeGenerator();
+                                BigInteger fact = 1;
+                                BigInteger n = RsaChallenge.Rsa1024BigInt;
+                                BigInteger t;
+                                var z = new FactorizationBigInteger();
+                                
+                                foreach (var p in gen)
+                                {
+                                    if (MathLib.LegendreSymbol(n, p) != 1) continue;
+                                    t = fact * p;
+                                    if (t > n) break;
+                                    fact = t;
+                                    z.Add(p, 1);
+                                }
+
+                                Console.WriteLine($"Max Factors in n: {z.Factors.Count} = {z}");
+                            }
+
+                        }
+                        Console.WriteLine($"[{DateTime.Now}] - Helper added {batch.Count.ToString("N0")} factors in {sw.Elapsed}");
+
+                    }
+
+                    else
+                    {
+
+                        var selectWatch = Stopwatch.StartNew();
+                        var factorizations = _db.Factorizations.Include(x => x.Factors).Where(x => batchIds.Contains(x.Id)).ToList();
+                        selectWatch.Stop();
+                        Console.WriteLine($"[{DateTime.Now}] - Loaded {batch.Count} factorizations in {sw.Elapsed}");
+
+                        var factorWatch = Stopwatch.StartNew();
+                        foreach (var factor in factorizations)
+                        {
+                            count++;
+                            if (count % 100 == 0)
+                                Console.WriteLine($"[{DateTime.Now}] - Processed {count} factors");
+
+
+                            var prime = batch[factor.Id];
+                            var result = RemovePrimeFactor(factor, prime);
+                            if (result.hasError)
+                                failed.Add(factor.Id);
+
+                        }
+                        factorWatch.Stop();
+                        Console.WriteLine($"[{DateTime.Now}] - Factored {batch.Count} factorizations in {factorWatch.Elapsed}");
+
+                        var saveWatch = Stopwatch.StartNew();
+                        _db.SaveChanges();
+                        saveWatch.Stop();
+                        Console.WriteLine($"[{DateTime.Now}] - Saved {batch.Count} factorizations in {saveWatch.Elapsed}");
+                    }
+                    var processedIds = batchIds.Where(x => !failed.Contains(x)).ToList();
+
+                    string ids = string.Join(", ", processedIds);
+                    conn.Execute($"update factorqueue set processed=1 where factorizationId in ({ids})");
+
+
+
+                    batch = conn.Query<(int FactorizationId, string Prime)>(nextQueuedIdQuery)
+                        .ToLookup(x => x.FactorizationId)
+                        .ToDictionary(x => x.Key, x => x.First().Prime);
                 }
 
-                var result = RemovePrimeFactor(factorization, item.Prime);
-                if (result.hasError)
-                {
-                    Console.WriteLine($"Skipping due to error on prime {item.Prime}, offset {item.FactorizationId}");
-                    continue;
-                }
-
-                if (result.isDirty)
-                    _db.Update(factorization);
-
-                item.Processed = true;
             }
-
-            _db.SaveChanges();
+            sw.Stop();
+            Console.WriteLine($"[{DateTime.Now}] Factored {count} items in {sw.Elapsed}");
         }
 
         /// <summary>
@@ -108,14 +341,14 @@ namespace TestRunner
         /// <param name="factorization"></param>
         /// <param name="number"></param>
         /// <returns></returns>
-        private (bool isDirty, bool hasError) RemovePrimeFactor(DbFactorization factorization, string number)
+        public static (bool isDirty, bool hasError) RemovePrimeFactor(DbFactorization factorization, string number)
         {
             bool isDirty = false;
             var compositeFactors = factorization.Factors.Where(x => (int)x.Type < 1).ToList();
             var prime = BigInteger.Parse(number);
             foreach (var composite in compositeFactors)
             {
-          
+
                 var n = BigInteger.Parse(composite.P);
                 var fact = new Factor<BigInteger>(prime, 0) { FactorType = MathLib.PrimalityType.Prime };
 
@@ -128,7 +361,14 @@ namespace TestRunner
                 if (fact.Power > 0)
                 {
                     isDirty = true;
-                    factorization.Factors.Remove(composite);
+                    //factorization.Factors.Remove(composite);
+
+
+                    composite.P = n.ToString();
+                    composite.Power = 1;
+                    composite.Type = (PrimalityType)(int)GmpInt.Primality(n);
+                    composite.Digits = composite.P.Length;
+                    composite.Bits = MathLib.BitLength(n);
 
                     factorization.Factors.Add(new DbFactor
                     {
@@ -139,14 +379,6 @@ namespace TestRunner
                         Bits = MathLib.BitLength(fact.P)
                     });
 
-                    factorization.Factors.Add(new DbFactor
-                    {
-                        P = n.ToString(),
-                        Power = 1,
-                        Type = (PrimalityType)(int)GmpInt.Primality(n),
-                        Digits = n.ToString().Length,
-                        Bits = MathLib.BitLength(n)
-                    });
                 }
             }
 
@@ -156,8 +388,48 @@ namespace TestRunner
 
             if (newValue.ToString() != factorization.N)
             {
-                Console.WriteLine($"[{DateTime.Now}] - Verification failed removing {prime}: {newValue} != {factorization.N}");
-                return (false, true);
+                Console.WriteLine($"[{DateTime.Now}] - Revalidating Factorization {factorization.Id}: Failed removing {prime}");
+                var f = new FactorizationBigInteger();
+                var n = BigInteger.Parse(factorization.N);
+
+                foreach (var factor in factorization.Factors)
+                {
+                    var fact = new Factor<BigInteger>(BigInteger.Parse(factor.P), 0);
+                    while (n / fact.P == 0)
+                    {
+                        fact.Power++;
+                        n /= fact.P;
+                    }
+                    if (fact.Power > 0)
+                    {
+                        f.Factors.Add(fact);
+                    }
+                }
+                if (n > 1)
+                {
+                    f.Factors.Add(new Factor<BigInteger>(n, 1));
+                }
+                if (f.ToString() == factorization.N)
+                {
+                    factorization.Factors.Clear();
+                    factorization.Factors = f.Factors.Select(x => new DbFactor
+                    {
+                        P = x.P.ToString(),
+                        Power = x.Power,
+                        Type = (PrimalityType)(int)GmpInt.Primality(x.P),
+                        Digits = x.P.ToString().Length,
+                        Bits = MathLib.BitLength(x.P)
+                    }).ToList();
+                    isDirty = true;
+                }
+                else
+                {
+                    var message = $"[{DateTime.Now}] - Factorization {factorization.Id}: Verification failed removing {prime}: {newValue} != {factorization.N}";
+                    File.AppendAllText("FailedFactors.log", message + Environment.NewLine);
+                    Console.WriteLine(message);
+                    return (false, true);
+                }
+
             }
 
             var newType = factorization.Factors.All(x => (int)x.Type > 0)

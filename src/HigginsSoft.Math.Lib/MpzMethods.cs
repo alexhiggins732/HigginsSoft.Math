@@ -690,41 +690,146 @@ namespace HigginsSoft.Math.Lib
             return False
     return True
          */
+
+        static readonly ulong[] deterministicRabinMillerBases = { 2, 325, 9375, 28178, 450775, 9780504, 1795265022, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41 };
+        static readonly int[] deterministicRabinMillerBases32 = { 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41 };
+        //static readonly  deterministicRabinMillerBases32 = { 2, 325, 9375, 28178, 450775, 9780504, 1795265022 };
         public static PrimalityType RabinMiller(BigInteger n, int iterations)
         {
-            if (n <= 2)
+            if (n <= 4)
             {
-                if (n == 2) return PrimalityType.Prime;
+                if (n == 2 || n == 3) return PrimalityType.ProbablePrime;
                 return PrimalityType.Error;
             }
-            int s = 0;
-            BigInteger a = -1;
+            if (n.IsEven) return PrimalityType.Composite;
+            int s = (int)(n % 6);
+            if (s != 1 && s != 5) return PrimalityType.Composite;
 
-
-            var r = 0;
-
-            while (s % 2 == 0)
+            //let s > 0 and d odd > 0 such that n − 1 = 2^s*d  # by factoring out powers of 2 from n − 1
+            // Write n - 1 as 2^s * d
+            BigInteger nm1 = n - 1;
+            BigInteger d = nm1;
+            s = 0;
+            while ((d & 1) == 0)
             {
-                r += 1;
-                s /= 2;
+                d >>= 1;
+                s++;
             }
-            for (int i = 0; i < iterations; i++)
+            BigInteger y = 0;
+            int rangeMax = int.MaxValue;
+            if (rangeMax > n - 2) rangeMax = (int)(n - 2);
+            //repeat k times:
+            for (int k = 0; k < iterations; k++)
             {
-                a = Random.Shared.Next(2, (int)n - 1);
-                BigInteger x = BigInteger.ModPow(a, s, n);
-                if (x == 1 || x == n - 1)
-                    continue;
-                for (int j = 0; j < r - 1; j++)
+                //# n is always a probable prime to base 1 and n − 1
+                //a ← random(2, n − 2) 
+                BigInteger a = k < deterministicRabinMillerBases.Length ? deterministicRabinMillerBases[k] : Random.Shared.Next(2, rangeMax);
+                //a = Random.Shared.Next(2, rangeMax);
+                // x ← a^d mod n
+                BigInteger x = BigInteger.ModPow(a, d, n);
+
+                //  repeat s times:
+                //  BUG: for (int r = 1; r < s; r++)
+                for (int r = 0; r < s; r++)
                 {
-                    x = BigInteger.ModPow(x, 2, n);
-                    if (x == n - 1)
-                        break;
+                    //y ← x^2 mod n
+                    y = x * x % n;
+
+                    //if y = 1 and x ≠ 1 and x ≠ n − 1 then # nontrivial square root of 1 modulo n
+                    //if (y == 1 && x != 1 && x != n - 1)
+                    if (y.IsOne)
+                    {
+                        if (!x.IsOne && x != nm1)
+                            return PrimalityType.Composite;
+                        else
+                            break; // if y=1 then all remaining iterations will have y==1 and x==1 doing useless power mods
+                                   // can also return (“multiple of”, gcd(x − 1, n))
+                    }
+                    //x ← y
+                    x = y;
                 }
-                if (x != n - 1)
+
+                //if y ≠ 1 then return “composite”
+                if (!y.IsOne)
+                {
                     return PrimalityType.Composite;
+                }
             }
+
             return PrimalityType.ProbablePrime;
         }
+
+        public static PrimalityType RabinMillerLong(long n, int iterations)
+        {
+            if (n <= 4)
+            {
+                if (n == 2 || n == 3) return PrimalityType.ProbablePrime;
+                return PrimalityType.Error;
+            }
+            if ((n & 1) == 0) return PrimalityType.Composite;
+            int s = (int)(n % 6);
+            if (s != 1 && s != 5) return PrimalityType.Composite;
+
+            //let s > 0 and d odd > 0 such that n − 1 = 2^s*d  # by factoring out powers of 2 from n − 1
+            // Write n - 1 as 2^s * d
+            long nm1 = n - 1;
+            long d = nm1;
+            s = 0;
+            while ((d & 1) == 0)
+            {
+                d >>= 1;
+                s++;
+            }
+            long y = 0;
+            int rangeMax = int.MaxValue;
+            if (rangeMax > n - 2) rangeMax = (int)(n - 2);
+            //repeat k times:
+            for (int k = 0; k < iterations; k++)
+            {
+                //# n is always a probable prime to base 1 and n − 1
+                //a ← random(2, n − 2) 
+                //BigInteger a = k < deterministicRabinMillerBases.Length ? deterministicRabinMillerBases[k] : Random.Shared.Next(2, rangeMax);
+                int a = a = k < deterministicRabinMillerBases32.Length ? deterministicRabinMillerBases32[k] : Random.Shared.Next(2, rangeMax);
+                //a = Random.Shared.Next(2, rangeMax);
+                // x ← a^d mod n
+                // BigInteger x = BigInteger.ModPow(a, d, n);
+
+                // can we do this native bit length checks and elimiate biginteger?
+
+                //long x = (long)BigInteger.ModPow(a, d, n);
+                long x = MathLib.PowerModBig(a, d, n);
+                //  repeat s times:
+                //  BUG: for (int r = 1; r < s; r++)
+                for (int r = 0; r < s; r++)
+                {
+                    //y ← x^2 mod n
+                    y = (long)(((BigInteger)x * x % n));
+
+                    //if y = 1 and x ≠ 1 and x ≠ n − 1 then # nontrivial square root of 1 modulo n
+                    //if (y == 1 && x != 1 && x != n - 1)
+                    if (y == 1)
+                    {
+                        if (x != 1 && x != nm1)
+                            return PrimalityType.Composite;
+                        else
+                            break; // if y=1 then all remaining iterations will have y==1 and x==1 doing useless power mods
+                                   // can also return (“multiple of”, gcd(x − 1, n))
+                    }
+                    //x ← y
+                    x = y;
+                }
+
+                //if y ≠ 1 then return “composite”
+                if (y != 1)
+                {
+                    return PrimalityType.Composite;
+                }
+            }
+
+            return PrimalityType.ProbablePrime;
+        }
+
+
         public static PrimalityType Primality(BigInteger n, int num_witnesses = 20)
         {
             if (n <= 2)
