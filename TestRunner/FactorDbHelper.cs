@@ -3,6 +3,8 @@ using HigginsSoft.Math.Lib;
 using HigginsSoft.Math.Lib.Database;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Conventions;
+using Microsoft.IdentityModel.Protocols;
 using System.Data;
 using System.Numerics;
 
@@ -54,7 +56,10 @@ namespace TestRunner
                 var bigN = BigInteger.Parse(dbFactorization.Value.n);
                 var newFactor = BigInteger.Parse(factorString);
                 var newFactorPrimalityType = (MathLib.PrimalityType)(int)GmpInt.Primality(newFactor);
-
+                if (bigN % newFactor != 0)
+                {
+                    return false;
+                }
                 conn.Open();
                 var trans = conn.BeginTransaction();
                 try
@@ -67,9 +72,64 @@ namespace TestRunner
                         var dbFactor = BigInteger.Pow(BigInteger.Parse(factor.P), factor.Power);
 
                         if (dbFactor < newFactor)
-                            continue;
+                        {
+                            if ((int)newFactorPrimalityType > 0)
+                                continue;
+
+                            var gcd = MathUtil.Gcd(newFactor, dbFactor);
+                            if (gcd == 1)
+                            {
+                                continue;
+                            }
+                            else
+                            {
+                                bool found = false;
+                                var gcdString = gcd.ToString();
+                                foreach (var other in factors)
+                                {
+                                    if (other.P == gcdString)
+                                    {
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                                if (found)
+                                {
+                                    // mark the factor as found
+                                    return true;
+                                }
+                                else
+                                {
+                                    var query = "INSERT INTO Factors (DbFactorizationId, P, Power, Type, Digits, Bits) VALUES (@DbFactorizationId, @P, @Power, @Type, @Digits, @Bits)";
+                                    var pParams = new
+                                    {
+                                        DbFactorizationId = factorizationId,
+                                        P = gcdString,
+                                        Power = 1,
+                                        Type = (int)GmpInt.Primality(gcd),
+                                        Digits = gcdString.Length,
+                                        Bits = MathLib.BitLength(newFactor)
+                                    };
+                                    conn.Execute(query, pParams, transaction: trans);
+                                    trans.Commit();
+                                    return true;
+                                }
+
+                            }
+                        }
+
                         else if (dbFactor == newFactor)
-                            result = true;
+                        {
+                            if ((int)newFactorPrimalityType > 0)
+                            {
+                                result = true;
+                            }
+                            else
+                            {
+                                string p = "";
+                            }
+                        }// && (int)GmpInt.Primality(dbFactor) > 0)
+
                         // don't  
                         else
                         {
@@ -125,6 +185,55 @@ namespace TestRunner
                                 }
                             }
                         }
+
+                    }
+                    if (!result)
+                    {
+                        if (newFactorPrimalityType > 0)
+                        {
+                            // insert the new factor;
+                            var query = "INSERT INTO Factors (DbFactorizationId, P, Power, Type, Digits, Bits) VALUES (@DbFactorizationId, @P, @Power, @Type, @Digits, @Bits)";
+                            var pParams = new
+                            {
+                                DbFactorizationId = factorizationId,
+                                P = factorString,
+                                Power = 1,
+                                Type = (int)newFactorPrimalityType,
+                                Digits = factorString.Length,
+                                Bits = MathLib.BitLength(newFactor)
+                            };
+                            conn.Execute(query, pParams, transaction: trans);
+                            trans.Commit();
+                            return true;
+                        }
+
+                        else
+                        {
+                            // a new composite factor that doesn't divide an existing composite;
+                            using var factored = FactorizationBigInteger.Factor(newFactor, false, true, skipFermat: true, skipRho: true, skipRhoP2: true, skipRhoP3: true, skipRhoZ: true, skipPP1: true, skipPM1: true, skipECM: true, skipQS: true, skipFact: true);
+                            foreach (var child in factored.Factors)
+                            {
+
+                                var childPrimalityType = (MathLib.PrimalityType)(int)GmpInt.Primality(child.P);
+                                if (childPrimalityType > 0)
+                                {
+                                    var query = "INSERT INTO Factors (DbFactorizationId, P, Power, Type, Digits, Bits) VALUES (@DbFactorizationId, @P, @Power, @Type, @Digits, @Bits)";
+                                    var pParams = new
+                                    {
+                                        DbFactorizationId = factorizationId,
+                                        P = child.P.ToString(),
+                                        Power = child.Power,
+                                        Type = (int)childPrimalityType,
+                                        Digits = child.P.ToString().Length,
+                                        Bits = MathLib.BitLength(child.P)
+                                    };
+                                    conn.Execute(query, pParams, transaction: trans);
+                                }
+                            }
+                            trans.Commit();
+                            return true;
+                        }
+
 
                     }
 

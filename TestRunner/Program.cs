@@ -26,8 +26,16 @@ namespace TestRunner
 
             ProcessHelper.SetProcessAffinity(Process.GetCurrentProcess());
 
+
+            bool isTimingTest = args.Any(x => x == "timing");
+            if (isTimingTest)
+            {
+                ProcessHelper.SetProcessAffinity(Process.GetCurrentProcess(), ProcessPriorityClass.AboveNormal);
+                var f = new SimplePrpFilter();
+                f.TimeTonelliShanks();
+                return;
+            }
             var efTests = new FactorTest();
-            
 
 
             if (args.Any(x => x == "test"))
@@ -737,7 +745,232 @@ namespace TestRunner
         }
 
         public int Thread = -1;
+
         public void ProcessDbFactors(int minDigits = 0, int maxDigits = 30, int batchSize = 100)
+        {
+
+
+            var config = FactorConfig.GetCommandLineConfig();
+            var commandLineArgs = string.Join(" ", Environment.GetCommandLineArgs().Skip(1));
+            this.Thread = config.ProcessorIndex.HasValue ? config.ProcessorIndex.Value : -1;
+
+            Log($"Starting test {nameof(ProcessDbFactors)}(minDigits={minDigits}, maxDigits={maxDigits}, batchSize={batchSize}) args: {commandLineArgs}");
+            var initWatch = Stopwatch.StartNew();
+            var init = false;
+            SetConnectionString();
+
+            var startId = 0;
+            int idx = 0;
+            int factorCount = 0;
+
+
+            const int maxEffectiveDigits = 256;
+            int effectiveDigits = config.Digits.HasValue && (config.skipFact == false || config.skipECM == false || config.skipPM1 == false || config.skipPM1 == false) ? config.Digits.Value : maxEffectiveDigits;
+
+            Process? processor = null;
+            Action runProcessor = () =>
+            {
+                if (processor == null || processor.HasExited)
+                {
+                    var p = new Process();
+                    p.StartInfo.FileName = "cmd"; //Path.Combine(AppContext.BaseDirectory, "testrunner.exe");
+                    p.StartInfo.Arguments = $@"/c ""{Path.Combine(AppContext.BaseDirectory, "testrunner.exe")}"" processqueue";
+                    p.StartInfo.WorkingDirectory = AppContext.BaseDirectory;
+                    p.StartInfo.UseShellExecute = true;
+                    p.StartInfo.CreateNoWindow = true;
+                    p.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+                    processor = p;
+                    processor.Start();
+
+                }
+            };
+
+            while (true)
+            {
+                var sw = Stopwatch.StartNew();
+                List<DbFactorization> unFactored = new();
+
+                var selectWatch = Stopwatch.StartNew();
+                int sleep = 10;
+                for (var retry = 0; retry < 10; retry++)
+                {
+                    try
+                    {
+                        //unFactored = dbContext.Factorizations
+                        //      .Include(x => x.Factors)
+                        //      .Where(x => x.Id > startId && x.TDiv < effectiveDigits &&
+                        //       x.Factors.Any(f => f.Digits >= minDigits && f.Digits <= maxDigits && (f.Type == PrimalityType.Unknown || f.Type == PrimalityType.Composite))
+                        //           //&& (x.Type == PrimalityType.Unknown || x.Type == PrimalityType.Composite)
+                        //           )
+                        //      .OrderBy(x => x.Id)
+                        //      .Take(batchSize)
+                        //      .ToList();
+                        using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
+                        {
+                            var query = $@"select top {batchSize} z.*, f.* from Factorizations z join factors f on z.id=f.dbFactorizationId
+                                    where z.id>{startId} 
+                                        and z.TDiv < {effectiveDigits} 
+                                        and f.Digits >= {minDigits} and f.Digits <= {maxDigits} 
+                                        and z.type < 1 and f.Type < 1 
+                                    order by z.id
+                                ";
+                            unFactored = conn.Query<DbFactorization, DbFactor, DbFactorization>(query, (x, y) =>
+                            {
+                                x.Factors.Add(y);
+                                return x;
+                            }, splitOn: "Id").ToList();
+                        }
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+
+                        Log($"Select DbError {retry + 1} sleeping until {DateTime.Now.AddMilliseconds(sleep)} - {ex.Message}");
+                        System.Threading.Thread.Sleep(sleep);
+                        sleep *= 2;
+                    }
+                }
+                if (!init)
+                {
+                    init = true;
+                    initWatch.Stop();
+                    Log($"Initialized test {nameof(ProcessDbFactors)}(minDigits={minDigits}, maxDigits={maxDigits}, batchSize={batchSize}) in {initWatch.Elapsed}");
+                }
+
+                selectWatch.Stop();
+
+
+
+                if (!unFactored.Any())
+                {
+                    runProcessor();
+                    Log($"No more factors to process after Id={startId}");
+                    break;
+                }
+
+                int batchFactored = 0;
+                Log($"Running batch of {unFactored.Count} ({unFactored.Min(x => x.Id).ToString("N0")} - {unFactored.Max(x => x.Id).ToString("N0")}) - {commandLineArgs}");
+
+                startId = unFactored.Max(x => x.Id) + 1;
+                var factorWatch = Stopwatch.StartNew();
+
+                var l = new List<(int, string)>();
+                List<int> tdivUpdates = new List<int>();
+                foreach (var fact in unFactored)
+                {
+                    if (fact.TDiv > effectiveDigits)
+                        continue;
+                    fact.Factors.Where(x => x.Type == PrimalityType.Unknown).ToList()
+                         .ForEach(x => x.Type = (PrimalityType)(int)GmpInt.Primality(BigInteger.Parse(x.P)));
+
+                    idx++;
+                    if (batchSize < 10 || idx % 10 == 0)
+                    {
+                        Console.Title = $"({idx.ToString("N0")}) Id {fact.Id.ToString("N0")} Count: {factorCount.ToString("N0")} - {commandLineArgs}";
+                    }
+                    var smallFactors = fact.Factors.Where(x => x.Digits >= minDigits && x.Digits <= maxDigits && (x.Type == PrimalityType.Unknown || x.Type == PrimalityType.Composite)).ToList();
+
+
+
+                    foreach (var smallFactor in smallFactors)
+                    {
+                        if (smallFactor.Type == PrimalityType.Unknown || smallFactor.Type == PrimalityType.Composite)
+                        {
+                            smallFactor.Type = (PrimalityType)(int)GmpInt.Primality(BigInteger.Parse(smallFactor.P));
+                            if (smallFactor.Type == PrimalityType.ProbablePrime || smallFactor.Type == PrimalityType.Prime)
+                                continue;
+                        }
+                        var n = BigInteger.Parse(smallFactor.P);
+                        var thisfactorWatch = Stopwatch.StartNew();
+                        // get algorithms from the command line or use one rho algo at random
+                        using var factored = FactorizationBigInteger.Factor(n, false, true, skipFermat: true, skipRho: true, skipRhoP2: true, skipRhoP3: true, skipRhoZ: true, skipPP1: true, skipPM1: true, skipECM: true, skipQS: true, skipFact: true);
+                        thisfactorWatch.Stop();
+
+
+
+                        if (factored.Factors.Count > 1 && factored.GetProduct() == n)
+                        {
+                            batchFactored++;
+                            factorCount++;
+                            factored.Factors.ForEach(x => x.FactorType = (MathLib.PrimalityType)(int)GmpInt.Primality(x.P));
+
+                            // recursively factor small composites less than 20 digits
+                            var composites = factored.Factors.Where(x => x.P.ToString().Length <= 20 && (x.FactorType != MathLib.PrimalityType.ProbablePrime && x.FactorType != MathLib.PrimalityType.Prime)).ToList();
+                            foreach (var c in composites)
+                            {
+
+                                thisfactorWatch.Start();
+                                using var subfac = FactorizationBigInteger.Factor(c.P, false, true);
+                                if (subfac.Factors.Count > 1)
+                                {
+                                    factored.Factors.Remove(c);
+                                    thisfactorWatch.Stop();
+                                    if (c.Power > 1)
+                                    {
+                                        Log($"Need to handle powers");
+                                    }
+                                    subfac.Factors.ForEach(x => x.FactorType = (MathLib.PrimalityType)(int)GmpInt.Primality(x.P));
+                                    factored.Add(subfac);
+                                }
+
+                                subfac.Dispose();
+                            }
+                            composites.Clear();
+                            composites = null;
+                            foreach (var f in factored.Factors)
+                            {
+                                l.Add((fact.Id, f.P.ToString()));
+                            }
+                            // not sure if we need this here, since the factor queue processor will take care of it going forward.
+                            //foreach (var f in factored.Factors)
+                            //{
+                            //    FactoringQueue.RemovePrimeFactor(fact, f.P.ToString());
+                            //}
+
+
+                        }
+                        factored.Dispose();
+                    }
+
+                    smallFactors.Clear();
+                    smallFactors = null;
+                 
+                
+                 
+
+
+                    if (fact.TDiv < effectiveDigits && effectiveDigits < maxEffectiveDigits)
+                    {
+                        tdivUpdates.Add(fact.Id);
+                        //fact.TDiv = effectiveDigits;
+                    }
+
+                }
+
+
+                factorWatch.Stop();
+                FactoringQueue.QueueFactors(l);
+                if (tdivUpdates.Any())
+                {
+                    using(var conn = new SqlConnection(FactorDbContext.DbConnectionString))
+                    {
+                        var query = $"update Factorizations set TDiv={effectiveDigits} where Id in ({string.Join(",", tdivUpdates)})";
+                        conn.Execute(query);
+                    }
+                }
+       
+                sw.Stop();
+                Log($"{Console.Title}");
+                Log($"{unFactored.Last().Id.ToString("N0")} Factored {batchFactored} of {unFactored.Count.ToString("N0")} factors in {sw.Elapsed} - factor {factorWatch.Elapsed} select {selectWatch.Elapsed}");
+                runProcessor();
+            }
+
+
+
+        }
+
+
+        public void ProcessDbFactorsEf(int minDigits = 0, int maxDigits = 30, int batchSize = 100)
         {
 
 
@@ -883,7 +1116,7 @@ namespace TestRunner
                             composites.Clear();
                             composites = null;
 
-                            foreach(var f in factored.Factors)
+                            foreach (var f in factored.Factors)
                             {
                                 FactoringQueue.RemovePrimeFactor(fact, f.P.ToString());
 

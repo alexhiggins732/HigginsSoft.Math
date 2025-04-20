@@ -1,10 +1,11 @@
 ﻿#define SKIP_LONG_TESTS
 #define HAVE_CUDA
-#undef HAVE_CUDA
+//#undef HAVE_CUDA
 using BenchmarkDotNet.Mathematics;
 using ManagedCuda;
 using ManagedCuda.BasicTypes;
 using ManagedCuda.NVRTC;
+using ManagedCuda.VectorTypes;
 using MathGmp.Native;
 using Microsoft.Diagnostics.Runtime.Utilities;
 using Microsoft.Diagnostics.Tracing.Analysis;
@@ -30,6 +31,44 @@ namespace HigginsSoft.Math.Lib.Tests
 #endif
     public class RecipDivideCudaTests
     {
+        [TestMethod]
+        public void GenerateLongTest()
+        {
+            long numElements = 1_000_000; // you can test with 1_000_000_000 later
+
+            var cuda = Cuda.Instance;
+            var kernel = cuda.GetOrCompile(CudaKernels.Generate1BillionLongs, nameof(CudaKernels.Generate1BillionLongs));
+
+            // Allocate memory on device and host
+            using CudaDeviceVariable<long> d_output = new CudaDeviceVariable<long>(numElements);
+            long[] h_output = new long[numElements];
+
+            // Configure grid size
+            int threadsPerBlock = 256;
+            int blocksPerGrid = (int)((numElements + threadsPerBlock - 1) / threadsPerBlock);
+
+            // Launch the kernel
+            // kernel.BlockDimensions = new dim3(threadsPerBlock, 1, 1);
+            //kernel.GridDimensions = new dim3(blocksPerGrid, 1, 1);
+
+            kernel.BlockDimensions = 256;
+            kernel.GridDimensions = blocksPerGrid;
+         
+
+            kernel.Run(d_output.DevicePointer, numElements);
+
+            // Copy results back
+            d_output.CopyToHost(h_output);
+
+            // Validate
+            for (long i = 0; i < numElements; i++)
+            {
+                Assert.AreEqual(i, h_output[i]);
+            }
+
+            //d_output.Dispose();
+        }
+
         [TestMethod]
         public void IntModDivideCudaTest()
         {
@@ -114,6 +153,8 @@ namespace HigginsSoft.Math.Lib.Tests
             d_C.Dispose();
 
         }
+        
+        
         [TestMethod]
         public void VectAddTest()
         {
@@ -167,6 +208,41 @@ namespace HigginsSoft.Math.Lib.Tests
 
         }
 
+
+        [TestMethod]
+        public void GenerateFermatFilteredPrimes()
+        {
+            var cuda = Cuda.Instance;
+            var kernel = cuda.GetOrCompile(CudaKernels.GenerateFermatPRPs, nameof(CudaKernels.GenerateFermatPRPs));
+            long start = 1L << 33;
+            long size = 1L << 22;
+            var sw = Stopwatch.StartNew();
+            long[] filtered = GenerateFermatFilteredPrimes(start, size);
+            sw.Stop();
+            Console.WriteLine($"Cuda Generated {filtered.Length} prps 3 mod 4 in {sw}");
+        }
+    
+        public static long[] GenerateFermatFilteredPrimes(long start, long count)
+        {
+            var cuda = Cuda.Instance;
+            var kernel = cuda.GetOrCompile(CudaKernels.GenerateFermatPRPs, nameof(CudaKernels.GenerateFermatPRPs));
+
+            CudaDeviceVariable<long> d_output = new(count);
+            long[] h_output = new long[count];
+
+            int threadsPerBlock = 256;
+            int blocksPerGrid = (int)((count + threadsPerBlock - 1) / threadsPerBlock);
+
+            kernel.BlockDimensions = new dim3(threadsPerBlock, 1, 1);
+            kernel.GridDimensions = new dim3(blocksPerGrid, 1, 1);
+
+            kernel.Run(d_output.DevicePointer, count, start);
+            d_output.CopyToHost(h_output);
+            d_output.Dispose();
+
+            // Filter zeros
+            return h_output;//.Where(p => p != 0).ToArray();
+        }
 
         void QsTDiv(int[] n, int[] bsmooth, int[] gf2, int[] div, int[] primes, int N, int P)
         {
@@ -1910,6 +1986,104 @@ namespace HigginsSoft.Math.Lib.Tests
                 return result;
             }
         }
+
+        public static string Generate1BillionLongs => $@"
+extern ""C"" {{
+    __global__ void {nameof(Generate1BillionLongs)}(long long* output, long long count)
+    {{
+        long long i = blockDim.x * blockIdx.x + threadIdx.x;
+        if (i < count)
+        {{
+            output[i] = i;
+        }}
+    }}
+}}";
+
+        public static string GenerateFermatPRPs => $@"extern ""C"" {{
+
+__device__ long long mulmod(long long a, long long b, long long mod)
+{{
+    long long result = 0;
+    a %= mod;
+    b %= mod;
+
+    while (b > 0)
+    {{
+        if (b & 1)
+            result = (result + a) % mod;
+        a = (a << 1) % mod;
+        b >>= 1;
+    }}
+    return result;
+}}
+
+__device__ long long mod_pow(long long base, long long exp, long long mod)
+{{
+    long long result = 1;
+    base = base % mod;
+    while (exp > 0)
+    {{
+        if (exp & 1)
+            result = mulmod(result, base, mod);
+        exp >>= 1;
+        base = mulmod(base, base, mod);
+    }}
+    return result;
+}}
+
+__global__ void GenerateFermatPRPs(long long* output, long long count, long long start)
+{{
+    long long i = blockDim.x * blockIdx.x + threadIdx.x;
+    if (i < count)
+    {{
+        long long p = start + 4LL * i;
+
+        if ((p & 3) != 3) return;
+
+        if (mod_pow(2, p - 1, p) == 1)
+            output[i] = p;
+        else
+            output[i] = 0;
+    }}
+}}
+}}";
+
+        public static string GenerateFermatPRPs128 => @"extern ""C"" {
+__device__ long long mod_pow(long long base, long long exp, long long mod)
+{
+    long long result = 1;
+    base = base % mod;
+    while (exp > 0)
+    {
+        if (exp & 1)
+            result = (__int128)result * base % mod;
+        exp >>= 1;
+        base = (__int128)base * base % mod;
+    }
+    return result;
+}
+
+__global__ void GenerateFermatPRPs(long long* output, long long count, long long start)
+{
+    long long i = blockDim.x * blockIdx.x + threadIdx.x;
+    if (i < count)
+    {
+        long long p = start + 4LL * i;
+
+        if ((p & 3) != 3) return; // sanity
+
+        // Apply Fermat test: 2^(p-1) mod p == 1
+        if (mod_pow(2, p - 1, p) == 1)
+        {
+            output[i] = p;
+        }
+        else
+        {
+            output[i] = 0; // mark as rejected
+        }
+    }
+}
+}";
     }
 
 

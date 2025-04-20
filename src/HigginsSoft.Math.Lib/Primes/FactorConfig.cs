@@ -174,7 +174,7 @@ namespace HigginsSoft.Math.Lib
 
                 if (algos.Contains(argCopy[0], StringComparer.CurrentCultureIgnoreCase));
                 var arg = argCopy[0].ToLower();
-
+                idx = 0;
                 // De-alias the algorithm names to the short name
                 if (arg == "factor") arg = "fact"; // factor is the same as fact
                 else if (arg == "siqs") arg = "qs"; // siqs is the same as qs

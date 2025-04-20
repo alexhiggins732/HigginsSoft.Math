@@ -20,6 +20,7 @@ using System.Runtime.Intrinsics.Arm;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
 namespace TestRunner
@@ -770,10 +771,11 @@ namespace TestRunner
                 test = gmp_lib.mpz_probab_prime_p(z.Data, 20);
             }
         }
-        IEnumerable<long> NaiveLongPrimeGenerator(ulong nextPrime, ulong maxPrime)
+        public IEnumerable<long> NaiveLongPrimeGenerator2(ulong nextPrime, ulong maxPrime)
         {
             using GmpInt current = (nextPrime + 1ul);
             using GmpInt max = (maxPrime + 1ul);
+
             while (true)
             {
                 GetNextPrime(current);
@@ -786,12 +788,79 @@ namespace TestRunner
 
         }
 
-        internal void SieveFactorBaseLongPrimes(int bits = 32)
+
+        // filtering out quadratic residues before PRP testing gives 25% speedup.
+        public IEnumerable<long> NaiveLongPrimeGenerator(ulong nextPrime, ulong maxPrime)
+        {
+            if ((nextPrime & 1) == 0)
+            {
+                nextPrime++;
+            }
+
+            using GmpInt current = (nextPrime);
+            using GmpInt max = (maxPrime);
+
+            using GmpInt n = RsaChallenge.Rsa1024BigInt;
+
+            while (true)
+            {
+                // test current is quadratic residue
+
+                while (gmp_lib.mpz_jacobi(n.Data, current.Data) != 1)
+                {
+                    gmp_lib.mpz_add_ui(current.Data, current.Data, 2u);
+                }
+
+                if (gmp_lib.mpz_sizeinbase(current.Data, 2) > 63
+                    || gmp_lib.mpz_cmp(current.Data, max.Data) >= 0)
+                    break;
+
+                var test = gmp_lib.mpz_probab_prime_p(current.Data, 20);
+                if (test != 0)
+                {
+                    yield return (long)current;
+                }
+
+                gmp_lib.mpz_add_ui(current.Data, current.Data, 2u);
+            }
+
+        }
+
+        // attempt to speed up prime generation by filtering out candidates divisible by P <=2^16
+        public IEnumerable<long> NaiveLongPrimeGeneratorFiltered(ulong nextPrime, ulong maxPrime)
+        {
+            using GmpInt current = (nextPrime + 1ul);
+            var filter = new SimplePrpFilter();
+            long max = (long)maxPrime;
+            //var n = RsaChallenge.Rsa1024BigInt;
+            foreach (var candidate in filter.Generate((long)nextPrime, max))
+            {
+                if (candidate >= max)
+                    break;
+                // check for quadratic residue first, as it is cheap and eliminates half of candidate from prp check
+                //if (!MathLib.IsQuadraticResidue(n, candidate))
+                //{
+                //    continue;
+                //}
+                gmp_lib.mpz_init_set_ui(current.Data, (uint)(candidate >> 32));
+                gmp_lib.mpz_mul_2exp(current.Data, current.Data, 32u);
+                gmp_lib.mpz_add_ui(current.Data, current.Data, (uint)candidate & 0xFFFFFFFF);
+                var test = gmp_lib.mpz_probab_prime_p(current.Data, 20);
+                if (test == 0)
+                    continue;
+
+                yield return candidate;
+            }
+
+
+        }
+
+        internal void SieveFactorBaseLongPrimesBlockingQueue(int bits = 32)
         {
             var n = RsaChallenge.Rsa1024BigInt;
 
             var maxDbId = 10_000_000;
-         
+
             int factored = 0;
 
 
@@ -829,20 +898,27 @@ namespace TestRunner
             var provider = services.BuildServiceProvider();
 
             var args = CommandLine.GetFactorArguments();
-            var queue = new BlockingCollection<(long prime, (BigInteger r1, BigInteger r2) roots)>(boundedCapacity: 10000);
-
+            //var queue = new BlockingCollection<(long prime, (BigInteger r1, BigInteger r2) roots)>(boundedCapacity: 10000);
+            var queue = new BlockingCollection<(long prime, (BigInteger r1, BigInteger r2) roots)>(boundedCapacity: 100_000_000);
             long firstPrime = 0;
             long lastPrime = 0;
 
-            ConcurrentDictionary<int, BigInteger> jobTracker = new();
+            //ConcurrentDictionary<int, BigInteger> jobTracker = new();
+
+            var jobCount = args.TotalJobs;
+            if (jobCount < 1)
+                jobCount = 1;
+
+            var jobTracker = new long[jobCount];
             Dictionary<int, string> checkpointFiles = new();
+            bool preFilteredResidues = true;
+            double jobSpeed = 0;
+            int runningJobs = 0;
             var producer = Task.Run(() =>
             {
                 var root = n.Sqrt();
 
-                var jobCount = args.TotalJobs;
-                if (jobCount < 1)
-                    jobCount = 1;
+
 
                 var jobName = args.JobName;
 
@@ -896,6 +972,8 @@ namespace TestRunner
                 int i = 0;
                 Parallel.For(i, jobCount, (j) =>
                 {
+                    Task.Delay(j * (1000 * 90)).Wait();
+                    runningJobs++;
                     //var jobStartPrime = range.StartValue + (j * jobSize);
                     var jobStartPrime = threadStart + (j * jobSize);
                     var jobEndPrime = jobStartPrime + jobSize;
@@ -916,29 +994,57 @@ namespace TestRunner
                     if (resumeFrom > jobStartPrime)
                     {
                         Log($"Resuming Job {j} from {resumeFrom}");
+                        jobStartPrime = resumeFrom;
                     }
-                    jobTracker.TryAdd(j, jobStartPrime);
+                    long progressStart = (long)jobStartPrime;
+                    long lastSeen = jobTracker[j] = progressStart;
                     var gen = NaiveLongPrimeGenerator(resumeFrom, (ulong)jobEndPrime);
+
+
+
+
+                    var sw = Stopwatch.StartNew();
+                    // Timer checkpoint every second
+                    using var timer = new System.Timers.Timer(200);
+                    timer.Elapsed += (s, e) =>
+                    {
+                        if (j == 0)
+                        {
+                            long progress = lastSeen - progressStart;
+                            if (progress > 0)
+                                jobSpeed = (progress / sw.ElapsedMilliseconds) * 1000;
+                            firstPrime = lastSeen;
+                            if (sw.ElapsedMilliseconds > 60000)
+                            {
+                                progressStart = lastSeen;
+                                sw.Restart();
+                            }
+
+                        }
+                        else if (j == jobCount - 1)
+                        {
+                            lastPrime = lastSeen;
+                        }
+                        Volatile.Write(ref jobTracker[j], lastSeen);
+                    };
+                    timer.AutoReset = true;
+                    timer.Start();
 
                     foreach (var prime in gen)
                     {
-                        jobTracker[j] = prime;
-                        //try
-                        //{
-                        if (j == 0)
-                            firstPrime = prime;
-                        if (j == jobCount - 1)
-                            lastPrime = prime;
+
+                        lastSeen = prime;
 
                         if (prime > jobEndPrime)
                             break;
-                        if (prime == 2 || !MathLib.IsQuadraticResidue(n, prime))
-                            continue;
+                        // removing this check as generator now handles it
+                        //if (MathLib.IsQuadraticResidue(n, prime))
+                        //    continue;
                         var roots = MathLib.TonelliShanksPy.GetFactorBaseOffsets(n, prime, root, false);
                         queue.Add((prime, (roots.Item1, roots.Item2)));
 
                     }
-
+                    timer.Stop();
                 });
                 /*
                 //todo split minPrime / maxPrime across threads and run in parallel
@@ -966,6 +1072,9 @@ namespace TestRunner
 
             int saveBatchSize = 1000;
             ConcurrentBag<(int FactorizationId, BigInteger Prime)> factors = new();
+            var consumerWatch = Stopwatch.StartNew();
+            var consumerGet = Stopwatch.StartNew();
+            var lookupWatch = new Stopwatch();
             var consumer = Task.Run(() =>
             {
                 var saveTimeout = Stopwatch.StartNew();
@@ -977,19 +1086,23 @@ namespace TestRunner
                         factors.Clear();
                     }
 
-                    foreach(var pair in checkpointFiles)
+                    foreach (var pair in checkpointFiles)
                     {
-                        if(jobTracker.TryGetValue(pair.Key, out var lastPrime))
-                        {
-                            JobManager.Update(pair.Value, lastPrime, completed);
-                        }
+                        //if (jobTracker.TryGetValue(pair.Key, out var lastPrime))
+                        //{
+                        //    JobManager.Update(pair.Value, lastPrime, completed);
+                        //}
+                        var lastPrime = jobTracker[pair.Key];
+                        JobManager.Update(pair.Value, lastPrime, completed);
                     }
                     saveTimeout.Restart();
                 };
 
-
+                consumerGet.Start();
+                // blocking collection is too slow. Over half the time is spent reading from the queue .
                 foreach (var (primeFactor, roots) in queue.GetConsumingEnumerable())
                 {
+                    consumerGet.Stop();
                     if (primeFactor >= maxPrime)
                         break;
                     if (primeFactor < minPrime)
@@ -999,7 +1112,8 @@ namespace TestRunner
                     if (primeCount % 10 == 0 && (DateTime.Now - lastLog).TotalSeconds > 1)
                     {
                         //message = $"{DateTime.Now} ({i.ToString("N0")}) Factored {factored.ToString("N0")} - Prime {primeFactor.ToString("N0")}  {sw.Elapsed}";
-                        Log($"({primeCount.ToString("N0")}) {factored.ToString("N0")} Factors: {firstPrime.ToString("N0")} - {lastPrime.ToString("N0")} in {sw.Elapsed}");
+                        Log($"({primeCount.ToString("N0")}) {factored.ToString("N0")} Factors: {firstPrime.ToString("N0")} - {lastPrime.ToString("N0")} in {sw.Elapsed} - {jobSpeed.ToString("N0")}/sec on {runningJobs} jobs");
+                        //Log($"({primeCount.ToString("N0")}) -> Get took {consumerGet.Elapsed} and lookup took {lookupWatch.Elapsed} of {consumerWatch.Elapsed}");
                         lastLog = DateTime.Now;
                     }
                     var solutions = roots;
@@ -1008,6 +1122,7 @@ namespace TestRunner
 
                         if (residue >= maxDbId || residue == 0) continue;
                         var offset = (int)residue;
+                        lookupWatch.Start();
                         if (factorLookup.TryGetValue(offset, out var ids))
                         {
                             if (!ids.Contains(primeFactor))
@@ -1016,19 +1131,351 @@ namespace TestRunner
                                 factors.Add((offset, primeFactor));
                             }
                         }
+                        lookupWatch.Stop();
                     }
 
                     if (factors.Count >= saveBatchSize || saveTimeout.Elapsed.TotalMinutes > 5)
                     {
                         saveFactors(false);
                     }
+                    consumerGet.Start();
                 }
 
                 if (factors.Any())
                 {
-                    saveFactors(true);
+                    saveFactors(false);
                 }
 
+                Log($"({primeCount.ToString("N0")}) Factored {factored.ToString("N0")} - {sw.Elapsed}");
+
+            });
+
+
+            Task.WaitAll(producer, consumer);
+
+
+
+            Log($"Total time elapsed: {sw.Elapsed}");
+        }
+
+        internal void SieveFactorBaseLongPrimes(int bits = 32)
+        {
+            var n = RsaChallenge.Rsa1024BigInt;
+
+            var maxDbId = 10_000_000;
+
+            int factored = 0;
+
+
+            var range = new BitRange(bits);
+            range.ValidateBounds(0, long.MaxValue);
+            // validate range start and end don't overflow as uint.max.Value
+
+            // validate that the range is valid
+            if (range.StartBit < 0 || range.EndBit > 63 || range.StartBit > range.EndBit)
+            {
+                throw new ArgumentOutOfRangeException($"Range {range.StartBit} - {range.EndBit} is out of bounds for uint");
+            }
+
+            var minPrime = (long)range.StartValue;
+            var maxPrime = (long)range.EndValue;
+
+            var sw = Stopwatch.StartNew();
+
+            var test = new FactorTest();
+            test.SetConnectionString();
+
+            Log($"Executing {nameof(SieveFactorBaseLongPrimes)} Sieve loop - {sw.Elapsed}");
+
+            Dictionary<int, HashSet<long>> factorLookup = new();
+
+
+            factorLookup = GetFactorLookup(bits);
+
+
+
+
+
+            var services = new ServiceCollection();
+            services.AddDbContext<FactorDbContext>(options => options.UseSqlServer(FactorDbContext.DbConnectionString));
+            var provider = services.BuildServiceProvider();
+
+            var args = CommandLine.GetFactorArguments();
+            //var queue = new BlockingCollection<(long prime, (BigInteger r1, BigInteger r2) roots)>(boundedCapacity: 10000);
+            //var queue = new BlockingCollection<(long prime, (BigInteger r1, BigInteger r2) roots)>(boundedCapacity: 100_000_000);
+            long firstPrime = 0;
+            long lastPrime = 0;
+
+            //ConcurrentDictionary<int, BigInteger> jobTracker = new();
+
+            var jobCount = args.TotalJobs;
+            if (jobCount < 1)
+                jobCount = 1;
+
+            var jobTracker = new long[jobCount];
+            var jobQueues = jobTracker
+                .Select(x => new Queue<(long prime, (BigInteger root1, BigInteger root2) roots)>()).ToArray();
+
+
+            Dictionary<int, string> checkpointFiles = new();
+            bool preFilteredResidues = true;
+            double jobSpeed = 0;
+            int runningJobs = 0;
+            const int maxQueueSize = 1_000_000;
+            var producer = Task.Run(() =>
+            {
+                var root = n.Sqrt();
+
+
+
+                var jobName = args.JobName;
+
+
+                var threads = args.TotalThreads == 0 ? 1 : args.TotalThreads;
+                var thread = args.ProcessorIndex ?? 1;
+
+                // valid thread between 0 and total threads.
+
+
+                if (threads < 1)
+                    threads = 1;
+
+                if (thread < 0 || thread > threads - 1)
+                {
+                    Log($"Error Job - Thread {thread} is out of range for {threads} threads");
+                    return;
+                }
+
+
+                var checkPointFilename = $"{(args.JobName ?? "job")}-{thread}-of-{threads}_{range.StartBit}-{range.EndBit}";
+                if (string.IsNullOrEmpty(jobName))
+                    jobName = checkPointFilename;
+
+                // for 2^P want split job across t threads.
+                // for example, if P=32, want to split 2^32 across 4 threads
+                // so each thread gets 2^30
+                // for example, if p=42, want to split 2^42 across 4 threads
+                // so each thread gets 2^40
+                // calculate each threads range from the total range size
+
+                var rangeSize = range.EndValue - range.StartValue;
+                var threadRangeSize = rangeSize / threads;
+
+                // split the thread range size across jobs
+                // for example, if p=32, our thread range size = 2^30.
+                // and for example, our job size is 24
+                // so we want to split the range size across 24 jobs that will run in a parallel for
+                var jobSize = threadRangeSize / jobCount;
+
+
+                //split range.StartValue / range.EndValue across jobs
+                //var jobSize = rangeSize / jobCount;
+
+                // calculate the range for the thread
+                var threadStart = range.StartValue + (thread * threadRangeSize);
+                var threadEnd = threadStart + threadRangeSize;
+
+
+                var checkPointWatch = new Stopwatch();
+                int i = 0;
+                Parallel.For(i, jobCount, (j) =>
+                {
+                    Task.Delay(j * (0 * 1000 * 10)).Wait();
+                    runningJobs++;
+                    //var jobStartPrime = range.StartValue + (j * jobSize);
+                    var jobStartPrime = threadStart + (j * jobSize);
+                    var jobEndPrime = jobStartPrime + jobSize;
+                    if (j == jobCount - 1)
+                        //jobEndPrime = range.EndValue;
+                        jobEndPrime = threadEnd;
+
+                    if (j == 0)
+                        firstPrime = (long)jobStartPrime;
+                    if (j == jobCount - 1)
+                        lastPrime = (long)jobStartPrime;
+
+                    Log($"Job {j} - {jobStartPrime} - {jobEndPrime}");
+
+                    var checkpointFile = $"{checkPointFilename}-thread-{j}-of-{jobCount}.json";
+                    checkpointFiles.Add(j, checkpointFile);
+                    ulong resumeFrom = (ulong)JobManager.GetJobStart(j, thread, jobStartPrime, jobEndPrime, checkpointFile);
+                    if (resumeFrom > jobStartPrime)
+                    {
+                        Log($"Resuming Job {j} from {resumeFrom}");
+                        jobStartPrime = resumeFrom;
+                    }
+                    long progressStart = (long)jobStartPrime;
+                    long lastSeen = jobTracker[j] = progressStart;
+                    var gen = NaiveLongPrimeGenerator(resumeFrom, (ulong)jobEndPrime);
+
+
+
+
+                    var sw = Stopwatch.StartNew();
+                    // Timer checkpoint every second
+                    using var timer = new System.Timers.Timer(200);
+                    timer.Elapsed += (s, e) =>
+                    {
+                        if (j == 0)
+                        {
+                            long progress = lastSeen - progressStart;
+                            if (progress > 0)
+                                jobSpeed = (progress / sw.ElapsedMilliseconds) * 1000;
+                            firstPrime = lastSeen;
+                            if (sw.ElapsedMilliseconds > 60000)
+                            {
+                                progressStart = lastSeen;
+                                sw.Restart();
+                            }
+
+                        }
+                        else if (j == jobCount - 1)
+                        {
+                            lastPrime = lastSeen;
+                        }
+                        Volatile.Write(ref jobTracker[j], lastSeen);
+                    };
+                    timer.AutoReset = true;
+                    timer.Start();
+                    var queue = jobQueues[j];
+                    foreach (var prime in gen)
+                    {
+
+                        lastSeen = prime;
+
+                        if (prime > jobEndPrime)
+                            break;
+                        // removing this check as generator now handles it
+                        //if (MathLib.IsQuadraticResidue(n, prime))
+                        //    continue;
+                        var roots = MathLib.TonelliShanksPy.GetFactorBaseOffsets(n, prime, root, false);
+                        //queue.Add((prime, (roots.Item1, roots.Item2)));
+                        while (queue.Count > maxQueueSize)
+                        {
+                            Task.Delay(0).Wait();
+                        }
+                        queue.Enqueue((prime, (roots.Item1, roots.Item2)));
+
+                    }
+                    timer.Stop();
+                });
+                /*
+                //todo split minPrime / maxPrime across threads and run in parallel
+                var gen = NaiveLongPrimeGenerator((ulong)minPrime, (ulong)maxPrime);
+                foreach (var prime in gen)
+                {
+                    if (prime > maxPrime)
+                        break;
+                    if (prime == 2 || !MathLib.IsQuadraticResidue(n, prime))
+                        continue;
+                    var roots = MathLib.TonelliShanksPy.GetFactorBaseOffsets(n, prime, root, false);
+                    queue.Add((prime, (roots.Item1, roots.Item2)));
+                }
+                */
+                //queue.CompleteAdding();
+            });
+
+
+
+            long primeCount = 0;
+            Log($"Entering {nameof(SieveFactorBaseLongPrimes)} loop - {sw.Elapsed}");
+            DateTime lastLog = DateTime.MinValue;
+
+            long nextPrime = minPrime;
+
+            int saveBatchSize = 1000;
+            ConcurrentBag<(int FactorizationId, BigInteger Prime)> factors = new();
+            var consumerWatch = Stopwatch.StartNew();
+            var consumerGet = Stopwatch.StartNew();
+            var lookupWatch = new Stopwatch();
+            var consumer = Task.Run(() =>
+            {
+                var saveTimeout = Stopwatch.StartNew();
+                Action<bool> saveFactors = (completed) =>
+                {
+                    if (factors.Any())
+                    {
+                        FactoringQueue.QueueFactors(factors.ToList());
+                        factors.Clear();
+                    }
+
+                    foreach (var pair in checkpointFiles)
+                    {
+                        //if (jobTracker.TryGetValue(pair.Key, out var lastPrime))
+                        //{
+                        //    JobManager.Update(pair.Value, lastPrime, completed);
+                        //}
+                        var lastPrime = jobTracker[pair.Key];
+                        JobManager.Update(pair.Value, lastPrime, completed);
+                    }
+                    saveTimeout.Restart();
+                };
+
+
+                while (!producer.IsCompleted)
+                {
+                    // blocking collection is too slow. Over half the time is spent reading from the queue .
+                    for (var j = 0; j < jobQueues.Length; j++)
+                    {
+
+                        var queue = jobQueues[j];
+                        if (queue.Count == 0)
+                            continue;
+                        consumerGet.Start();
+                        while (queue.TryDequeue(out (long prime, (BigInteger root1, BigInteger root2) roots) item))
+                        {
+                            consumerGet.Stop();
+                            var primeFactor = item.prime;
+                            if (primeFactor >= maxPrime)
+                                break;
+                            if (primeFactor < minPrime)
+                                continue;
+                            primeCount++;
+
+
+                            if (primeCount % 10 == 0 && (DateTime.Now - lastLog).TotalSeconds > 1)
+                            {
+                                //message = $"{DateTime.Now} ({i.ToString("N0")}) Factored {factored.ToString("N0")} - Prime {primeFactor.ToString("N0")}  {sw.Elapsed}";
+                                Log($"({primeCount.ToString("N0")}) {factored.ToString("N0")} Factors: {firstPrime.ToString("N0")} - {lastPrime.ToString("N0")} in {sw.Elapsed} - {jobSpeed.ToString("N0")}/sec on {runningJobs} jobs");
+                                //Log($"({primeCount.ToString("N0")}) -> Get took {consumerGet.Elapsed} and lookup took {lookupWatch.Elapsed} of {consumerWatch.Elapsed}");
+                                lastLog = DateTime.Now;
+                            }
+                            var solutions = item.roots;
+                            foreach (var residue in new[] { solutions.Item1, solutions.Item2 })
+                            {
+
+                                if (residue >= maxDbId || residue == 0) continue;
+                                var offset = (int)residue;
+                                lookupWatch.Start();
+                                if (factorLookup.TryGetValue(offset, out var ids))
+                                {
+                                    if (!ids.Contains(primeFactor))
+                                    {
+                                        factored++;
+                                        factors.Add((offset, primeFactor));
+                                    }
+                                }
+                                lookupWatch.Stop();
+                            }
+
+                         
+                            consumerGet.Start();
+                        }
+                        consumerGet.Stop();
+
+                    }
+
+                    Task.Delay(0).Wait();
+                    if (factors.Count >= saveBatchSize || saveTimeout.Elapsed.TotalMinutes > 5)
+                    {
+                        Log($"Saving {factors.Count} factors after {saveTimeout.Elapsed}");
+                        saveFactors(false);
+                    }
+                }
+                if (factors.Any())
+                {
+                    saveFactors(true);
+                }
                 Log($"({primeCount.ToString("N0")}) Factored {factored.ToString("N0")} - {sw.Elapsed}");
 
             });

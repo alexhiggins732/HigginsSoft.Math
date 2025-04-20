@@ -12,11 +12,11 @@
 
 */
 
+using MathGmp.Native;
 using System;
 using System.IO.Pipelines;
 using System.Net;
 using System.Numerics;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace HigginsSoft.Math.Lib
 {
@@ -215,7 +215,7 @@ namespace HigginsSoft.Math.Lib
                 else
                 {
                     // sqrt_N
-                    var root = TonelliShanksAlgo(n, p);
+                    var root = TonelliShanksAlgo(n, p, false);
                     if (root == -1)
                         return (0, 0);
                     //if (root == 0) continue;
@@ -502,7 +502,318 @@ namespace HigginsSoft.Math.Lib
             }
 
 
-            public static BigInteger TonelliShanksAlgo(BigInteger n, BigInteger p)
+            public static int TonelliShanks(GmpInt result, GmpInt n, GmpInt p, bool checkQuadRes = true)
+            {
+                if (gmp_lib.mpz_even_p(p.Data) > 0)
+                {
+                    gmp_lib.mpz_set_ui(result.Data, 0);
+                }
+                //
+
+
+                using GmpInt k = 0;
+                using GmpInt Q = 0;
+
+                if (checkQuadRes)
+                {
+                    int isResidue = IsQuadraticResidue(result, n, p, k, Q);
+                    if (isResidue == 0)
+                        return isResidue;
+                }
+
+
+                int hasFastPath = TonelliShanksFastPath(result, n, p, k, Q);
+                if (hasFastPath == 1)
+                    return hasFastPath;
+
+
+                //pm1 >>= 1; // pm1 / 2
+                gmp_lib.mpz_tdiv_q_2exp(k.Data, p.Data, 1); // k = p / 2
+
+
+                //Q = pm1;
+                using GmpInt pm1 = 0;
+                gmp_lib.mpz_sub_ui(pm1.Data, p.Data, 1); // pm1 = p - 1
+
+                gmp_lib.mpz_set(Q.Data, pm1.Data); // Q = p - 1
+                var S = 0;
+                //while (Q % 2 == 0)
+                while (gmp_lib.mpz_even_p(Q.Data) > 0)
+                {
+                    //Q = Q / 2;
+                    gmp_lib.mpz_tdiv_q_2exp(Q.Data, Q.Data, 1); // Q = Q / 2
+                    S += 1;// S = S + 1
+                }
+
+
+
+
+                /*   //find z such that z^(p-1)/2 = -1
+                    BigInteger z = 2;
+                    while (BigInteger.ModPow(z, (p - 1) / 2, p) != p - 1)
+                    {
+                        z++;
+                    }*/
+                using GmpInt z = 2;
+                using GmpInt c = 0;
+
+
+                // k = (p - 1) / 2
+                gmp_lib.mpz_tdiv_q_2exp(k.Data, p.Data, 1);
+
+                // c = BigInteger.ModPow(z, k, p);
+                gmp_lib.mpz_powm(c.Data, z.Data, k.Data, p.Data);
+
+                int i = 2;
+                //while (BigInteger.ModPow(z, pm1, p) != p - 1)
+                while (gmp_lib.mpz_cmp(c.Data, pm1.Data) != 0)
+                {
+                    i++;
+                    if (i >= 100)
+                    {
+                        //throw new ArithmeticException("Failed to find z");
+                        return 0;
+                    }
+
+                    gmp_lib.mpz_add_ui(z.Data, z.Data, 1);
+                    gmp_lib.mpz_powm(c.Data, z.Data, k.Data, p.Data);
+
+                }
+
+                //var c = BigInteger.ModPow(z, Q, p);
+                gmp_lib.mpz_powm(c.Data, z.Data, Q.Data, p.Data);
+
+                //    R = n ** ((Q + 1) // 2) % p
+                //    t = n ** Q % p
+                //    M = S
+
+
+                //var R = BigInteger.ModPow(n, (Q + 1) / 2, p);
+                //var t = BigInteger.ModPow(n, Q, p);
+                using GmpInt R = 0;
+
+                gmp_lib.mpz_add_ui(k.Data, Q.Data, 1);
+                gmp_lib.mpz_tdiv_q_2exp(k.Data, k.Data, 1); // k = ((Q + 1 /2)
+                gmp_lib.mpz_powm(R.Data, n.Data, k.Data, p.Data); // R = n ** ((Q + 1) // 2) % p
+
+
+                using GmpInt t = 0;
+                gmp_lib.mpz_powm(t.Data, n.Data, Q.Data, p.Data); // t = n ** Q % p
+
+                //var M = S;
+
+
+                //    while t != 1:
+                //        for i in range(1, M):
+                //            if t ** (2 ** i) % p == 1:
+                //                break
+                //        else:
+                //            print(" - i not founded")
+                //        #print( " = i=%d" % (i))
+                //        b = c ** (2 ** (M - i - 1)) % p
+                //        R = (R * b) % p
+                //        t = (t * b * b) % p
+                //        c = (b * b) % p
+                //        M = i
+                //    return R
+
+                // while (t != 1)
+
+                while (gmp_lib.mpz_cmp_ui(t.Data, 1) != 0)
+                {
+                    i = 1;
+
+                    //int i = 1;
+                    //BigInteger temp = ModPow(t, 2, p);
+                    //while (temp != 1)
+                    //{
+                    //    temp = ModPow(temp, 2, p);
+                    //    i++;
+                    //    if (i == m) throw new ArithmeticException("Failed to converge");
+                    //}
+
+                    gmp_lib.mpz_set(k.Data, t.Data);
+                    gmp_lib.mpz_mul(k.Data, k.Data, k.Data); // k = t * t
+                    gmp_lib.mpz_mod(k.Data, k.Data, p.Data); // k = t * t % p
+
+                    while (gmp_lib.mpz_cmp_ui(k.Data, 1) != 0)
+                    {
+                        //k = ModPow(k, 2, p);
+                        gmp_lib.mpz_mul(k.Data, k.Data, k.Data); // k = t * t
+                        gmp_lib.mpz_mod(k.Data, k.Data, p.Data); // k = t * t % p
+                        i++;
+                        if (i == S)
+                            return 0;
+                    }
+
+                    /*                    
+                     *                    BigInteger b = BigInteger.ModPow(c, BigInteger.Pow(2, S - i - 1), p);
+                    R = (R * b) % p;
+                    t = (t * b * b) % p;
+                    c = (b * b) % p;
+                    S = i;*/
+
+                    //BigInteger b = BigInteger.ModPow(c, BigInteger.Pow(2, S - i - 1), p);
+                    uint exp = (uint)(S - i - 1);
+                    if (exp == 0) // handle gmp bug that returns n instead of 1 for n^1;
+                    {
+                        /* // not needed since c^1% p = c,  but for clarity
+                        gmp_lib.mpz_set_ui(Q.Data, 1);
+                        gmp_lib.mpz_powm(k.Data, c.Data, Q.Data, p.Data);
+                        */
+                        gmp_lib.mpz_set(k.Data, c.Data);
+                    }
+                    else
+                    {
+                        // set q  = 2^exp;
+                        gmp_lib.mpz_set_ui(Q.Data, 1);
+                        //gmp_lib.mpz_pow_ui(Q.Data, Q.Data, exp); // set q = 2^exp
+                        gmp_lib.mpz_mul_2exp(Q.Data, Q.Data, exp); // set q = 2^exp
+
+                        // k = b = c ^ (2 ^ (M - i - 1)) % p
+                        gmp_lib.mpz_powm(k.Data, c.Data, Q.Data, p.Data);
+                    }
+
+
+                    //R = (R * b) % p;
+                    gmp_lib.mpz_mul(R.Data, R.Data, k.Data);
+                    gmp_lib.mpz_mod(R.Data, R.Data, p.Data); // R = (R * b) % p
+
+                    //t = (t * b * b) % p;
+                    gmp_lib.mpz_mul(t.Data, t.Data, k.Data);
+                    gmp_lib.mpz_mul(t.Data, t.Data, k.Data);
+                    gmp_lib.mpz_mod(t.Data, t.Data, p.Data); // t = (t * b * b) % p
+
+
+                    //c = (b * b) % p;
+                    gmp_lib.mpz_mul(c.Data, k.Data, k.Data);
+                    gmp_lib.mpz_mod(c.Data, c.Data, p.Data); // c = (b * b) % p
+
+                    S = i;
+                }
+                //if (R != calc)
+                //{
+                //    throw new ArithmeticException("invalid mod 4 calculation");
+                //}
+                gmp_lib.mpz_set(result.Data, R.Data);
+                return 1;
+
+            }
+
+
+
+            private static int TonelliShanksFastPath(GmpInt result, GmpInt n, GmpInt p, GmpInt k, GmpInt Q)
+            {
+                // Fast path: if p ≡ 3 mod 4, return n^((p+1)/4) mod p
+
+                using GmpInt S = 0;
+                // k = (p/4) +1
+                gmp_lib.mpz_set(k.Data, p.Data);
+                //gmp_lib.mpz_mod_ui(k.Data, k.Data, 4);    // set with shift instead
+                gmp_lib.mpz_tdiv_q_2exp(k.Data, k.Data, 2); // k = p / 4
+                gmp_lib.mpz_add_ui(k.Data, k.Data, 1);  // k = (p/4) + 1
+
+                gmp_lib.mpz_mod_ui(Q.Data, p.Data, 4); // set q= p % 4
+                if (gmp_lib.mpz_cmp_ui(Q.Data, 3) == 0)
+                {
+                    //    k = (p / 4);
+                    //Q = BigInteger.ModPow(n, k + 1, p) % p;
+                    gmp_lib.mpz_powm(result.Data, n.Data, k.Data, p.Data);
+                    return 1;
+                }
+                else // check  fast path if p ≡ 5 mod 8
+                {
+                    /* else if (p % 8 == 5)
+                {
+                    k = (p / 8);
+                    Q = BigInteger.ModPow(n, 2 * k + 1, p);
+                    if (Q == 1)
+                    {
+                        Q = BigInteger.ModPow(n, k + 1, p);
+                        return Q;
+                    }
+                    if (Q == p - 1)
+                    {
+                        Q = BigInteger.ModPow(4 * n, k + 1, p);
+                        Q = (Q * (p + 1) / 2) % p;
+                        return Q;
+                    }
+                }*/
+
+
+                    //else if (p % 8 == 5)
+                    gmp_lib.mpz_mod_ui(Q.Data, p.Data, 8); // set q= p % 8
+                    if (gmp_lib.mpz_cmp_ui(Q.Data, 5) == 0) // check if q=5;
+                    {
+                        // k = p / 8
+                        gmp_lib.mpz_tdiv_q_2exp(k.Data, p.Data, 3);
+
+                        //Q = BigInteger.ModPow(n, 2 * k + 1, p);
+                        gmp_lib.mpz_set(S.Data, k.Data); // s =k
+                        gmp_lib.mpz_mul_2exp(S.Data, S.Data, 1); // S = 2 * k
+                        gmp_lib.mpz_add_ui(S.Data, S.Data, 1); // S = 2 * k + 1
+                        gmp_lib.mpz_powm(Q.Data, n.Data, S.Data, p.Data); // Q = n ^ (2 * k + 1) mod p
+
+
+                        // if (Q == 1)
+                        if (gmp_lib.mpz_cmp_ui(Q.Data, 1) == 0)
+                        {
+                            // Q = BigInteger.ModPow(n, k + 1, p);
+
+                            gmp_lib.mpz_add_ui(k.Data, k.Data, 1); // k = k + 1
+                            gmp_lib.mpz_powm(result.Data, n.Data, k.Data, p.Data); // result = n ^ (k + 1) mod p
+
+                            //return Q;
+                            return 1;
+                        }
+
+                        //if (Q == p - 1)
+                        // S = p-1
+                        gmp_lib.mpz_set(S.Data, p.Data);
+                        gmp_lib.mpz_sub_ui(S.Data, S.Data, 1); // S = p - 1
+
+                        if (gmp_lib.mpz_cmp(Q.Data, S.Data) == 0)
+                        {
+                            // Q = BigInteger.ModPow(4 * n, k + 1, p);
+                            gmp_lib.mpz_mul_ui(Q.Data, n.Data, 4); // Q = 4 * n
+                            gmp_lib.mpz_add_ui(k.Data, k.Data, 1); // k = k + 1
+
+                            //Q = BigInteger.ModPow(4 * n, k + 1, p);
+                            gmp_lib.mpz_powm(Q.Data, Q.Data, k.Data, p.Data);
+
+                            // Q = (Q * (p + 1) / 2) % p;
+                            gmp_lib.mpz_add_ui(S.Data, p.Data, 1); // S = (p + 1) / 2
+                            gmp_lib.mpz_tdiv_q_2exp(S.Data, S.Data, 1); // S = (p + 1) / 2
+
+                            gmp_lib.mpz_mul(Q.Data, Q.Data, S.Data); // Q = Q * S
+                            gmp_lib.mpz_mod(result.Data, Q.Data, p.Data); // Q = Q mod p
+                            return 1;
+                        }
+
+                    }
+                }
+
+                return 0;
+            }
+
+            private static int IsQuadraticResidue(GmpInt result, GmpInt n, GmpInt p, GmpInt k, GmpInt Q)
+            {
+                // Check if n is a quadratic residue: (n ^ ((p - 1)/2)) mod p == 1
+                //mpz_t exp = gmp_lib.__gmpz_init();
+                gmp_lib.mpz_sub_ui(k.Data, p.Data, 1);          // exp = p - 1
+                gmp_lib.mpz_tdiv_q_2exp(k.Data, k.Data, 1);   // exp = (p - 1) / 2
+
+                //mpz_t leg = gmp_lib.__gmpz_init();
+                gmp_lib.mpz_powm(Q.Data, n.Data, k.Data, p.Data);
+                if (gmp_lib.mpz_cmp_ui(Q.Data, 1) != 0)
+                {
+                    gmp_lib.mpz_set_ui(result.Data, 0);  // no square root exists
+                    return 0;
+                }
+                return 1;
+            }
+
+            public static BigInteger TonelliShanksAlgo(BigInteger n, BigInteger p, bool quadResCheck = true)
             {
 
                 //def tonelli_shanks_algo(n, p):
@@ -521,18 +832,18 @@ namespace HigginsSoft.Math.Lib
                 }
 
                 BigInteger pm1 = p - 1;
-                if (BigInteger.ModPow(n, pm1 / 2, p) != 1)
-                {
+                if (quadResCheck && BigInteger.ModPow(n, pm1 / 2, p) != 1)
                     return 0;
-                }
+
 
                 BigInteger k;
                 BigInteger Q;
                 //BigInteger calc = 0;
+
                 if (p % 4 == 3)
                 {
                     k = (p / 4);
-                    Q = BigInteger.ModPow(n, k + 1, p) % p;
+                    Q = BigInteger.ModPow(n, k + 1, p);
                     return Q;
                 }
                 else if (p % 8 == 5)
@@ -551,6 +862,7 @@ namespace HigginsSoft.Math.Lib
                         return Q;
                     }
                 }
+
 
                 //    Q = p - 1
                 //    S = 0
@@ -633,9 +945,13 @@ namespace HigginsSoft.Math.Lib
                             return -1;
                     }
                     BigInteger b = BigInteger.ModPow(c, BigInteger.Pow(2, S - i - 1), p);
+                    //string bs = b.ToString();
                     R = (R * b) % p;
+                    //string rs = R.ToString();
                     t = (t * b * b) % p;
+                    //string ts = t.ToString();
                     c = (b * b) % p;
+                    //string cs = c.ToString();
                     S = i;
                 }
                 //if (R != calc)
@@ -669,6 +985,378 @@ namespace HigginsSoft.Math.Lib
                 Console.WriteLine(" = smooth array: " + U.Count);
             }
         }
+
+        public class ShanksSolver
+            : IDisposable
+        {
+            mpz_t p = new();
+            mpz_t k = new();
+            mpz_t Q = new();
+            mpz_t pm1 = new();
+            mpz_t z = new();
+            mpz_t c = new();
+            mpz_t t = new();
+            mpz_t R = new();
+            public ShanksSolver()
+            {
+                gmp_lib.mpz_init_set_ui(p, 0);
+                gmp_lib.mpz_init_set_ui(k, 0);
+                gmp_lib.mpz_init_set_ui(Q, 0);
+                gmp_lib.mpz_init_set_ui(pm1, 0);
+                gmp_lib.mpz_init_set_ui(z, 0);
+                gmp_lib.mpz_init_set_ui(c, 0);
+                gmp_lib.mpz_init_set_ui(t, 0);
+                gmp_lib.mpz_init_set_ui(R, 0);
+            }
+
+            bool disposed = false;
+            public void Dispose()
+            {
+                if (!disposed)
+                {
+                    disposed = true;
+                    p.Dispose();
+                    k.Dispose();
+                    Q.Dispose();
+                    pm1.Dispose();
+                    z.Dispose();
+                    c.Dispose();
+                    t.Dispose();
+                    R.Dispose();
+                }
+
+            }
+
+            public void TonelliShanks(GmpInt result, GmpInt n, long prime, bool checkQuadRes = true)
+            {
+
+                gmp_lib.mpz_set_ui(p, (uint)(prime >> 32));
+                gmp_lib.mpz_mul_2exp(p, p, 32);
+                gmp_lib.mpz_add_ui(p, p, (uint)prime);
+                TonelliShanks(result.Data, n.Data, checkQuadRes);
+            }
+            public void TonelliShanks(GmpInt result, GmpInt n, GmpInt prime, bool checkQuadRes = true)
+            {
+                gmp_lib.mpz_set(p, prime);
+                TonelliShanks(result.Data, n.Data, checkQuadRes);
+            }
+
+            void TonelliShanks(mpz_t result, mpz_t n, bool checkQuadRes = true)
+            {
+                gmp_lib.mpz_set_ui(result, 0);
+                if (gmp_lib.mpz_even_p(p) > 0)
+                {
+                    gmp_lib.mpz_set_ui(result, 0);
+                }
+                //
+
+                gmp_lib.mpz_set_ui(k, 0);
+                gmp_lib.mpz_set_ui(Q, 0);
+
+
+
+                if (checkQuadRes)
+                {
+                    IsQuadraticResidue(result, n);
+                    if (gmp_lib.mpz_cmp_si(result, 0) != 0)
+                        return;
+                }
+
+                TonelliShanksFastPath(result, n);
+                if (gmp_lib.mpz_cmp_si(result, 0) != 0)
+                    return;
+
+
+
+                //pm1 >>= 1; // pm1 / 2
+                gmp_lib.mpz_tdiv_q_2exp(k, p, 1); // k = p / 2
+
+
+                //Q = pm1;
+                gmp_lib.mpz_sub_ui(pm1, p, 1); // pm1 = p - 1
+
+                gmp_lib.mpz_set(Q, pm1); // Q = p - 1
+                var S = 0;
+                //while (Q % 2 == 0)
+                while (gmp_lib.mpz_even_p(Q) > 0)
+                {
+                    //Q = Q / 2;
+                    gmp_lib.mpz_tdiv_q_2exp(Q, Q, 1); // Q = Q / 2
+                    S += 1;// S = S + 1
+                }
+
+
+
+
+                /*   //find z such that z^(p-1)/2 = -1
+                    BigInteger z = 2;
+                    while (BigInteger.ModPow(z, (p - 1) / 2, p) != p - 1)
+                    {
+                        z++;
+                    }*/
+
+
+                gmp_lib.mpz_set_ui(z, 0);
+                // k = (p - 1) / 2
+                gmp_lib.mpz_tdiv_q_2exp(k, p, 1);
+
+                // c = BigInteger.ModPow(z, k, p);
+                gmp_lib.mpz_powm(c, z, k, p);
+
+                int i = 2;
+                //while (BigInteger.ModPow(z, pm1, p) != p - 1)
+                while (gmp_lib.mpz_cmp(c, pm1) != 0)
+                {
+                    i++;
+                    if (i >= 100)
+                    {
+                        gmp_lib.mpz_set_si(result, -1);
+                        return;
+                    }
+
+                    gmp_lib.mpz_add_ui(z, z, 1);
+                    gmp_lib.mpz_powm(c, z, k, p);
+
+                }
+
+                //var c = BigInteger.ModPow(z, Q, p);
+                gmp_lib.mpz_powm(c, z, Q, p);
+
+                //    R = n ** ((Q + 1) // 2) % p
+                //    t = n ** Q % p
+                //    M = S
+
+
+                //var R = BigInteger.ModPow(n, (Q + 1) / 2, p);
+                //var t = BigInteger.ModPow(n, Q, p);
+
+
+                gmp_lib.mpz_add_ui(k, Q, 1);
+                gmp_lib.mpz_tdiv_q_2exp(k, k, 1); // k = ((Q + 1 /2)
+                gmp_lib.mpz_powm(R, n, k, p); // R = n ** ((Q + 1) // 2) % p
+
+
+
+                gmp_lib.mpz_powm(t, n, Q, p); // t = n ** Q % p
+
+                //var M = S;
+
+
+                //    while t != 1:
+                //        for i in range(1, M):
+                //            if t ** (2 ** i) % p == 1:
+                //                break
+                //        else:
+                //            print(" - i not founded")
+                //        #print( " = i=%d" % (i))
+                //        b = c ** (2 ** (M - i - 1)) % p
+                //        R = (R * b) % p
+                //        t = (t * b * b) % p
+                //        c = (b * b) % p
+                //        M = i
+                //    return R
+
+                // while (t != 1)
+
+                while (gmp_lib.mpz_cmp_ui(t, 1) != 0)
+                {
+                    i = 1;
+
+                    //int i = 1;
+                    //BigInteger temp = ModPow(t, 2, p);
+                    //while (temp != 1)
+                    //{
+                    //    temp = ModPow(temp, 2, p);
+                    //    i++;
+                    //    if (i == m) throw new ArithmeticException("Failed to converge");
+                    //}
+
+                    gmp_lib.mpz_set(k, t);
+                    gmp_lib.mpz_mul(k, k, k); // k = t * t
+                    gmp_lib.mpz_mod(k, k, p); // k = t * t % p
+
+                    while (gmp_lib.mpz_cmp_ui(k, 1) != 0)
+                    {
+                        //k = ModPow(k, 2, p);
+                        gmp_lib.mpz_mul(k, k, k); // k = t * t
+                        gmp_lib.mpz_mod(k, k, p); // k = t * t % p
+                        i++;
+                        if (i == S)
+                        {
+                            gmp_lib.mpz_set_si(result, -1);
+                            return;
+                        }
+                    }
+
+                    /*                    
+                     *                    BigInteger b = BigInteger.ModPow(c, BigInteger.Pow(2, S - i - 1), p);
+                    R = (R * b) % p;
+                    t = (t * b * b) % p;
+                    c = (b * b) % p;
+                    S = i;*/
+
+                    //BigInteger b = BigInteger.ModPow(c, BigInteger.Pow(2, S - i - 1), p);
+                    uint exp = (uint)(S - i - 1);
+                    if (exp == 0) // handle gmp bug that returns n instead of 1 for n^1;
+                    {
+                        /* // not needed since c^1% p = c,  but for clarity
+                        gmp_lib.mpz_set_ui(Q, 1);
+                        gmp_lib.mpz_powm(k, c, Q, p);
+                        */
+                        gmp_lib.mpz_set(k, c);
+                    }
+                    else
+                    {
+                        // set q  = 2^exp;
+                        gmp_lib.mpz_set_ui(Q, 1);
+                        //gmp_lib.mpz_pow_ui(Q, Q, exp); // set q = 2^exp
+                        gmp_lib.mpz_mul_2exp(Q, Q, exp); // set q = 2^exp
+
+                        // k = b = c ^ (2 ^ (M - i - 1)) % p
+                        gmp_lib.mpz_powm(k, c, Q, p);
+                    }
+
+
+                    //R = (R * b) % p;
+                    gmp_lib.mpz_mul(R, R, k);
+                    gmp_lib.mpz_mod(R, R, p); // R = (R * b) % p
+
+                    //t = (t * b * b) % p;
+                    gmp_lib.mpz_mul(t, t, k);
+                    gmp_lib.mpz_mul(t, t, k);
+                    gmp_lib.mpz_mod(t, t, p); // t = (t * b * b) % p
+
+
+                    //c = (b * b) % p;
+                    gmp_lib.mpz_mul(c, k, k);
+                    gmp_lib.mpz_mod(c, c, p); // c = (b * b) % p
+
+                    S = i;
+                }
+                //if (R != calc)
+                //{
+                //    throw new ArithmeticException("invalid mod 4 calculation");
+                //}
+                gmp_lib.mpz_set(result, R);
+
+
+            }
+
+
+
+            private void TonelliShanksFastPath(mpz_t result, mpz_t n)
+            {
+                // Fast path: if p ≡ 3 mod 4, return n^((p+1)/4) mod p
+
+                using GmpInt S = 0;
+                // k = (p/4) +1
+                gmp_lib.mpz_set(k, p);
+                //gmp_lib.mpz_mod_ui(k.Data, k.Data, 4);    // set with shift instead
+                gmp_lib.mpz_tdiv_q_2exp(k, k, 2); // k = p / 4
+                gmp_lib.mpz_add_ui(k, k, 1);  // k = (p/4) + 1
+
+                gmp_lib.mpz_mod_ui(Q, p, 4); // set q= p % 4
+                if (gmp_lib.mpz_cmp_ui(Q, 3) == 0)
+                {
+                    //    k = (p / 4);
+                    //Q = BigInteger.ModPow(n, k + 1, p) % p;
+                    gmp_lib.mpz_powm(result, n, k, p);
+
+                }
+                else // check  fast path if p ≡ 5 mod 8
+                {
+                    /* else if (p % 8 == 5)
+                {
+                    k = (p / 8);
+                    Q = BigInteger.ModPow(n, 2 * k + 1, p);
+                    if (Q == 1)
+                    {
+                        Q = BigInteger.ModPow(n, k + 1, p);
+                        return Q;
+                    }
+                    if (Q == p - 1)
+                    {
+                        Q = BigInteger.ModPow(4 * n, k + 1, p);
+                        Q = (Q * (p + 1) / 2) % p;
+                        return Q;
+                    }
+                }*/
+
+
+                    //else if (p % 8 == 5)
+                    gmp_lib.mpz_mod_ui(Q, p, 8); // set q= p % 8
+                    if (gmp_lib.mpz_cmp_ui(Q, 5) == 0) // check if q=5;
+                    {
+                        // k = p / 8
+                        gmp_lib.mpz_tdiv_q_2exp(k, p, 3);
+
+                        //Q = BigInteger.ModPow(n, 2 * k + 1, p);
+                        gmp_lib.mpz_set(S, k); // s =k
+                        gmp_lib.mpz_mul_2exp(S, S, 1); // S = 2 * k
+                        gmp_lib.mpz_add_ui(S, S, 1); // S = 2 * k + 1
+                        gmp_lib.mpz_powm(Q, n, S, p); // Q = n ^ (2 * k + 1) mod p
+
+
+                        // if (Q == 1)
+                        if (gmp_lib.mpz_cmp_ui(Q, 1) == 0)
+                        {
+                            // Q = BigInteger.ModPow(n, k + 1, p);
+
+                            gmp_lib.mpz_add_ui(k, k, 1); // k = k + 1
+                            gmp_lib.mpz_powm(result, n, k, p); // result = n ^ (k + 1) mod p
+
+                            //return Q;
+                            return;
+                        }
+
+                        //if (Q == p - 1)
+                        // S = p-1
+                        gmp_lib.mpz_set(S, p);
+                        gmp_lib.mpz_sub_ui(S, S, 1); // S = p - 1
+
+                        if (gmp_lib.mpz_cmp(Q, S) == 0)
+                        {
+                            // Q = BigInteger.ModPow(4 * n, k + 1, p);
+                            gmp_lib.mpz_mul_ui(Q, n, 4); // Q = 4 * n
+                            gmp_lib.mpz_add_ui(k, k, 1); // k = k + 1
+
+                            //Q = BigInteger.ModPow(4 * n, k + 1, p);
+                            gmp_lib.mpz_powm(Q, Q, k, p);
+
+                            // Q = (Q * (p + 1) / 2) % p;
+                            gmp_lib.mpz_add_ui(S, p, 1); // S = (p + 1) / 2
+                            gmp_lib.mpz_tdiv_q_2exp(S, S, 1); // S = (p + 1) / 2
+
+                            gmp_lib.mpz_mul(Q, Q, S); // Q = Q * S
+                            gmp_lib.mpz_mod(result, Q, p); // Q = Q mod p
+                            return;
+                        }
+
+                    }
+                }
+
+
+            }
+
+            private void IsQuadraticResidue(mpz_t result, mpz_t n)
+            {
+                // Check if n is a quadratic residue: (n ^ ((p - 1)/2)) mod p == 1
+                //mpz_t exp = gmp_lib.__gmpz_init();
+                gmp_lib.mpz_sub_ui(k, p, 1);          // exp = p - 1
+                gmp_lib.mpz_tdiv_q_2exp(k, k, 1);   // exp = (p - 1) / 2
+
+                //mpz_t leg = gmp_lib.__gmpz_init();
+                gmp_lib.mpz_powm(Q, n, k, p);
+                if (gmp_lib.mpz_cmp_ui(Q, 1) != 0)
+                {
+                    gmp_lib.mpz_set_si(result, -1);  // no square root exists
+
+                }
+            }
+
+
+        }
+
         public static class HenselLifting
         {
             /// <summary>

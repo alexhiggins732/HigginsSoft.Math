@@ -454,10 +454,10 @@ namespace HigginsSoft.Math.Lib
                 throw new ArgumentException("targetDigits must be specified and greater than 0.");
             }
 
-            if (!DefaultParameters.ContainsKey(effectiveDigits))
-            {
-                throw new ArgumentException($"No default parameters for targetDigits = {effectiveDigits}");
-            }
+            //if (!DefaultParameters.ContainsKey(effectiveDigits))
+            //{
+            //    throw new ArgumentException($"No default parameters for targetDigits = {effectiveDigits}");
+            //}
 
 
 
@@ -608,12 +608,9 @@ namespace HigginsSoft.Math.Lib
                 throw new ArgumentException("targetDigits must be specified and greater than 0.");
             }
 
-            if (!DefaultParameters.ContainsKey(effectiveDigits))
-            {
-                throw new ArgumentException($"No default parameters for targetDigits = {effectiveDigits}");
-            }
 
-            var defaults = DefaultParameters[effectiveDigits];
+            var defaults = DefaultParameters.First().Value;
+
 
 
             if (B1.HasValue)
@@ -629,6 +626,15 @@ namespace HigginsSoft.Math.Lib
                         break;
                     }
                 }
+            }
+            else
+            {
+                if (!DefaultParameters.ContainsKey(effectiveDigits))
+                {
+                    throw new ArgumentException($"No default parameters for targetDigits = {effectiveDigits}");
+                }
+                defaults = DefaultParameters[effectiveDigits];
+
             }
 
             return defaults;
@@ -1148,7 +1154,7 @@ namespace HigginsSoft.Math.Lib
                         }
                         catch (Exception ex)
                         {
-                            
+
                             Console.WriteLine($"Error parsing {factorJsonPath}\r\n{line}\r\n");
                             File.AppendAllText(factorJsonPath + ".error.txt", $"{n}\r\n{line}\r\n\r\n");
                         }
@@ -1355,7 +1361,7 @@ namespace HigginsSoft.Math.Lib
 
         }
 
-        public static void SetProcessAffinity(Process process)
+        public static void SetProcessAffinity(Process process, ProcessPriorityClass priority = ProcessPriorityClass.BelowNormal)
         {
             if (config.ProcessorIndex != null)
             {
@@ -1365,7 +1371,7 @@ namespace HigginsSoft.Math.Lib
                     throw new ArgumentOutOfRangeException($"ProcessorIndex {idx} is out of range. Must be between >0)");
                 }
                 process.ProcessorAffinity = (IntPtr)(1L << idx);
-                process.PriorityClass = ProcessPriorityClass.BelowNormal;
+                process.PriorityClass = priority;
                 //Console.WriteLine($"Set process {process.Id} affinity to processor " + config.ProcessorIndex.Value);
             }
             else

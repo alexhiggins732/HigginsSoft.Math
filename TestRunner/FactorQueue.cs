@@ -36,6 +36,7 @@ namespace TestRunner
                 conn.Execute("INSERT INTO FactorQueue (Prime, factorizationId) VALUES ({0}, {1});", new { prime, factorizationId });
             }
         }
+
         public static void QueueFactors(List<int> factorizationIds, BigInteger prime)
         {
             var table = new DataTable();
@@ -98,6 +99,38 @@ namespace TestRunner
             });
         }
 
+        public static void QueueFactors(List<(int FactorizationId, string Prime)> factors)
+        {
+            var table = new DataTable();
+            table.Columns.Add("Prime", typeof(string));
+            table.Columns.Add("FactorizationId", typeof(int));
+
+            foreach (var factor in factors)
+            {
+
+                var row = table.NewRow();
+                row["Prime"] = factor.Prime;
+                row["FactorizationId"] = factor.FactorizationId;
+                table.Rows.Add(row);
+
+            }
+
+            ExecuteWithRetry(() =>
+            {
+                using var conn = new SqlConnection(FactorDbContext.DbConnectionString);
+                conn.Open();
+
+                using var bulk = new SqlBulkCopy(conn)
+                {
+                    DestinationTableName = "FactorQueue"
+                };
+                bulk.ColumnMappings.Add("Prime", "Prime");
+                bulk.ColumnMappings.Add("FactorizationId", "FactorizationId");
+                bulk.WriteToServer(table);
+                Console.WriteLine($"[{DateTime.Now}] - Queued {factors.Count} factors");
+            });
+        }
+
         static void ExecuteWithRetry(Action act, int numRetries = 20)
         {
             int sleep = 10;
@@ -127,6 +160,22 @@ namespace TestRunner
 
         public static void ProcessQueue()
         {
+            const string mutexName = "Global\\FactorProcessorAppMutex";
+            bool createdNew;
+
+            using var mutex = new Mutex(true, mutexName, out createdNew);
+
+            if (!createdNew)
+            {
+                Console.WriteLine("Another instance of the application is already running.");
+                return;
+            }
+
+            // 🔐 This is the only running instance
+            //AppDomain.CurrentDomain.ProcessExit += (s, e) => tr mutex.ReleaseMutex();
+
+
+            Console.WriteLine($"Executing {nameof(ProcessQueue)}");
             if (bool.Parse(bool.TrueString))
             {
                 ProcesseQueueBatched();
@@ -230,9 +279,18 @@ namespace TestRunner
             using var _db = app.ServiceProvider.GetRequiredService<FactorDbContext>();
             var helper = new FactorDbHelper();
             bool useFactorHelper = bool.Parse(bool.TrueString);
+
+            List<(int FactorizationId, BigInteger N)>? nLookup = null;
+
             using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
             {
-
+                Action setLookup = () =>
+                {
+                    if (nLookup == null)
+                        nLookup = conn.Query<(int FactorizationId, string n)>("select id, n from factorizations where type<1")
+                        .Select(x => (x.FactorizationId, BigInteger.Parse(x.n)))
+                        .ToList();
+                };
                 var batch = conn.Query<(int FactorizationId, string Prime)>(nextQueuedIdQuery)
                     .ToLookup(x => x.FactorizationId)
                         .ToDictionary(x => x.Key, x => x.First().Prime);
@@ -261,27 +319,38 @@ namespace TestRunner
 
                             bool added = helper.AddFactor(item.Key, item.Value);
                             if (!added)
-                                failed.Add(item.Key);
-
-                            if (bool.Parse(bool.FalseString))
                             {
-                                var gen = new PrimeGenerator();
-                                BigInteger fact = 1;
-                                BigInteger n = RsaChallenge.Rsa1024BigInt;
-                                BigInteger t;
-                                var z = new FactorizationBigInteger();
-                                
-                                foreach (var p in gen)
-                                {
-                                    if (MathLib.LegendreSymbol(n, p) != 1) continue;
-                                    t = fact * p;
-                                    if (t > n) break;
-                                    fact = t;
-                                    z.Add(p, 1);
-                                }
+                                var factor = BigInteger.Parse(item.Value);
+                                Console.WriteLine($"[{DateTime.Now}] - Failed to add factor {item.Value} to {item.Key}");
+                                setLookup();
 
-                                Console.WriteLine($"Max Factors in n: {z.Factors.Count} = {z}");
+                                var factValue = nLookup?.FirstOrDefault(x => x.N % factor == 0);
+                                if (factValue == null || !factValue.HasValue
+                                    || factValue.Value.FactorizationId == item.Key
+                                    || factValue.Value.FactorizationId == 0)
+                                {
+                                    conn.Execute("delete from factorqueue where factorizationId=@factorizationId and prime=@prime",
+                                        new { factorizationId = item.Key, prime = item.Value });
+                                }
+                                //failed.Add(item.Key);
+                                else
+                                {
+                                    var fact = factValue.Value;
+                                    // update the database with the correct factorization.id
+                                    Console.WriteLine($"[{DateTime.Now}] - Updating factor {item.Value} from {item.Key} to Id {fact.FactorizationId}");
+                                    conn.Execute("update factorqueue set factorizationId=@newFactorizationId where factorizationId=@oldFactorizationId and prime=@prime",
+                                        new { newFactorizationId = fact.FactorizationId, oldFactorizationId = item.Key, prime = item.Value });
+
+
+                                }
                             }
+                            else
+                            {
+                                conn.Execute("Update factorqueue set processed=1 where factorizationId=@factorizationId and prime=@prime",
+                                    new { factorizationId = item.Key, prime = item.Value });
+                            }
+
+
 
                         }
                         Console.WriteLine($"[{DateTime.Now}] - Helper added {batch.Count.ToString("N0")} factors in {sw.Elapsed}");
@@ -318,12 +387,12 @@ namespace TestRunner
                         saveWatch.Stop();
                         Console.WriteLine($"[{DateTime.Now}] - Saved {batch.Count} factorizations in {saveWatch.Elapsed}");
                     }
-                    var processedIds = batchIds.Where(x => !failed.Contains(x)).ToList();
-
-                    string ids = string.Join(", ", processedIds);
-                    conn.Execute($"update factorqueue set processed=1 where factorizationId in ({ids})");
-
-
+                    //var processedIds = batchIds.Where(x => !failed.Contains(x)).ToList();
+                    //if (processedIds.Any())
+                    //{
+                    //    string ids = string.Join(", ", processedIds);
+                    //    conn.Execute($"update factorqueue set processed=1 where factorizationId in ({ids})");
+                    //}
 
                     batch = conn.Query<(int FactorizationId, string Prime)>(nextQueuedIdQuery)
                         .ToLookup(x => x.FactorizationId)
