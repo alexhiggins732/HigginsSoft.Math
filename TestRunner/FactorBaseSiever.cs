@@ -1120,7 +1120,7 @@ namespace TestRunner
                     foreach (var residue in new[] { solutions.Item1, solutions.Item2 })
                     {
 
-                        if (residue >= maxDbId || residue == 0) continue;
+                        if (residue >= maxDbId || residue < 1) continue;
                         var offset = (int)residue;
                         lookupWatch.Start();
                         if (factorLookup.TryGetValue(offset, out var ids))
@@ -1212,16 +1212,17 @@ namespace TestRunner
             if (jobCount < 1)
                 jobCount = 1;
 
+            const int maxQueueSize = 1_000_000;
             var jobTracker = new long[jobCount];
             var jobQueues = jobTracker
-                .Select(x => new Queue<(long prime, (BigInteger root1, BigInteger root2) roots)>()).ToArray();
+                .Select(x => new Queue<(long prime, (BigInteger root1, BigInteger root2) roots)>(maxQueueSize)).ToArray();
 
 
             Dictionary<int, string> checkpointFiles = new();
             bool preFilteredResidues = true;
             double jobSpeed = 0;
             int runningJobs = 0;
-            const int maxQueueSize = 1_000_000;
+
             var producer = Task.Run(() =>
             {
                 var root = n.Sqrt();
@@ -1233,7 +1234,14 @@ namespace TestRunner
 
                 var threads = args.TotalThreads == 0 ? 1 : args.TotalThreads;
                 var thread = args.ProcessorIndex ?? 1;
+                var process = Process.GetCurrentProcess();
 
+                int cpu1 = 2 * thread;
+                int cpu2 = 2 * thread + 1;
+
+                // Set bits corresponding to those CPUs
+                long mask = (1L << cpu1) | (1L << cpu2);
+                process.ProcessorAffinity = (IntPtr)mask;
                 // valid thread between 0 and total threads.
 
 
@@ -1245,6 +1253,7 @@ namespace TestRunner
                     Log($"Error Job - Thread {thread} is out of range for {threads} threads");
                     return;
                 }
+
 
 
                 var checkPointFilename = $"{(args.JobName ?? "job")}-{thread}-of-{threads}_{range.StartBit}-{range.EndBit}";
@@ -1306,7 +1315,7 @@ namespace TestRunner
                     }
                     long progressStart = (long)jobStartPrime;
                     long lastSeen = jobTracker[j] = progressStart;
-                    var gen = NaiveLongPrimeGenerator(resumeFrom, (ulong)jobEndPrime);
+
 
 
 
@@ -1338,25 +1347,39 @@ namespace TestRunner
                     timer.AutoReset = true;
                     timer.Start();
                     var queue = jobQueues[j];
-                    foreach (var prime in gen)
+                    try
                     {
-
-                        lastSeen = prime;
-
-                        if (prime > jobEndPrime)
-                            break;
-                        // removing this check as generator now handles it
-                        //if (MathLib.IsQuadraticResidue(n, prime))
-                        //    continue;
-                        var roots = MathLib.TonelliShanksPy.GetFactorBaseOffsets(n, prime, root, false);
-                        //queue.Add((prime, (roots.Item1, roots.Item2)));
-                        while (queue.Count > maxQueueSize)
+                        var gen = NaiveLongPrimeGenerator(resumeFrom, (ulong)jobEndPrime);
+                        foreach (var prime in gen)
                         {
-                            Task.Delay(0).Wait();
-                        }
-                        queue.Enqueue((prime, (roots.Item1, roots.Item2)));
 
+                            lastSeen = prime;
+
+                            if (prime > jobEndPrime)
+                                break;
+                            // removing this check as generator now handles it
+                            //if (MathLib.IsQuadraticResidue(n, prime))
+                            //    continue;
+                            var roots = MathLib.TonelliShanksPy.GetFactorBaseOffsets(n, prime, root, false);
+                            //queue.Add((prime, (roots.Item1, roots.Item2)));
+                            while (queue.Count > maxQueueSize)
+                            {
+                                Task.Delay(0).Wait();
+                            }
+                            queue.Enqueue((prime, (roots.Item1, roots.Item2)));
+
+
+                        }
                     }
+                    catch (Exception ex)
+                    {
+                        Log($"Error in job {j} - {ex}");
+                    }
+                    finally
+                    {
+                        //queue.CompleteAdding();
+                    }
+                    Log($"Exiting job {j}");
                     timer.Stop();
                 });
                 /*
@@ -1458,7 +1481,7 @@ namespace TestRunner
                                 lookupWatch.Stop();
                             }
 
-                         
+
                             consumerGet.Start();
                         }
                         consumerGet.Stop();
@@ -1474,7 +1497,7 @@ namespace TestRunner
                 }
                 if (factors.Any())
                 {
-                    saveFactors(true);
+                    saveFactors(false);
                 }
                 Log($"({primeCount.ToString("N0")}) Factored {factored.ToString("N0")} - {sw.Elapsed}");
 

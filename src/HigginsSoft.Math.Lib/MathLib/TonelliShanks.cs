@@ -206,22 +206,22 @@ namespace HigginsSoft.Math.Lib
                 //var roots = new List<BigInteger>();
                 //var result = roots;
 
-                var offsets = new List<BigInteger>();
-                var roots = new List<BigInteger>();
+
                 if (p == 2)
                 {
-                    roots.Add(n % p);
+                    return (n % p, n % p);
                 }
-                else
-                {
-                    // sqrt_N
-                    var root = TonelliShanksAlgo(n, p, false);
-                    if (root == -1)
-                        return (0, 0);
-                    //if (root == 0) continue;
-                    roots.Add(root);
-                    roots.Add(p - root);
-                }
+                // sqrt_N
+                var root = TonelliShanksAlgo(n, p, false);
+                if (root == -1)
+                    return (0, 0);
+
+                var roots = new List<BigInteger>();
+                var offsets = new List<BigInteger>();
+                //if (root == 0) continue;
+                roots.Add(root);
+                roots.Add(p - root);
+
                 foreach (var r in roots)
                 {
                     var k = (start - r + (p - 1)) / p;
@@ -252,18 +252,23 @@ namespace HigginsSoft.Math.Lib
                 //    return (root0, root0);
                 //}
 
-
-                if (offsets.Count == 1)
-                {
-                    return (offsets[0], offsets[0]);
-                }
-                else
+                if (offsets.Count > 1)
                 {
                     offsets.Sort();
                     return (offsets[0], offsets[1]);
                 }
+                else
+                {
+                    if (offsets.Count == 1)
+                    {
+                        return (offsets[0], offsets[0]);
+                    }
+                    else
+                    {
+                        return (0, 0);
+                    }
+                }
             }
-
 
             /// <summary>
             /// Get the offsets for the solutions of sqrt(n) mod p

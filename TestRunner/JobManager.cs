@@ -51,10 +51,10 @@ namespace TestRunner
 
             if (checkpoint.Completed == true)
             {
-                Console.WriteLine($"Skipping completed job {j} ({jobStartPrime} - {jobEndPrime})");
-                return BigInteger.Parse(checkpoint.End);
+                //Console.WriteLine($"Skipping completed job {j} ({jobStartPrime} - {jobEndPrime})");
+                //return BigInteger.Parse(checkpoint.End);
             }
-            if (checkpoint.JobStartDate == null || checkpoint.JobStartDate==DateTime.MinValue)
+            if (checkpoint.JobStartDate == null || checkpoint.JobStartDate == DateTime.MinValue)
             {
                 checkpoint.JobStartDate = DateTime.Now;
             }
@@ -83,14 +83,40 @@ namespace TestRunner
             return JsonSerializer.Deserialize<List<JobCheckpoint>>(File.ReadAllText(path))!;
         }
 
+        internal static void UpdateProgress()
+        {
+            var jobBase = Path.GetFullPath(".");
+            jobBase = @"E:\Source\Repos\HigginsSoft\TestRunner\bin\Release\net9.0 - Copy (3)\";
+            var di = new DirectoryInfo(Path.Combine(jobBase, "checkpoints"));
+
+            var jsonFiles = di.GetFiles("*.json");
+            var checkpoints = jsonFiles.Select(x => new
+            {
+                FileName = x.Name,
+                FilePath = x.FullName,
+                Checkpoint = LoadCheckpoint(x.FullName).First()
+            }).ToList();
+
+            var lines = new List<string>();
+
+            lines.AddRange(
+                checkpoints
+                    .OrderBy(x => x.Checkpoint.ThreadIndex)
+                    .ThenBy(x => x.Checkpoint.JobIndex)
+                .Select(x => $"{x.FileName} {x.Checkpoint.JobIndex}-{x.Checkpoint.ThreadIndex}: {ulong.Parse(x.Checkpoint.LastProcessed).ToString("N0")}")
+            );
+
+            File.WriteAllLines(Path.Combine(di.FullName, "progress.txt"), lines);
+        }
+
         internal static void Update(string checkpointFile, BigInteger lastPrime, bool completed = false)
         {
             var checkpoints = LoadCheckpoint(checkpointFile);
             var entry = checkpoints.FirstOrDefault();
-        
+
             if (entry != null)
             {
-                if(entry.JobStartDate == null || entry.JobStartDate == DateTime.MinValue)
+                if (entry.JobStartDate == null || entry.JobStartDate == DateTime.MinValue)
                 {
                     entry.JobStartDate = DateTime.Now;
                 }

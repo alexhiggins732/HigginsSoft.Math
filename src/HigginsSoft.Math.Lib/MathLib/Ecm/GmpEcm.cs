@@ -510,10 +510,10 @@ namespace HigginsSoft.Math.Lib
                 throw new ArgumentException("targetDigits must be specified and greater than 0.");
             }
 
-            if (!DefaultParameters.ContainsKey(effectiveDigits))
-            {
-                throw new ArgumentException($"No default parameters for targetDigits = {effectiveDigits}");
-            }
+            //if (!DefaultParameters.ContainsKey(effectiveDigits))
+            //{
+            //    throw new ArgumentException($"No default parameters for targetDigits = {effectiveDigits}");
+            //}
 
 
             long effectiveB1 = B1 ?? defaults.B1;

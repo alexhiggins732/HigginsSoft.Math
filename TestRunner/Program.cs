@@ -37,7 +37,16 @@ namespace TestRunner
             }
             var efTests = new FactorTest();
 
-
+            if (args.Any(x=> x== "updateprogress"))
+            {
+                JobManager.UpdateProgress();
+                return;
+            }
+            if (args.Any(x => x == "runjobs"))
+            {
+                RunJobs();
+                return;
+            }
             if (args.Any(x => x == "test"))
             {
                 var n = BigInteger.Parse("1234567890123456789012345678901234567890");
@@ -234,6 +243,27 @@ namespace TestRunner
 
             //efTests.TDiv20();
 
+        }
+
+        private static void RunJobs()
+        {
+            for (var i = 1; i<= 15; i++)
+            {
+                var args = $"testrunner factorbasesievelongqueue 42 job sieve2p42T{i} 2 thread {i} threads 16";
+                var info = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/k {args}",
+                    WindowStyle = ProcessWindowStyle.Normal,
+                    WorkingDirectory = AppContext.BaseDirectory,
+                    UseShellExecute = true // required to open in a new window
+                };
+                using var process = new Process
+                {
+                    StartInfo = info
+                };
+                process.Start();
+            }
         }
     }
 
@@ -808,7 +838,7 @@ namespace TestRunner
                         using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
                         {
                             var query = $@"select top {batchSize} z.*, f.* from Factorizations z join factors f on z.id=f.dbFactorizationId
-                                    where z.id>{startId} 
+                                    where z.id>={startId} 
                                         and z.TDiv < {effectiveDigits} 
                                         and f.Digits >= {minDigits} and f.Digits <= {maxDigits} 
                                         and z.type < 1 and f.Type < 1 
@@ -934,9 +964,9 @@ namespace TestRunner
 
                     smallFactors.Clear();
                     smallFactors = null;
-                 
-                
-                 
+
+
+
 
 
                     if (fact.TDiv < effectiveDigits && effectiveDigits < maxEffectiveDigits)
@@ -952,13 +982,13 @@ namespace TestRunner
                 FactoringQueue.QueueFactors(l);
                 if (tdivUpdates.Any())
                 {
-                    using(var conn = new SqlConnection(FactorDbContext.DbConnectionString))
+                    using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
                     {
                         var query = $"update Factorizations set TDiv={effectiveDigits} where Id in ({string.Join(",", tdivUpdates)})";
                         conn.Execute(query);
                     }
                 }
-       
+
                 sw.Stop();
                 Log($"{Console.Title}");
                 Log($"{unFactored.Last().Id.ToString("N0")} Factored {batchFactored} of {unFactored.Count.ToString("N0")} factors in {sw.Elapsed} - factor {factorWatch.Elapsed} select {selectWatch.Elapsed}");

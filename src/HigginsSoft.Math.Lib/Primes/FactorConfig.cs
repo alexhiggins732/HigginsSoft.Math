@@ -128,6 +128,7 @@ namespace HigginsSoft.Math.Lib
 
             if (argCopy.Contains("gpu", StringComparer.OrdinalIgnoreCase))
             {
+                idx = argCopy.Select(x => x.ToLower()).ToList().IndexOf("gpu");
                 commandLineConfig.EnableGpu = true;
                 // remove the args from the list
                 argCopy.RemoveAt(idx);
