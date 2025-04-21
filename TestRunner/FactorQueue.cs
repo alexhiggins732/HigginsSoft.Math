@@ -158,16 +158,48 @@ namespace TestRunner
 
         }
 
+        static bool TryAcquireDbLock(SqlConnection conn, string lockName)
+        {
+            var cmd = new SqlCommand("sp_getapplock", conn)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
+
+            cmd.Parameters.AddWithValue("@Resource", lockName);
+            cmd.Parameters.AddWithValue("@LockMode", "Exclusive");
+            cmd.Parameters.AddWithValue("@LockOwner", "Session");
+            cmd.Parameters.AddWithValue("@Timeout", 1000);
+
+            var returnParam = cmd.Parameters.Add("@Result", SqlDbType.Int);
+            returnParam.Direction = ParameterDirection.ReturnValue;
+
+            cmd.ExecuteNonQuery();
+
+            return (int)returnParam.Value >= 0;
+        }
+
         public static void ProcessQueue()
         {
-            const string mutexName = "Global\\FactorProcessorAppMutex";
-            bool createdNew;
+            //const string mutexName = "Global\\FactorProcessorAppMutex";
+            //bool createdNew;
 
-            using var mutex = new Mutex(true, mutexName, out createdNew);
+            //using var mutex = new Mutex(true, mutexName, out createdNew);
 
-            if (!createdNew)
+            //if (!createdNew)
+            //{
+            //    Console.WriteLine("Another instance of the application is already running.");
+            //    return;
+            //}
+            var test = new FactorTest();
+            test.SetConnectionString();
+            using var conn = new SqlConnection(FactorDbContext.DbConnectionString);
+            conn.Open();
+
+            string lockName = "FactorProcessor_Global";
+
+            if (!TryAcquireDbLock(conn, lockName))
             {
-                Console.WriteLine("Another instance of the application is already running.");
+                Console.WriteLine("Another instance is already processing. Exiting.");
                 return;
             }
 
@@ -176,54 +208,53 @@ namespace TestRunner
 
 
             Console.WriteLine($"Executing {nameof(ProcessQueue)}");
-            if (bool.Parse(bool.TrueString))
-            {
-                ProcesseQueueBatched();
-                return;
-            }
-            var test = new FactorTest();
-            test.SetConnectionString();
-            // todo: use status to mark as picked up and completed to allow concurrency.
-            string nextQueuedIdQuery = "select top 1000 factorizationId, prime from factorqueue where processed=0";
-            var sw = Stopwatch.StartNew();
-            int count = 0;
-            using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
-            {
 
-                var batch = conn.Query<(int FactorizationId, string Prime)>(nextQueuedIdQuery).ToList();
+            ProcesseQueueBatched();
+            return;
 
-                while (batch.Count > 0)
-                {
-                    sw.Restart();
-                    List<int> failed = new();
-                    foreach (var item in batch)
-                    {
-                        count++;
-                        if (count % 100 == 0)
-                            Console.WriteLine($"[{DateTime.Now}] - Processed {count} factors");
+            //var test = new FactorTest();
+            //test.SetConnectionString();
+            //// todo: use status to mark as picked up and completed to allow concurrency.
+            //string nextQueuedIdQuery = "select top 1000 factorizationId, prime from factorqueue where processed=0";
+            //var sw = Stopwatch.StartNew();
+            //int count = 0;
+            //using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
+            //{
 
-                        bool processed = ProcessFactor(item);
-                        if (!processed)
-                            failed.Add(item.FactorizationId);
+            //    var batch = conn.Query<(int FactorizationId, string Prime)>(nextQueuedIdQuery).ToList();
 
-                        //conn.Execute($"update factorqueue set processed=1 where factorizationId={item.FactorizationId}");
+            //    while (batch.Count > 0)
+            //    {
+            //        sw.Restart();
+            //        List<int> failed = new();
+            //        foreach (var item in batch)
+            //        {
+            //            count++;
+            //            if (count % 100 == 0)
+            //                Console.WriteLine($"[{DateTime.Now}] - Processed {count} factors");
 
-                    }
-                    var processedIds = batch.Where(x => !failed.Contains(x.FactorizationId)).Select(x => x.FactorizationId).ToList();
-                    if (processedIds.Count == 0)
-                    {
-                        Console.WriteLine($"[{DateTime.Now}] - No factors processed");
-                        break;
-                    }
-                    string ids = string.Join(", ", processedIds);
-                    conn.Execute($"update factorqueue set processed=1 where factorizationId in ({ids})");
+            //            bool processed = ProcessFactor(item);
+            //            if (!processed)
+            //                failed.Add(item.FactorizationId);
 
-                    sw.Stop();
-                    Console.WriteLine($"[{DateTime.Now}] Factored {batch.Count} items in {sw.Elapsed}");
-                    batch = conn.Query<(int FactorizationId, string Prime)>(nextQueuedIdQuery).ToList();
-                }
+            //            //conn.Execute($"update factorqueue set processed=1 where factorizationId={item.FactorizationId}");
 
-            }
+            //        }
+            //        var processedIds = batch.Where(x => !failed.Contains(x.FactorizationId)).Select(x => x.FactorizationId).ToList();
+            //        if (processedIds.Count == 0)
+            //        {
+            //            Console.WriteLine($"[{DateTime.Now}] - No factors processed");
+            //            break;
+            //        }
+            //        string ids = string.Join(", ", processedIds);
+            //        conn.Execute($"update factorqueue set processed=1 where factorizationId in ({ids})");
+
+            //        sw.Stop();
+            //        Console.WriteLine($"[{DateTime.Now}] Factored {batch.Count} items in {sw.Elapsed}");
+            //        batch = conn.Query<(int FactorizationId, string Prime)>(nextQueuedIdQuery).ToList();
+            //    }
+
+            //}
         }
 
 
