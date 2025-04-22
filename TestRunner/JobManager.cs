@@ -86,7 +86,7 @@ namespace TestRunner
         internal static void UpdateProgress()
         {
             var jobBase = Path.GetFullPath(".");
-            jobBase = @"E:\Source\Repos\HigginsSoft\TestRunner\bin\Release\net9.0 - Copy (3)\";
+            jobBase = @"E:\Source\Repos\HigginsSoft\TestRunner\bin\Release\net9.0 - Copy\";
             var di = new DirectoryInfo(Path.Combine(jobBase, "checkpoints"));
 
             var jsonFiles = di.GetFiles("*.json");
@@ -107,6 +107,17 @@ namespace TestRunner
             );
 
             File.WriteAllLines(Path.Combine(di.FullName, "progress.txt"), lines);
+            lines.Clear();
+            Console.WriteLine($"Updated {Path.Combine(di.FullName, "progress.txt")}");
+            lines.AddRange(
+                checkpoints
+                    .OrderBy(x => x.Checkpoint.JobIndex)
+                    .ThenBy(x => x.Checkpoint.ThreadIndex)
+
+                .Select(x => $"{ulong.Parse(x.Checkpoint.LastProcessed).ToString("N0")}")
+            );
+            File.WriteAllLines(Path.Combine(di.FullName, "progress-tsv.txt"), lines);
+            Console.WriteLine($"Updated {Path.Combine(di.FullName, "progress-tsv.txt")}");
         }
 
         internal static void Update(string checkpointFile, BigInteger lastPrime, bool completed = false)

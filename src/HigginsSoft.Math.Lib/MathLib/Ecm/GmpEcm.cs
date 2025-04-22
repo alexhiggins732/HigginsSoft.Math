@@ -190,24 +190,29 @@ namespace HigginsSoft.Math.Lib
 
 
         // TODO: Need to dedupe factors and return a list of unique actual factors.
-        private Factorization ParseFactors(ProcessResult result)
+        public static Factorization ParseFactors(ProcessResult result)
+        {
+            return ParseFactors(result.Output);
+
+        }
+        public static Factorization ParseFactors(string ecmOutput)
         {
             var factorization = new Factorization();
             // Parse the output of the GMP-ECM process to extract the factors.
 
 
-            var factorParts = result.Output.Split("********** Factor found");
+            var factorParts = ecmOutput.Split("********** Factor found");
             var f = new Factorization();
 
             if (factorParts.Length > 1)
             {
                 for (var p = 1; p < factorParts.Length; p++)
                 {
-                    var partFactors = ParseFactorPart(factorParts[p]);
+                    using var partFactors = ParseFactorPart(factorParts[p]);
                     f.Add(partFactors);
                     if (p == factorParts.Length - 1)
                     {
-                        var coFactor = ParseCoFactor(factorParts[p]);
+                        using var coFactor = ParseCoFactor(factorParts[p]);
                         f.Add(coFactor);
                     }
                 }
@@ -215,7 +220,7 @@ namespace HigginsSoft.Math.Lib
             return f;
         }
 
-        private Factorization ParseCoFactor(string factorPart)
+        static Factorization ParseCoFactor(string factorPart)
         {
             var result = new Factorization();
             var lines = factorPart.Split('\n');
@@ -253,7 +258,7 @@ namespace HigginsSoft.Math.Lib
             return result;
         }
 
-        private Factorization ParseFactorPart(string factorPart)
+        static Factorization ParseFactorPart(string factorPart)
         {
             Factorization result = new Factorization();
             var lines = factorPart.Split('\n');
@@ -271,6 +276,91 @@ namespace HigginsSoft.Math.Lib
             }
             return result;
         }
+
+
+        public static FactorizationBigInteger ParseFactorsNumeric(string ecmOutput)
+        {
+            var factorization = new Factorization();
+            // Parse the output of the GMP-ECM process to extract the factors.
+
+
+            var factorParts = ecmOutput.Split("********** Factor found");
+            var f = new FactorizationBigInteger();
+
+            if (factorParts.Length > 1)
+            {
+                for (var p = 1; p < factorParts.Length; p++)
+                {
+                    using var partFactors = ParseFactorPartNumeric(factorParts[p]);
+                    f.Add(partFactors);
+                    if (p == factorParts.Length - 1)
+                    {
+                        using var coFactor = ParseCoFactorNumeric(factorParts[p]);
+                        f.Add(coFactor);
+                    }
+                }
+            }
+            return f;
+        }
+
+        static FactorizationBigInteger ParseCoFactorNumeric(string factorPart)
+        {
+            var result = new FactorizationBigInteger();
+            var lines = factorPart.Split('\n');
+            for (var i = 0; i < lines.Length; i++)
+            {
+                var line = lines[i].Trim();
+                var idx = line.IndexOf("cofactor");
+                if (idx > -1)
+                {
+                    var str = line.Substring(idx + "cofactor".Length + 1).Trim();
+                    var header = line.Substring(0, idx).ToLower().Trim();
+
+
+                    str = str.Split(" ")[0];
+                    var f = BigInteger.Parse(str);
+                    var factor = new Factor<BigInteger>(f, 1);
+                    result.Add(f, 1);
+                    switch (header)
+                    {
+                        case "composite":
+                            factor.FactorType = MathLib.PrimalityType.Composite;
+                            break;
+                        case "prime":
+                            factor.FactorType = MathLib.PrimalityType.Prime;
+                            break;
+                        case "probable prime":
+                            factor.FactorType = MathLib.PrimalityType.ProbablePrime;
+                            break;
+
+                        default:
+                            throw new Exception($"Unexpected header in factor output - {header}");
+                    }
+                }
+            }
+            return result;
+        }
+
+        static FactorizationBigInteger ParseFactorPartNumeric(string factorPart)
+        {
+            FactorizationBigInteger result = new();
+            var lines = factorPart.Split('\n');
+            for (var i = 0; i < lines.Length; i++)
+            {
+                var line = lines[i].Trim();
+                var idx = line.IndexOf(":");
+                if (idx > -1)
+                {
+                    var str = line.Substring(idx + 1).Trim();
+                    BigInteger f = BigInteger.Parse(str);
+                    result.Add(f, 1);
+                    break;
+                }
+            }
+            return result;
+        }
+
+        // T
 
         // TODO: Need to dedupe factors and return a list of unique actual factors.
         private List<Factor> ParseFactors1(ProcessResult result)
@@ -1361,7 +1451,7 @@ namespace HigginsSoft.Math.Lib
 
         }
 
-        public static void SetProcessAffinity(Process process, ProcessPriorityClass priority = ProcessPriorityClass.BelowNormal)
+        public static void SetProcessAffinity(Process process, ProcessPriorityClass priority = ProcessPriorityClass.Normal)
         {
             if (config.ProcessorIndex != null)
             {
