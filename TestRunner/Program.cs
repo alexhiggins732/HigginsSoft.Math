@@ -94,7 +94,8 @@ namespace TestRunner
 
             if (args.Any(x => x == "processqueue"))
             {
-                FactoringQueue.ProcessQueue();
+                bool.TryParse(args.Length > 1 ? args[1] : bool.TrueString, out bool needsLook);
+                FactoringQueue.ProcessQueue(needsLook);
                 return;
             }
 
