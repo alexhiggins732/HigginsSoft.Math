@@ -301,7 +301,7 @@ namespace TestRunner
             var test = new FactorTest();
             test.SetConnectionString();
             // todo: use status to mark as picked up and completed to allow concurrency.
-            string nextQueuedIdQuery = "select top 1000 factorizationId, prime from factorqueue where processed=0 order by NEWID()";
+            string nextQueuedIdQuery = "select top 100 factorizationId, prime from factorqueue where processed=0 order by NEWID()";
             var sw = Stopwatch.StartNew();
             int count = 0;
 
