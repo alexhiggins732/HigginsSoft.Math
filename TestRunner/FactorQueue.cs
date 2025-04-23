@@ -178,7 +178,7 @@ namespace TestRunner
             return (int)returnParam.Value >= 0;
         }
 
-        public static void ProcessQueue()
+        public static void ProcessQueue(bool needsLock = true)
         {
             //const string mutexName = "Global\\FactorProcessorAppMutex";
             //bool createdNew;
@@ -192,17 +192,19 @@ namespace TestRunner
             //}
             var test = new FactorTest();
             test.SetConnectionString();
-            using var conn = new SqlConnection(FactorDbContext.DbConnectionString);
-            conn.Open();
-
-            string lockName = "FactorProcessor_Global";
-
-            if (!TryAcquireDbLock(conn, lockName))
+            if (needsLock)
             {
-                Console.WriteLine("Another instance is already processing. Exiting.");
-                return;
-            }
+                using var conn = new SqlConnection(FactorDbContext.DbConnectionString);
+                conn.Open();
 
+                string lockName = "FactorProcessor_Global";
+
+                if (!TryAcquireDbLock(conn, lockName))
+                {
+                    Console.WriteLine("Another instance is already processing. Exiting.");
+                    return;
+                }
+            }
             // 🔐 This is the only running instance
             //AppDomain.CurrentDomain.ProcessExit += (s, e) => tr mutex.ReleaseMutex();
 
@@ -299,7 +301,7 @@ namespace TestRunner
             var test = new FactorTest();
             test.SetConnectionString();
             // todo: use status to mark as picked up and completed to allow concurrency.
-            string nextQueuedIdQuery = "select top 1000 factorizationId, prime from factorqueue where processed=0";
+            string nextQueuedIdQuery = "select top 1000 factorizationId, prime from factorqueue where processed=0 order by NEWID()";
             var sw = Stopwatch.StartNew();
             int count = 0;
 
@@ -425,6 +427,8 @@ namespace TestRunner
                     //    conn.Execute($"update factorqueue set processed=1 where factorizationId in ({ids})");
                     //}
 
+                    // clear the lookup in each back to make sure factors are refreshing.
+                    nLookup = null;
                     batch = conn.Query<(int FactorizationId, string Prime)>(nextQueuedIdQuery)
                         .ToLookup(x => x.FactorizationId)
                         .ToDictionary(x => x.Key, x => x.First().Prime);
