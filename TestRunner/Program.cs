@@ -271,7 +271,7 @@ namespace TestRunner
                 return;
             }
             var json = File.ReadAllText(jsonFilePath);
-            var template= JsonSerializer.Deserialize<JobTemplate>(json);
+            var template = JsonSerializer.Deserialize<JobTemplate>(json);
             if (template == null)
             {
                 Console.WriteLine($"Failed to deserialize {jsonFilePath}");
@@ -282,7 +282,7 @@ namespace TestRunner
                 var args = template.Args
                     .Replace("[threads]", $"{template.Threads}")
                     .Replace("[thread]", $"{i}");
-               
+
                 if (!args.StartsWith("testrunner"))
                 {
                     args = $"testrunner {args}";
@@ -998,16 +998,20 @@ namespace TestRunner
                     // run the batch file
                     //ecm -pm1 25000 < pp1.txt
                     var exe = Path.Combine(Path.Combine(Path.GetFullPath("."), "binaries"), config.EnableGpu.HasValue && config.EnableGpu.Value ? "gmp-ecm.exe" : "ecm.exe");
-                    var algo = "-ecm";
+                    var algo = "";
                     if (config.skipPM1 == false) algo = "-pm1";
                     if (config.skipPP1 == false) algo = "-pp1";
 
-                    var cmd = $"{exe} {algo} {config.B1}";
+                    var cmd = $"{exe} {algo}";
+                    if (config.Curves.HasValue && config.Curves.Value > 0)
+                        cmd = $"{cmd} -c {config.Curves}";
+                    cmd = $"{cmd} {config.B1}";
+
                     if (config.B2.HasValue && config.B2.Value > config.B1.Value)
                         cmd = $"{cmd} {config.B2}";
                     cmd = $"{cmd} < {batchFileName}";
                     var thisfactorWatch = Stopwatch.StartNew();
-                    var processResult = ProcessHelper.RunProcess(cmd, Path.Combine(Path.GetFullPath("."), "binaries"));
+                    var processResult = ProcessHelper.RunProcess(cmd, Path.Combine(Path.GetFullPath("."), "binaries"), WaitForExit:false);
                     thisfactorWatch.Stop();
                     var results = processResult.Output.Split("Input number is").Skip(1).ToList();
                     for (var i = 0; i < unFactored.Count; i++)

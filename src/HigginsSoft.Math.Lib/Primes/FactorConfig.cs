@@ -78,7 +78,7 @@ namespace HigginsSoft.Math.Lib
                 }
             }
 
-            if (argCopy.Contains("threads", StringComparer.OrdinalIgnoreCase) )
+            if (argCopy.Contains("threads", StringComparer.OrdinalIgnoreCase))
             {
                 idx = argCopy.Select(x => x.ToLower()).ToList().IndexOf("threads");
                 if (idx < argCopy.Count - 1 && int.TryParse(argCopy[idx + 1], out var totalThreads))
@@ -165,7 +165,7 @@ namespace HigginsSoft.Math.Lib
 
 
 
-            var algos = (new[] { "fermat", "rho", "rhop2", "rhop3", "rhoz", "pp1", "pm1", "ecm", "qs", "siqs", "tdiv","trialdivide", "fact", "factor" })
+            var algos = (new[] { "fermat", "rho", "rhop2", "rhop3", "rhoz", "pp1", "pm1", "ecm", "qs", "siqs", "tdiv", "trialdivide", "fact", "factor" })
                 .Select(x => x.ToLower()) // insensitive incase another developer uses a different case
                 .ToList();
 
@@ -173,7 +173,7 @@ namespace HigginsSoft.Math.Lib
             if (argCopy.Count > 0)
             {
 
-                if (algos.Contains(argCopy[0], StringComparer.CurrentCultureIgnoreCase));
+                if (algos.Contains(argCopy[0], StringComparer.CurrentCultureIgnoreCase)) ;
                 var arg = argCopy[0].ToLower();
                 idx = 0;
                 // De-alias the algorithm names to the short name
@@ -230,7 +230,19 @@ namespace HigginsSoft.Math.Lib
                     argCopy.RemoveAt(idx + 1);  // remove b1
                     argCopy.RemoveAt(idx);      // remove ecm
                 }
+                else if (idx < argCopy.Count - 2 && arg == "ecm"
+                       && int.TryParse(argCopy[idx + 1], out b1)
+                       && int.TryParse(argCopy[idx + 2], out curves)
+                       )
+                {
+                    commandLineConfig.B1 = b1;
+                    commandLineConfig.Curves = curves;
 
+                    // remove the args from the list
+                    argCopy.RemoveAt(idx + 2);  // remove b2
+                    argCopy.RemoveAt(idx + 1);  // remove b1
+                    argCopy.RemoveAt(idx);      // remove ecm
+                }
                 // test for b1 and b2 argument bounds following the arg for fermat, rho[x], pp1, pm1, ecm, or tdiv. qs/siqs don't have bounds argument
                 else if (idx < argCopy.Count - 2 && int.TryParse(argCopy[idx + 1], out b1) && int.TryParse(argCopy[idx + 2], out b2))
                 {
