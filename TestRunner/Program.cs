@@ -980,7 +980,8 @@ namespace TestRunner
                 List<int> tdivUpdates = new List<int>();
                 if (useBatchFile)
                 {
-                    using (var writer = new StreamWriter(Path.Combine(Path.GetFullPath("."), "binaries", batchFileName), false))
+                    var workingDirectory = Path.Combine(Path.GetFullPath("."), "binaries");
+                    using (var writer = new StreamWriter(Path.Combine(workingDirectory, batchFileName), false))
                     {
                         foreach (var fact in unFactored)
                         {
@@ -997,7 +998,7 @@ namespace TestRunner
                     Console.Title = $"({idx.ToString("N0")}) Id {unFactored.Last().Id.ToString("N0")} Count: {factorCount.ToString("N0")} - {commandLineArgs}";
                     // run the batch file
                     //ecm -pm1 25000 < pp1.txt
-                    var exe = Path.Combine(Path.Combine(Path.GetFullPath("."), "binaries"), config.EnableGpu.HasValue && config.EnableGpu.Value ? "gmp-ecm.exe" : "ecm.exe");
+                    var exe = config.EnableGpu.HasValue && config.EnableGpu.Value ? "gmp-ecm.exe" : "ecm.exe";
                     var algo = "";
                     if (config.skipPM1 == false) algo = "-pm1";
                     if (config.skipPP1 == false) algo = "-pp1";
@@ -1011,9 +1012,12 @@ namespace TestRunner
                         cmd = $"{cmd} {config.B2}";
                     cmd = $"{cmd} < {batchFileName}";
                     var thisfactorWatch = Stopwatch.StartNew();
-                    var processResult = ProcessHelper.RunProcess(cmd, Path.Combine(Path.GetFullPath("."), "binaries"), WaitForExit:false);
+                    //Console.WriteLine($"Executing {cmd}");
+               
+                    var processResult = ProcessHelper.RunProcess(cmd, workingDirectory, WaitForExit:false);
                     thisfactorWatch.Stop();
                     var results = processResult.Output.Split("Input number is").Skip(1).ToList();
+                    //Console.WriteLine(processResult.Output);
                     for (var i = 0; i < unFactored.Count; i++)
                     {
                         var fact = unFactored[i];
