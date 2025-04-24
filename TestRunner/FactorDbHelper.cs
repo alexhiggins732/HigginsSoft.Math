@@ -40,6 +40,7 @@ namespace TestRunner
                 var dbFactorization = conn.QueryFirstOrDefault<(int id, string n)?>("SELECT id, n FROM Factorizations WHERE Id = @DbFactorizationId",
                     new { DbFactorizationId = factorizationId, P = factorString });
 
+
                 if (dbFactorization is null)
                 {
                     Console.WriteLine($"DbFactorization {factorizationId} not found");
@@ -50,16 +51,21 @@ namespace TestRunner
                     Console.WriteLine($"Factor {factorString} already exists as N for the DbFactorization {factorizationId}");
                     return false;
                 }
-                var factors = conn.Query<(int Id, string P, int Power, int Type)>("SELECT id, p, power, type FROM Factors WHERE DbFactorizationId = @DbFactorizationId",
-                    new { DbFactorizationId = factorizationId, P = factorString });
 
                 var bigN = BigInteger.Parse(dbFactorization.Value.n);
                 var newFactor = BigInteger.Parse(factorString);
-                var newFactorPrimalityType = (MathLib.PrimalityType)(int)GmpInt.Primality(newFactor);
+
                 if (bigN % newFactor != 0)
                 {
                     return false;
                 }
+
+                var factors = conn.Query<(int Id, string P, int Power, int Type)>("SELECT id, p, power, type FROM Factors WHERE DbFactorizationId = @DbFactorizationId",
+                    new { DbFactorizationId = factorizationId, P = factorString });
+
+               
+
+                var newFactorPrimalityType = (MathLib.PrimalityType)(int)GmpInt.Primality(newFactor);
                 conn.Open();
                 var trans = conn.BeginTransaction();
                 try
@@ -240,7 +246,7 @@ namespace TestRunner
                     // get updated factors from the database
                     // get updated factors from the database
                     factors = conn.Query<(int Id, string P, int Power, int Type)>("SELECT id, p, power, type FROM Factors WHERE DbFactorizationId = @DbFactorizationId",
-                            new { DbFactorizationId = factorizationId, P = factorString }, trans);
+                            new { DbFactorizationId = factorizationId}, trans);
 
                     var newFactorValue = factors.Select(x => BigInteger.Pow(BigInteger.Parse(x.P), x.Power)).Aggregate((a, b) => a * b);
                     if (newFactorValue != bigN)

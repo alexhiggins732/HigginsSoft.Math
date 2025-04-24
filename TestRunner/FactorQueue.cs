@@ -168,7 +168,7 @@ namespace TestRunner
             cmd.Parameters.AddWithValue("@Resource", lockName);
             cmd.Parameters.AddWithValue("@LockMode", "Exclusive");
             cmd.Parameters.AddWithValue("@LockOwner", "Session");
-            cmd.Parameters.AddWithValue("@Timeout", 1000);
+            //cmd.Parameters.AddWithValue("@LockTimeout", 1000);
 
             var returnParam = cmd.Parameters.Add("@Result", SqlDbType.Int);
             returnParam.Direction = ParameterDirection.ReturnValue;
@@ -297,6 +297,115 @@ namespace TestRunner
         /// Processes the queue of factors to be removed from the database.
         /// </summary>
         public static void ProcesseQueueBatched(int batchSize = 100)
+        {
+            var test = new FactorTest();
+            test.SetConnectionString();
+            // todo: use status to mark as picked up and completed to allow concurrency.
+            string nextQueuedIdQuery = @"
+                update top (100)
+                    FactorQueue
+                set JobId=@JobId
+                Output
+                    inserted.FactorizationId, inserted.Prime
+                    where processed=0 and JobId is null;";
+            var sw = Stopwatch.StartNew();
+            var helperWatch = Stopwatch.StartNew();
+            int count = 0;
+
+            //var services = new ServiceCollection();
+            //services.AddDbContext<FactorDbContext>(options => options.UseSqlServer(FactorDbContext.DbConnectionString));
+            //var provider = services.BuildServiceProvider();
+            //using var app = provider.CreateScope();
+            //using var _db = app.ServiceProvider.GetRequiredService<FactorDbContext>();
+            var helper = new FactorDbHelper();
+            bool useFactorHelper = bool.Parse(bool.TrueString);
+
+
+            using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
+            {
+                var jobId = Guid.NewGuid();
+
+                var batch = conn.Query<(int FactorizationId, string Prime)>(nextQueuedIdQuery, new { jobId })
+                    .ToLookup(x => x.FactorizationId)
+                        .ToDictionary(x => x.Key, x => x.First().Prime);
+
+                DateTime LastAdd = DateTime.Now;
+                while (batch.Count > 0)
+                {
+                    sw.Restart();
+                    helperWatch.Restart();
+                    List<int> failed = new();
+
+                    var batchIds = batch.Select(x => x.Key).ToList();
+
+
+
+                    foreach (var item in batch)
+                    {
+                        count++;
+                        if (count % 100 == 0)
+                        {
+                            var message = $"[{DateTime.Now}] - Processed {count.ToString("N0")} factors in {DateTime.Now.Subtract(LastAdd)}";
+                            Console.WriteLine(message);
+                            Console.Title = message;
+                            LastAdd = DateTime.Now;
+                        }
+                        helperWatch.Start();
+                        bool added = helper.AddFactor(item.Key, item.Value);
+                        helperWatch.Stop();
+                        if (!added)
+                        {
+                            failed.Add(item.Key);
+                        }
+                        //else
+                        //{
+                        //    conn.Execute("Update factorqueue set processed=1 where factorizationId=@factorizationId and prime=@prime",
+                        //        new { factorizationId = item.Key, prime = item.Value });
+                        //}
+
+
+
+                    }
+                    Console.WriteLine($"[{DateTime.Now}] - Helper added {batch.Count.ToString("N0")} factors in {sw.Elapsed} - Helper: {helperWatch.Elapsed}");
+
+
+
+                    if (failed.Count > 0)
+                    {
+                        conn.Execute("insert into FailedFactorQueue (FactorizationId, Prime) select factorizationId, prime from factorqueue where factorizationId in @ids",
+                            new { ids = failed });
+                    }
+
+                    conn.Execute("update FactorQueue set processed=1 where factorizationId in @ids",
+                          new { ids = batchIds });
+
+                    //var processedIds = batchIds.Where(x => !failed.Contains(x)).ToList();
+                    //if (processedIds.Any())
+                    //{
+                    //    string ids = string.Join(", ", processedIds);
+                    //    conn.Execute($"update factorqueue set processed=1 where factorizationId in ({ids})");
+                    //}
+
+                    // clear the lookup in each back to make sure factors are refreshing.
+
+                    jobId = Guid.NewGuid();
+
+                    batch = conn.Query<(int FactorizationId, string Prime)>(nextQueuedIdQuery, new { jobId })
+                       .ToLookup(x => x.FactorizationId)
+                           .ToDictionary(x => x.Key, x => x.First().Prime);
+                }
+
+            }
+            sw.Stop();
+            Console.WriteLine($"[{DateTime.Now}] Factored {count} items in {sw.Elapsed}");
+        }
+
+
+
+        /// <summary>
+        /// Processes the queue of factors to be removed from the database.
+        /// </summary>
+        public static void ProcesseQueueBatched2(int batchSize = 100)
         {
             var test = new FactorTest();
             test.SetConnectionString();
