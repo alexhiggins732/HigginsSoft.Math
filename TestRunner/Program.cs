@@ -999,14 +999,15 @@ namespace TestRunner
                     Console.Title = $"({idx.ToString("N0")}) Id {unFactored.Last().Id.ToString("N0")} Count: {factorCount.ToString("N0")} - {commandLineArgs}";
                     // run the batch file
                     //ecm -pm1 25000 < pp1.txt
-                    var exe = config.EnableGpu.HasValue && config.EnableGpu.Value ? "gmp-ecm.exe" : "ecm.exe";
+                    bool useGpu = config.EnableGpu.HasValue && config.EnableGpu.Value;
+                    var exe = useGpu ? "ecm_gpu.exe -gpu" : "ecm.exe";
                     var algo = "";
                     if (config.skipPM1 == false) algo = "-pm1";
                     if (config.skipPP1 == false) algo = "-pp1";
 
                     var cmd = $"{exe} {algo}";
                     if (config.Curves.HasValue && config.Curves.Value > 0)
-                        cmd = $"{cmd} -c {config.Curves}";
+                        cmd = $"{cmd} -c {(useGpu? "gpu":"")}{config.Curves}";
                     cmd = $"{cmd} {config.B1}";
 
                     if (config.B2.HasValue && config.B2.Value > config.B1.Value)

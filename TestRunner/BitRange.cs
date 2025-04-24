@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Numerics;
-using static HigginsSoft.Math.Lib.MathLib;
+
 
 
 namespace TestRunner
