@@ -1007,7 +1007,7 @@ namespace TestRunner
 
                     var cmd = $"{exe} {algo}";
                     if (config.Curves.HasValue && config.Curves.Value > 0)
-                        cmd = $"{cmd} -c {(useGpu? "gpu":"")}{config.Curves}";
+                        cmd = $"{cmd}{(useGpu? "-gpucurves ": "-c ")}{config.Curves}";
                     cmd = $"{cmd} {config.B1}";
 
                     if (config.B2.HasValue && config.B2.Value > config.B1.Value)

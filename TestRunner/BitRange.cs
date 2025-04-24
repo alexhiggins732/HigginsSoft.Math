@@ -61,7 +61,7 @@ namespace TestRunner
             using GmpInt gmpRoot = 0;
             using GmpInt gmpp = 0;
   
-            var solver = new ShanksSolver();
+            var solver = new MathLib.ShanksSolver();
 
 
             for (var i = 0; i < 5; i++)
@@ -74,7 +74,7 @@ namespace TestRunner
                 
                 foreach (var p in s.NaiveLongPrimeGenerator2(start, end))
                 {
-                    var root = TonelliShanksPy.TonelliShanksAlgo(n, p);
+                    var root = MathLib.TonelliShanksPy.TonelliShanksAlgo(n, p);
                     if (root>0)
                         count1++;
                 }
@@ -134,9 +134,9 @@ namespace TestRunner
             using GmpInt gmpRoot = 0;
             foreach (var p in s.NaiveLongPrimeGenerator2(start, end))
             {
-                var root = TonelliShanksPy.TonelliShanksAlgo(n, p);
+                var root = MathLib.TonelliShanksPy.TonelliShanksAlgo(n, p);
                 using GmpInt gmpP = p;
-                int result = TonelliShanksPy.TonelliShanks(gmpRoot, n, p);
+                int result = MathLib.TonelliShanksPy.TonelliShanks(gmpRoot, n, p);
                 if (gmpRoot.ToString() != root.ToString())
                 {
                     Console.WriteLine($"TonelliShanks failed for {p}");
