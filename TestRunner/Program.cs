@@ -838,7 +838,7 @@ namespace TestRunner
             var init = false;
             SetConnectionString();
 
-            var startId = 0;
+            var startId = config.Start;
             int idx = 0;
             int factorCount = 0;
 
