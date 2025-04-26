@@ -210,8 +210,14 @@ namespace TestRunner
 
 
             Console.WriteLine($"Executing {nameof(ProcessQueue)}");
-
-            ProcesseQueueBatched();
+            try
+            {
+                ProcesseQueueBatched();
+            }
+            catch (Exception ex) 
+            {
+                Console.WriteLine($"Error processing queue: {ex}");
+            }
             return;
 
             //var test = new FactorTest();
