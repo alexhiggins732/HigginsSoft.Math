@@ -23,12 +23,55 @@
 
 
 using System;
+using System.Numerics;
 using System.Xml.Linq;
 
 namespace HigginsSoft.Math.Lib
 {
     public partial class MathLib
     {
+        /// <summary>
+
+        ///     var c1 = new MathLib.CongruenceNumerics(4, 11);
+        ///     var c2 = new MathLib.CongruenceNumerics(17, 19);
+        ///     var sol = MathLib.CRTNumerics((new[] { c1, c2 }).ToList());
+        ///     
+        ///     The result is:
+        ///         sol[0] = n = step size
+        ///         sol[1] = solution = where congruences first meet.
+        ///         
+        ///    Example: c1 starts at 4 and steps 11, while c2 starts at 17 and steps 19.
+        ///         The first time they meet is at 169 = 4 + 11 * 15 and 17 + 19 * 8 = 36. So the solution is n = 169, step size = 11 * 19 = 209.
+        ///     Sol = [209, 169] 
+        ///     
+        ///     To determine the start index k for each congruence, we can use the formula k = (solution - start) / p.
+        ///         k = 169 - 4 = 165 / 11 = 15
+        ///         k = 169 - 17 = 152 / 19 = 8
+        /// </summary>
+        public class CongruenceNumerics
+        {
+            public BigInteger Poly;
+            public BigInteger Base;
+            public BigInteger StartValue;
+            public CongruenceNumerics(BigInteger poly, BigInteger @base)
+            {
+                this.Poly = poly;
+                this.Base = @base;
+                this.Value = Poly;
+                this.StartValue = Value;
+            }
+            public BigInteger MoveNext() => Value += Base;
+
+            public BigInteger Value;
+
+            public override string ToString()
+            {
+                return $"{Poly} + {Base} * x";
+            }
+
+            public void Reset() { Value = StartValue; }
+        }
+
         public class Congruence
         {
             public int Poly;
@@ -72,6 +115,16 @@ namespace HigginsSoft.Math.Lib
             var solver = new ChineseRemainderTheoremSolver(remainders, modulos);
             return solver.SolveZ();
         }
+
+
+        public static (BigInteger N, BigInteger Solution) CRTNumerics(List<CongruenceNumerics> congruences)
+        {
+            BigInteger[] remainders = congruences.Select(x => x.Poly).ToArray();
+            BigInteger[] modulos = congruences.Select(x => x.Base).ToArray();
+            var solver = new ChineseRemainderTheoremSolverNumerics(remainders, modulos);
+            return solver.Solve();
+        }
+
 
         public static (GmpInt N, GmpInt Solution) CRTZDebug(List<Congruence> congruences)
         {
@@ -403,6 +456,98 @@ namespace HigginsSoft.Math.Lib
 
         }
 
+
+        public class ChineseRemainderTheoremSolverNumerics
+        {
+            private readonly BigInteger[] remainders;
+            private readonly BigInteger[] modulos;
+
+            public ChineseRemainderTheoremSolverNumerics(BigInteger[] remainders, BigInteger[] modulos)
+            {
+                if (remainders.Length != modulos.Length)
+                {
+                    throw new ArgumentException("The number of remainders must match the number of modulos.");
+                }
+
+                this.remainders = remainders;
+                this.modulos = modulos;
+            }
+
+            public (BigInteger N, BigInteger Solution) Solve()
+            {
+                int len = modulos.Length;
+
+                BigInteger N = 1;
+
+                // Calculate N (the product of all modulos)
+                // TODO: verify modulus are coprime.
+                for (int i = 0; i < len; i++)
+                {
+                    N *= modulos[i];
+                }
+
+                BigInteger result = 0;
+                for (int i = 0; i < len; i++)
+                {
+
+                    BigInteger mi = N / modulos[i];
+                    BigInteger miInverse = ModularMultiplicativeInverse(mi, modulos[i]);
+
+                    //result += remainders[i] * mi * miInverse;
+                    //result %= N;
+
+                    //same as above but work mod N to prevent overflows.
+                    var t = remainders[i] * mi;
+                    if (t > N) t %= N;
+                    t *= miInverse;
+                    if (t > N) t %= N;
+                    t += result;
+                    if (t > N) t %= N;
+                    result = t;
+                }
+
+                if (result < 0)
+                {
+                    result += N;
+                }
+
+                return (N, result);
+            }
+
+            internal static BigInteger ModularMultiplicativeInverse(BigInteger a, BigInteger m)
+            {
+                BigInteger m0 = m;
+                BigInteger y = 0, x = 1;
+
+                if (m == 1)
+                {
+                    return 0;
+                }
+
+                while (a > 1)
+                {
+                    BigInteger q = a / m;
+                    BigInteger t = m;
+
+                    m = a % m;
+                    a = t;
+                    t = y;
+
+                    y = x - q * y;
+                    x = t;
+                }
+
+                if (x < 0)
+                {
+                    x += m0;
+                }
+
+                return x;
+            }
+
+
+
+        }
         public class ChineseRemainderTheoremSolver
         {
             private readonly int[] remainders;
@@ -553,7 +698,6 @@ namespace HigginsSoft.Math.Lib
 
                 return ((int)N, (int)result);
             }
-
 
 
             public int Solve()
@@ -802,6 +946,8 @@ namespace HigginsSoft.Math.Lib
 
                 return x;
             }
+
+   
 
             private GmpInt ModularMultiplicativeInverseZ(GmpInt a, GmpInt m)
             {

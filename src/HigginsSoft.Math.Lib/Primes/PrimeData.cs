@@ -12,6 +12,8 @@
 
 */
 
+using System.Numerics;
+
 namespace HigginsSoft.Math.Lib
 {
 
@@ -424,6 +426,73 @@ namespace HigginsSoft.Math.Lib
             Count = count;
             MaxPrime = maxPrime;
             NextPrime = nextPrime;
+        }
+    }
+
+    public class PrimeData<T>
+    {
+        /// <summary>
+        /// Absolute value of N. Equals 2^Bits (or 1 &lt;&lt; Bits).
+        /// </summary>
+        public T N { get; }
+
+        /// <summary>
+        /// The number of bits in N.
+        /// </summary>
+        public int Bits { get; }
+
+        /// <summary>
+        /// The number of primes less than N (2^Bits or 1 &lt;&lt; Bits).
+        /// </summary>
+        public T Count { get; }
+
+        /// <summary>
+        /// The largest prime less than N (2^Bits or 1 &lt;&lt; Bits).
+        /// </summary>
+        public T MaxPrime { get; }
+
+        /// <summary>
+        /// The next prime greater than N (2^Bits or 1 &lt;&lt; Bits).
+        /// </summary>
+        public T NextPrime { get; }
+
+        public PrimeData(int bit, T n, T count, T maxPrime, T nextPrime)
+        {
+            Bits = bit;
+            N = n;
+            Count = count;
+            MaxPrime = maxPrime;
+            NextPrime = nextPrime;
+        }
+    }
+
+    public class PrimeDataHelper
+    {
+        static Dictionary<int, PrimeData<BigInteger>>? _data = null;
+        public static Dictionary<int, PrimeData<BigInteger>> GetPrimeData()
+        {
+            if (_data == null)
+            {
+                var primeData = new Dictionary<int, PrimeData<BigInteger>>();
+                //foreach (var item in PrimeData.Counts)
+                //{
+                //    var data = new PrimeData<BigInteger>(item.Value.Bits, BigInteger.Pow(2, item.Value.Bits), item.Value.Count, item.Value.MaxPrime, item.Value.NextPrime);
+                //    primeData.Add(item.Value.Bits, data);
+                //}
+                //foreach (var item in PrimeData.Counts64)
+                //{
+                //    var data = new PrimeData<BigInteger>(item.Value.Bits, BigInteger.Pow(2, item.Value.Bits), item.Value.Count, (BigInteger)item.Value.MaxPrime, (BigInteger)item.Value.NextPrime);
+                //    primeData.Add(item.Value.Bits, data);
+                //}
+                foreach (var item in PrimeData.Counts90)
+                {
+                    var data = new PrimeData<BigInteger>(item.Value.Bits, (BigInteger)item.Value.N, (BigInteger)item.Value.Count, (BigInteger)item.Value.MaxPrime, (BigInteger)item.Value.NextPrime);
+                    primeData.Add(item.Value.Bits, data);
+                }
+
+                _data = primeData;
+            }
+            return _data;
         }
     }
 }

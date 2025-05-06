@@ -1638,7 +1638,7 @@ namespace HigginsSoft.Math.Lib.Tests
                 }
             }
 #if SKIP_LONG_TESTS
-            [Ignore]
+            //[Ignore]
 #endif
             [TestMethod()]
             public void Generator_Bits_24_Test()
