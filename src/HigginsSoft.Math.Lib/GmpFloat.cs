@@ -99,6 +99,17 @@ namespace HigginsSoft.Math.Lib
         {
             gmp_lib.mpf_init_set_d(Data, value);
         }
+        public GmpFloat(double value, uint precisionBits) : this(value)
+        {
+            SetPrecision(precisionBits);
+        }
+
+        public GmpFloat Sqrt()
+        {
+            var result = new GmpFloat();
+            gmp_lib.mpf_sqrt(result.Data, Data);
+            return result;
+        }
 
 
         public GmpFloat(decimal value)
@@ -128,6 +139,7 @@ namespace HigginsSoft.Math.Lib
             gmp_lib.free(ptr);
         }
 
+
         #endregion
 
         public override string ToString()
@@ -142,13 +154,13 @@ namespace HigginsSoft.Math.Lib
             //if (true)
             //    return Data.ToString();
 
-          
+
             if (Data.Pointer == IntPtr.Zero) return "uninitialized";
             if (IsZero) return "0";
-        
+
             var ds = Data.ToString();
             mp_exp_t exp = 0;
-            char_ptr s = gmp_lib.mpf_get_str(char_ptr.Zero, ref exp, @base, 0, Data);
+            using char_ptr s = gmp_lib.mpf_get_str(char_ptr.Zero, ref exp, @base, 0, Data);
             var stringValue = s.ToString().TrimStart('-');
             if (exp < 1)
             {
@@ -174,7 +186,7 @@ namespace HigginsSoft.Math.Lib
                     string wholePart = t.ToString().TrimStart('-');
                     b = new StringBuilder(wholePart);
                 }
-                    
+
                 if (abs < stringValue.Length)
                     b.Insert(abs, '.');
                 if (Sign < 1)
@@ -345,7 +357,28 @@ namespace HigginsSoft.Math.Lib
         {
             gmp_lib.mpf_set_default_prec(value);
         }
+        public static void SetPrecision(GmpFloat value, uint precision)
+        {
+            gmp_lib.mpf_set_prec(value.Data, precision);
+        }
+        public void SetPrecision(uint precision)
+        {
+            gmp_lib.mpf_set_prec(Data, precision);
+        }
 
+        public GmpFloat Floor()
+        {
+            GmpFloat result = new GmpFloat();
+            gmp_lib.mpf_floor(result.Data, Data);
+            return result;
+        }
+
+        public GmpFloat Ceiling()
+        {
+            GmpFloat result = new GmpFloat();
+            gmp_lib.mpf_ceil(result.Data, Data);
+            return result;
+        }
 
         #region public static operators
 
@@ -1340,6 +1373,42 @@ namespace HigginsSoft.Math.Lib
             return new GmpFloat(value, 2);
         }
 
+
+        public void Add(uint other)
+        {
+            gmp_lib.mpf_add_ui(Data, Data, other);
+        }
+
+        public void Subtract(uint other)
+        {
+            gmp_lib.mpf_sub_ui(Data, Data, other);
+        }
+        public void Multiply(uint other)
+        {
+            gmp_lib.mpf_add_ui(Data, Data, other);
+        }
+        public void Divide(uint other)
+        {
+            gmp_lib.mpf_div_ui(Data, Data, other);
+        }
+
+        public void Add(GmpFloat other)
+        {
+            gmp_lib.mpf_add(Data, Data, other.Data);
+        }
+
+        public void Subtract(GmpFloat other)
+        {
+            gmp_lib.mpf_sub(Data, Data, other.Data);
+        }
+        public void Multiply(GmpFloat other)
+        {
+            gmp_lib.mpf_add(Data, Data, other.Data);
+        }
+        public void Divide(GmpFloat other)
+        {
+            gmp_lib.mpf_div(Data, Data, other.Data);
+        }
 
 
         #endregion

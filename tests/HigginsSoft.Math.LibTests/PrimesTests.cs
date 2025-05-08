@@ -23,8 +23,12 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Diagnostics;
 using System.Drawing;
+using System.Numerics;
 using System.Reflection;
+using System.Text;
+using static Azure.Core.HttpHeader;
 
 namespace HigginsSoft.Math.Lib.Tests
 {
@@ -384,9 +388,477 @@ namespace HigginsSoft.Math.Lib.Tests
     namespace PrimeGeneratorTests
 
     {
+        // This test class is used to test the prime count estimates
+        [TestClass]
+        public class PrimeCountEstimates
+        {
+            [TestMethod]
+            public void TestPrimeCountEstimates32()
+            {
+                TestPrimeCountEstimates(2, 32);
+            }
+
+            [TestMethod]
+            public void TestPrimeCountEstimates64()
+            {
+                TestPrimeCountEstimates(33, 64);
+            }
+
+            [TestMethod]
+            public void TestPrimeCountEstimates90()
+            {
+                TestPrimeCountEstimates(65, 90);
+            }
+
+            [TestMethod]
+            public void TestPrimeCountEstimates128()
+            {
+                TestPrimeCountEstimates(91, 128);
+            }
+
+            [TestMethod]
+            public void TestPrimeCountEstimates160()
+            {
+                TestPrimeCountEstimates(129, 160);
+            }
+
+            [TestMethod]
+            public void TestPrimeCountEstimates192()
+            {
+                TestPrimeCountEstimates(161, 192);
+            }
+
+            [TestMethod]
+            public void TestPrimeCountEstimates256()
+            {
+                TestPrimeCountEstimates(193, 256);
+            }
+
+            public void TestPrimeCountEstimates(int startBit, int endBit)
+            {
+
+                for (var i = startBit; i <= endBit; i++)
+                {
+                    var x = BigInteger.One << i;
+                     var estimateCount = EstimatePiNumerics(x);
+                    var estimate = estimateCount.ToString();
+                    var count = "";
+                    if (i <= 32)
+                        count = PrimeData.Counts[i].Count.ToString();
+                    else if (i <= 64)
+
+                        count = PrimeData.Counts64[i].Count.ToString();
+
+                    else if (i <= 90)
+
+                        count = PrimeData.Counts90[i].Count.ToString();
+                    else
+                        count = "Unknown";
+
+                    // need to assert result in range, say 1%;
+                    Debug.WriteLine($"2^{i} - {estimate} - Actual: {count}");
+                    Console.WriteLine($"2^{i} - {estimate} - Actual: {count}");
+                    //Assert.IsTrue(estimate > count * 0.99 && estimate < count * 1.01, $"Estimate failed for {x}: {estimate} - actual {count}");
+                    // Assert.AreEqual(count, estimate, $"Estimate failed for {x}: {estimate} - actual {count}");
+                }
+            }
+
+            public static BigInteger EstimatePiNumerics(BigInteger x)
+            {
+                var liX = LiNumerics(x);
+                var sqrtX = x.Sqrt();
+                var liSqrt = LiNumerics(sqrtX);
+                var halfLiSqrt = liSqrt / 2;
+                var result = liX - halfLiSqrt;
+                return (BigInteger)result;
+            }
+
+            public static BigInteger EstimatePid(BigInteger x)
+            {
+                var liX = Lid((decimal)x);
+                var sqrtX = x.Sqrt();
+                var liSqrt = Lid((decimal)sqrtX);
+                var halfLiSqrt = liSqrt / 2;
+                var result = liX - halfLiSqrt;
+                return (BigInteger)result;
+            }
+
+            public static GmpFloat EstimatePiGmp(GmpFloat x)
+            {
+                using var liX = LiGmp(x);
+                using var sqrtX = x.Sqrt();
+                using var liSqrt = LiGmp(sqrtX);
+                using GmpFloat two = 2;
+                using var halfLiSqrt = liSqrt / two;
+                var result = liX - halfLiSqrt;
+                return result;
+            }
+
+            /// <summary>
+            ///  Here's a high-precision implementation using adaptive trapezoidal integration:
+            ///  Li(x) = ∫₂ˣ (1 / log(t)) dt
+            /// This is the offset logarithmic integral commonly used to approximate the prime-counting function π(x) with high accuracy:
+            /// π(x) ≈ Li(x) − ½·Li(x^½)
+            /// </summary>
+            /// <param name="x"></param>
+            /// <param name="precisionBits"></param>
+            /// <param name="intervals"></param>
+            /// <returns></returns>
+            public static GmpFloat LiGmp(GmpFloat x, uint precisionBits = 512, uint intervals = 100)
+            {
+                GmpFloat.SetDefaultPrecision(precisionBits);
+                using var a = new GmpFloat(2, precisionBits);
+                using var b = x;
+                using var c = b - a;
+                using var h = (b - a) / intervals;
+
+                var sum = GmpFloat.Zero;
+                for (uint i = 0; i <= intervals; i++)
+                {
+                    using var t = a + i * h;
+                    double logT = (double)t;
+                    //    double logT = Math.Log(double.Parse(t.ToString())); // fallback to double log
+                    logT = MathLib.Log(logT);
+                    using GmpFloat gmpFloatLogT = new GmpFloat(logT, precisionBits);
+                    using var f = GmpFloat.One / gmpFloatLogT;
+                    if (i == 0 || i == intervals)
+                    {
+                        using var halfF = f / 2;
+                        sum += halfF;
+                    }
+
+                    else
+                        sum += f;
+                }
+
+                var result = h * sum;
+                sum.Dispose();
+                return result;
+            }
+
+
+            /// <summary>
+            ///  Here's a high-precision implementation using adaptive trapezoidal integration:
+            ///  Li(x) = ∫₂ˣ (1 / log(t)) dt
+            /// This is the offset logarithmic integral commonly used to approximate the prime-counting function π(x) with high accuracy:
+            /// π(x) ≈ Li(x) − ½·Li(x^½)
+            /// </summary>
+            /// <param name="x"></param>
+            /// <param name="precisionBits"></param>
+            /// <param name="intervals"></param>
+            /// <returns></returns>
+            public static BigInteger LiNumerics(BigInteger x, uint intervals = 100000)
+            {
+
+                BigInteger a = 2;
+                var b = x;
+                var c = b - a;
+                var h = (b - a) / intervals;
+
+                decimal sum = 0;
+                for (uint i = 0; i <= intervals; i++)
+                {
+                    var t = a + i * h;
+
+                    //    double logT = Math.Log(double.Parse(t.ToString())); // fallback to double log
+                    //var log = MathLib.Log((double)t);
+                    //var f = 1 / log;
+                    var log = MathLib.Log(t);
+                    var f = 1 / log;
+                    if (i == 0 || i == intervals)
+                    {
+                        sum += (decimal)f / 2;
+                    }
+
+                    else
+                        sum += (decimal)f;
+                }
+
+                var result = h * (BigInteger)sum;
+
+                return result;
+            }
+
+            /// <summary>
+            ///  Here's a high-precision implementation using adaptive trapezoidal integration:
+            ///  Li(x) = ∫₂ˣ (1 / log(t)) dt
+            /// This is the offset logarithmic integral commonly used to approximate the prime-counting function π(x) with high accuracy:
+            /// π(x) ≈ Li(x) − ½·Li(x^½)
+            /// </summary>
+            /// <param name="x"></param>
+            /// <param name="precisionBits"></param>
+            /// <param name="intervals"></param>
+            /// <returns></returns>
+            public static decimal Lid(decimal x, uint intervals = 100)
+            {
+
+                decimal a = 2;
+                var b = x;
+                var c = b - a;
+                var h = (b - a) / intervals;
+
+                decimal sum = 0;
+                for (uint i = 0; i <= intervals; i++)
+                {
+                    var t = a + i * h;
+
+                    //    double logT = Math.Log(double.Parse(t.ToString())); // fallback to double log
+                    var log = MathLib.Log((double)t);
+                    var f = 1 / log;
+                    if (i == 0 || i == intervals)
+                    {
+                        sum += (decimal)f / 2;
+                    }
+
+                    else
+                        sum += (decimal)f;
+                }
+
+                var result = (decimal)h * sum;
+
+                return result;
+            }
+        }
         [TestClass]
         public class PrimeGeneratorTests
         {
+            [TestMethod]
+            public void TimeLongIncP()
+            {
+
+                var primes = Primes.Primes65536.Select(i => (long)i).ToArray();
+                long max = uint.MaxValue;
+                var res = 0L;
+                var sw = Stopwatch.StartNew();
+                foreach (var p in primes)
+                {
+                    var j = p;
+                    while (j <= max)
+                        j += p;
+                    res += (j & 1);// prevent compiler optimizations
+                }
+                sw.Stop();
+                var message = $"Found res: {res} in {sw}";
+                Console.WriteLine(message);
+                Debug.WriteLine(message);
+
+            }
+
+            [TestMethod]
+            public void TimeLongInc2pFromP()
+            {
+                var primes = Primes.Primes65536.Select(i => (long)i).ToArray();
+                long max = uint.MaxValue;
+                var res = 0L;
+                var sw = Stopwatch.StartNew();
+                long step = 0;
+                long j = 0;
+
+                foreach (var p in primes)
+                {
+                    j = p;
+                    step = j << 1;
+                    while (j <= max)
+                        j += step;
+                    res += (j & 1);// prevent compiler optimizations
+                }
+                sw.Stop();
+                var message = $"Found res: {res} in {sw}";
+                Console.WriteLine(message);
+                Debug.WriteLine(message);
+
+            }
+
+            [TestMethod]
+            public void TimeLongInc2pFromSquare()
+            {
+                var primes = Primes.Primes65536.Select(i => (long)i).ToArray();
+                long max = uint.MaxValue;
+                var res = 0L;
+                var sw = Stopwatch.StartNew();
+                long step = 0;
+                long j = 0;
+
+                foreach (var p in primes)
+                {
+                    j = p;
+                    step = j << 1;
+                    j = j * j;
+                    while (j <= max)
+                        j += step;
+                    res += (j & 1);// prevent compiler optimizations
+                }
+                sw.Stop();
+                var message = $"Found res: {res} in {sw}";
+                Console.WriteLine(message);
+                Debug.WriteLine(message);
+
+            }
+
+
+            [TestMethod]
+            public void TimeLongInc3Mod6()
+            {
+                var primes = Primes.Primes65536.Select(i => (long)i).ToArray();
+                long max = uint.MaxValue;
+                var res = 0L;
+                var sw = Stopwatch.StartNew();
+                long step = 0;
+                long j = 0;
+
+                foreach (var p in primes)
+                {
+                    if (p < 5) continue;
+                    j = p;
+                    step = j << 1;
+                    j = j * j;
+                    while (j <= max)
+                        j += step;
+                    res += (j & 1);// prevent compiler optimizations
+                }
+                sw.Stop();
+                var message = $"Found res: {res} in {sw}";
+                Console.WriteLine(message);
+                Debug.WriteLine(message);
+
+            }
+
+            [TestMethod]
+            public void TimeLongInc3Mod30()
+            {
+                var primes = Primes.Primes65536.Select(i => (long)i).ToArray();
+                long max = uint.MaxValue;
+                var res = 0L;
+                var sw = Stopwatch.StartNew();
+                long step = 0;
+                long j = 0;
+
+                foreach (var p in primes)
+                {
+                    if (p < 7) continue;
+                    j = p;
+                    step = j << 1;
+                    j = j * j;
+                    while (j <= max)
+                        j += step;
+                    res += (j & 1);// prevent compiler optimizations
+                }
+                sw.Stop();
+                var message = $"Found res: {res} in {sw}";
+                Console.WriteLine(message);
+                Debug.WriteLine(message);
+
+            }
+
+            [TestMethod]
+            public void TimeLongInc3Mod210()
+            {
+                var primes = Primes.Primes65536.Select(i => (long)i).ToArray();
+                long max = uint.MaxValue;
+                var res = 0L;
+                var sw = Stopwatch.StartNew();
+                long step = 0;
+                long j = 0;
+
+                foreach (var p in primes)
+                {
+                    if (p < 11) continue;
+                    j = p;
+                    step = j << 1;
+                    j = j * j;
+                    while (j <= max)
+                        j += step;
+                    res += (j & 1);// prevent compiler optimizations
+                }
+                sw.Stop();
+                var message = $"Found res: {res} in {sw}";
+                Console.WriteLine(message);
+                Debug.WriteLine(message);
+
+            }
+
+            [TestMethod]
+            public void TimeLongInc3Mod2310()
+            {
+                var primes = Primes.Primes65536.Select(i => (long)i).ToArray();
+                long max = uint.MaxValue;
+                var res = 0L;
+                var sw = Stopwatch.StartNew();
+                long step = 0;
+                long j = 0;
+
+                foreach (var p in primes)
+                {
+                    if (p < 13) continue;
+                    j = p;
+                    step = j << 1;
+                    j = j * j;
+                    while (j <= max)
+                        j += step;
+                    res += (j & 1);// prevent compiler optimizations
+                }
+                sw.Stop();
+                var message = $"Found res: {res} in {sw}";
+                Console.WriteLine(message);
+                Debug.WriteLine(message);
+
+            }
+
+            [TestMethod]
+            public void TimeLongInc3Mod30030()
+            {
+                var primes = Primes.Primes65536.Select(i => (long)i).ToArray();
+                long max = uint.MaxValue;
+                var res = 0L;
+                var sw = Stopwatch.StartNew();
+                long step = 0;
+                long j = 0;
+
+                foreach (var p in primes)
+                {
+                    if (p < 17) continue;
+                    j = p;
+                    step = j << 1;
+                    j = j * j;
+                    while (j <= max)
+                        j += step;
+                    res += (j & 1);// prevent compiler optimizations
+                }
+                sw.Stop();
+                var message = $"Found res: {res} in {sw}";
+                Console.WriteLine(message);
+                Debug.WriteLine(message);
+
+            }
+
+            [TestMethod]
+            public void TimeLongInc3Mod510510()
+            {
+                var primes = Primes.Primes65536.Select(i => (long)i).ToArray();
+                long max = uint.MaxValue;
+                var res = 0L;
+                var sw = Stopwatch.StartNew();
+                long step = 0;
+                long j = 0;
+
+                foreach (var p in primes)
+                {
+                    if (p < 19) continue;
+                    j = p;
+                    step = j << 1;
+                    j = j * j;
+                    while (j <= max)
+                        j += step;
+                    res += (j & 1);// prevent compiler optimizations
+                }
+                sw.Stop();
+                var message = $"Found res: {res} in {sw}";
+                Console.WriteLine(message);
+                Debug.WriteLine(message);
+
+            }
+
+
             [TestMethod()]
             public void Generator_GetEnumerator_TestToN()
             {
@@ -1843,7 +2315,7 @@ namespace HigginsSoft.Math.Lib.Tests
     namespace PrimeGeneratorTests
     {
 
-     
+
 
     }
 }
