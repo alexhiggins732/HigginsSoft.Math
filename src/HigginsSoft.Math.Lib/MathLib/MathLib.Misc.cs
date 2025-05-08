@@ -218,7 +218,7 @@ namespace HigginsSoft.Math.Lib
         {
             var low = rand.Next();
             var high = rand.Next();
-            ulong result = (1ul << 63) | (uint)low | ((ulong)high) << 32;
+            ulong result = (uint)low | ((ulong)high) << 32;
             return result;
         }
         public static unsafe long Random63()
@@ -244,9 +244,10 @@ namespace HigginsSoft.Math.Lib
         public static unsafe ulong Random64(int bits)
         {
 
+
             if (bits < 1 || bits > 63)
                 throw new ArgumentException("Bits must be between 1 and 64");
-            var buffer = new byte[bits >> 3];
+            var buffer = new byte[8];
             rnd.NextBytes(buffer);
             ref byte msb = ref buffer[bits >> 3];
 

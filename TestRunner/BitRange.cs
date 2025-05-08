@@ -1,9 +1,11 @@
 ﻿using HigginsSoft.Math.Lib;
 using MathGmp.Native;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Numerics;
+using static System.Net.Mime.MediaTypeNames;
 
 
 
@@ -60,7 +62,7 @@ namespace TestRunner
             using GmpInt gmpN = n;
             using GmpInt gmpRoot = 0;
             using GmpInt gmpp = 0;
-  
+
             var solver = new MathLib.ShanksSolver();
 
 
@@ -71,11 +73,11 @@ namespace TestRunner
                 var count3 = 0;
                 var sw1 = Stopwatch.StartNew();
 
-                
+
                 foreach (var p in s.NaiveLongPrimeGenerator2(start, end))
                 {
                     var root = MathLib.TonelliShanksPy.TonelliShanksAlgo(n, p);
-                    if (root>0)
+                    if (root > 0)
                         count1++;
                 }
                 sw1.Stop();
@@ -106,7 +108,7 @@ namespace TestRunner
 
 
 
-                    
+
                 // print primes per second
                 Console.WriteLine($"N / second: {(count1 / sw1.Elapsed.TotalSeconds).ToString("N4")}");
                 Console.WriteLine($"F / second: {(count2 / sw2.Elapsed.TotalSeconds).ToString("N4")}");
@@ -340,6 +342,214 @@ namespace TestRunner
 
             }
 
+        }
+        public void TimeFindPm1ModP()
+        {
+            /* factor N+1
+             * P1 = 2
+                P1 = 2
+                P1 = 7
+                P2 = 11
+                P3 = 107
+                P3 = 233
+                P4 = 1327
+                P10 = 4213988843
+                C289 = 3145521369435433644063684274780079279591946774192489531985527059877740442570914100937886940511352613549998337231613510320651027555724854106699954163607672683154553907080373172786314647927992224592991009232315519287947285299252641357082155839999799831996571281727858627921871224016191642513
+   */
+            var n = RsaChallenge.Rsa1024BigInt;
+            var gen = new PrimeGeneratorUnsafeUint();
+            var count = 0;
+  
+            var sw = Stopwatch.StartNew();
+            uint last = 0;
+            foreach (var p in gen)
+            {
+                last = p;
+                if (count % 1_000_000 == 0)
+                {
+                    Console.Title = $"[{DateTime.Now}] ({count.ToString("N0")}) {last.ToString("N0")}) - {sw.Elapsed}";
+                }
+                count++;
+
+            }
+            sw.Stop();
+            Console.WriteLine($"[{DateTime.Now}] ({count.ToString("N0")}) {last.ToString("N0")}) - {sw.Elapsed}");
+        }
+
+        public void TimeFindPm1ModPGcd()
+        {
+            /* factor N+1
+             * P1 = 2
+                P1 = 2
+                P1 = 7
+                P2 = 11
+                P3 = 107
+                P3 = 233
+                P4 = 1327
+                P10 = 4213988843
+                C289 = 3145521369435433644063684274780079279591946774192489531985527059877740442570914100937886940511352613549998337231613510320651027555724854106699954163607672683154553907080373172786314647927992224592991009232315519287947285299252641357082155839999799831996571281727858627921871224016191642513
+   */
+            var n = RsaChallenge.Rsa1024BigInt;
+            var gen = new PrimeGeneratorUnsafeUint();
+            var count = 0;
+            var found = 0;
+            var sw = Stopwatch.StartNew();
+            foreach (var p in gen)
+            {
+                if (count % 10000 == 0)
+                {
+                    Console.Title = $"[{DateTime.Now}] ({found.ToString("N0")} in {count.ToString("N0")}) - {sw.Elapsed}";
+                }
+                count++;
+                var res = n % p;
+                if (res == p - 1)
+                {
+                    found++;
+                    Console.WriteLine($"[{DateTime.Now}] ({found.ToString("N0")} in {count.ToString("N0")}) {p.ToString("N0")} = 1 mod Rsa1024 - {sw.Elapsed}");
+                }
+            }
+            sw.Stop();
+        }
+        internal void FactorFind1ModP()
+        {
+            var n = RsaChallenge.Rsa1024BigInt;
+            var f = 2466;
+            var q = BigInteger.Parse("234033023631364072706910043447690165193977560164064769975755949879420006941890843266657918920417558958318250779922213092319415841541132057978052877071145");
+            var count = 0ul;
+            var r = q % f;
+            if (r != 1)
+            {
+                Console.WriteLine($"[{DateTime.Now}] {r.ToString("N0")} = {q.ToString("N0")} % {f} - {count.ToString("N0")} - {r}");
+                return;
+            }
+            else
+            {
+                Console.WriteLine($"[{DateTime.Now}] {r.ToString("N0")} = {q.ToString("N0")} % {f} - {count.ToString("N0")}");
+            }
+            var sw = Stopwatch.StartNew();
+            for (; count < long.MaxValue; count++)
+            {
+
+                if (count % 100_000 == 0)
+                {
+                    Console.Title = $"[{DateTime.Now}]  {count.ToString("N0")} - {sw.Elapsed}";
+                }
+                q += f;
+                var gcd = BigInteger.GreatestCommonDivisor(q, n);
+
+                if (gcd > 1)// && gcd < n)
+                {
+                    Console.WriteLine($"[{DateTime.Now}] {gcd.ToString("N0")} = gcd({q.ToString("N0")}, {n.ToString("N0")}) - {sw.Elapsed}");
+                    break;
+                }
+
+
+            }
+            sw.Stop();
+
+        }
+        internal void TimeFind1ModP()
+        {
+            /* factor N-1
+                P1 = 2
+                P1 = 3
+                P1 = 3
+                P3 = 137
+                P305 = 54771456150038614497000493219304935092814872508380789750399490612946679077396404636634341910207586959366669619693621878091516796311421002328891523353314783552044209596262450166412392021801443029052356270913828673230945124328722305581380993298951135787866754410919924536135340853339415981812675173250969557
+           */
+            var n = RsaChallenge.Rsa1024BigInt;
+            var gen = new PrimeGeneratorUnsafeUint();
+            var count = 0;
+            var found = 0;
+            var sw = Stopwatch.StartNew();
+            foreach (var p in gen)
+            {
+                if (count % 10000 == 0)
+                {
+                    Console.Title = $"[{DateTime.Now}] ({found.ToString("N0")} in {count.ToString("N0")}) - {sw.Elapsed}";
+                }
+                count++;
+                var res = n % p;
+                if (res == 1)
+                {
+                    found++;
+                    Console.WriteLine($"[{DateTime.Now}] ({found.ToString("N0")} in {count.ToString("N0")}) {p.ToString("N0")} = 1 mod Rsa1024 - {sw.Elapsed}");
+                }
+
+            }
+            sw.Stop();
+
+        }
+
+        internal void Crank()
+        {
+            var n = RsaChallenge.Rsa1024BigInt;
+
+            BigInteger gcd = 1;
+            BigInteger q = 1;
+            var sw = Stopwatch.StartNew();
+            ulong count = 0;
+            while (gcd == 1)
+            {
+                if (count % 1000 == 0)
+                {
+                    Console.Title = $"[{DateTime.Now}] {count.ToString("N0")} - {sw.Elapsed}";
+                }
+
+                count++;
+                var a = MathLib.Random64();
+                var b = MathLib.Random64();
+                q = a * b;
+                while (q < n)
+                {
+                    q *= 10;
+                }
+        
+                while (q > 1)
+                {
+                    gcd = BigInteger.GreatestCommonDivisor(q - 1, n);
+
+                    if (gcd > 1)// && gcd < n)
+                    {
+                        Console.WriteLine($"[{DateTime.Now}] {gcd.ToString("N0")} = gcd({q.ToString("N0")}, {n.ToString("N0")}) - {sw.Elapsed}");
+                        break;
+                    }
+                    else
+                    {
+                        q = q / 10;
+                    }
+                }
+                count++;
+            }
+            sw.Stop();
+            Console.WriteLine($"[{DateTime.Now}] Cranked out with {q.ToString("N0")} - {sw.Elapsed}");
+        }
+
+        internal void Crank1()
+        {
+            var n = RsaChallenge.Rsa1024BigInt;
+            BigInteger q = 10;
+            while (q < n)
+            {
+                q *= 10;
+            }
+            var sw = Stopwatch.StartNew();
+            while (q > 1)
+            {
+                var gcd = BigInteger.GreatestCommonDivisor(q - 1, n);
+
+                if (gcd > 1)// && gcd < n)
+                {
+                    Console.WriteLine($"[{DateTime.Now}] {gcd.ToString("N0")} = gcd({q.ToString("N0")}, {n.ToString("N0")}) - {sw.Elapsed}");
+                    break;
+                }
+                else
+                {
+                    q = q / 10;
+                }
+            }
+            sw.Stop();
+            Console.WriteLine($"[{DateTime.Now}] Cranked out with {q.ToString("N0")} - {sw.Elapsed}");
         }
     }
 }

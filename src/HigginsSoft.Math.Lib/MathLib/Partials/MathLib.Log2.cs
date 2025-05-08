@@ -13,6 +13,7 @@
 */
 
 
+using MathGmp.Native;
 using System;
 using System.ComponentModel;
 using System.Numerics;
@@ -27,10 +28,10 @@ namespace HigginsSoft.Math.Lib
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static double Log2(double d) => System.Math.Log2(Abs(d));
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static double Log2(int d) => System.Math.Log2((double)Abs(d));
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static double Log2(uint d) => System.Math.Log2((double)d);
 
@@ -118,7 +119,7 @@ namespace HigginsSoft.Math.Lib
                 double res = MathLib.Log(((double)val));
                 return blex > 0 ? res + blex * LOG_2 : res;
             }
-
+         
             /**
              * Computes the natural logarithm of a {@link BigDecimal} 
              * <p>

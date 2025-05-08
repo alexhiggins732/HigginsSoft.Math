@@ -45,6 +45,7 @@ namespace HigginsSoft.Math.Lib
         public int? BatchSize { get; private set; }
         public int TotalThreads { get; private set; }
         public int Start { get; private set; }
+        public int End { get; private set; } = int.MaxValue;
 
         static FactorConfig? commandLineConfig = null;
         public static FactorConfig GetFromCommandArgs(List<string> args)
@@ -95,9 +96,9 @@ namespace HigginsSoft.Math.Lib
             if (argCopy.Contains("end", StringComparer.OrdinalIgnoreCase))
             {
                 idx = argCopy.Select(x => x.ToLower()).ToList().IndexOf("end");
-                if (idx < argCopy.Count - 1 && int.TryParse(argCopy[idx + 1], out var start))
+                if (idx < argCopy.Count - 1 && int.TryParse(argCopy[idx + 1], out var end))
                 {
-                    commandLineConfig.Start = start;
+                    commandLineConfig.End = end;
                     // remove the args from the list
                     argCopy.RemoveAt(idx + 1);
                     argCopy.RemoveAt(idx);

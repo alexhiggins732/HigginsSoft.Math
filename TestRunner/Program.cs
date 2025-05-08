@@ -37,7 +37,18 @@ namespace TestRunner
                 return;
             }
             var efTests = new FactorTest();
-
+            if (args.Any(x => x == "crank"))
+            {
+                var f = new SimplePrpFilter();
+                f.TimeFindPm1ModP();
+                return;
+            }
+            if (args.Any(x => x == "findpm1"))
+            {
+                var f = new SimplePrpFilter();
+                f.TimeFindPm1ModP();
+                return;
+            }
             if (args.Any(x => x == "updateprogress"))
             {
                 JobManager.UpdateProgress();
@@ -169,12 +180,165 @@ namespace TestRunner
             }
             if (args.Any(x => x == "offsets"))
             {
-                if (BigInteger.TryParse(args[1], out BigInteger p))
+                //FactorDbHelper.TestFactorial();
+                // Example: c1 starts at 4 and steps 11, while c2 starts at 17 and steps 19.
+                //var c1 = new MathLib.CongruenceNumerics(4, 11);
+                //var c2 = new MathLib.CongruenceNumerics(17, 19);
+                //var sol = MathLib.CRTNumerics((new[] { c1, c2 }).ToList());
+                // sol[0] = n = step size
+                // sol[1] = solution = where congruences first meet.
+                // example, c1 starts at 4 and steps 11, while c2 starts at 17 and steps 19.
+                // The first time they meet is at 169 = 4 + 11 * 15 and 17 + 19 * 8 = 36. So the solution is n = 169, step size = 11 * 19 = 209.
+                // To determine the start index k for each congruence, we can use the formula k = (solution - start) / p.
+                //      k = 169 - 4 = 165 / 11 = 15
+                //      k = 169 - 17 = 152 / 19 = 8
+
+                var findNext = args.Any(x => x == "next");
+                if (args.Length > 3 && BigInteger.TryParse(args[1], out BigInteger n1) && BigInteger.TryParse(args[2], out BigInteger a) && BigInteger.TryParse(args[3], out BigInteger b))
+                {
+
+                    //sol[0] where the congruences meet
+                    //sol[1] step size in between
+                    /*
+                    var c1 = new MathLib.CongruenceNumerics(4, 11);
+                    var c2 = new MathLib.CongruenceNumerics(17, 19);
+                    var sol = MathLib.CRTNumerics((new[] { c1, c2 }).ToList());
+                    sol[0] where the congruences meet
+                    sol[1] step size in between
+                    */
+
+                    var root = n1.Sqrt();
+                    var offsetsA = MathLib.TonelliShanksPy.GetFactorBaseOffsets(n1, a, root);
+                    var offsetsB = MathLib.TonelliShanksPy.GetFactorBaseOffsets(n1, b, root);
+
+
+                    var a1b1 = MathLib.CRTNumerics((new MathLib.CongruenceNumerics[] { new(offsetsA.Item1, a), new(offsetsB.Item1, b) }).ToList());
+                    var a1b2 = MathLib.CRTNumerics((new MathLib.CongruenceNumerics[] { new(offsetsA.Item1, a), new(offsetsB.Item2, b) }).ToList());
+                    var a2b1 = MathLib.CRTNumerics((new MathLib.CongruenceNumerics[] { new(offsetsA.Item2, a), new(offsetsB.Item1, b) }).ToList());
+                    var a2b2 = MathLib.CRTNumerics((new MathLib.CongruenceNumerics[] { new(offsetsA.Item2, a), new(offsetsB.Item2, b) }).ToList());
+
+                    Console.WriteLine($"n = {n1}");
+                    Console.WriteLine($"root = {root}");
+                    Console.WriteLine($"a = {a}");
+                    Console.WriteLine($"b = {b}");
+                    Console.WriteLine($"c = {a * b}");
+                    Console.WriteLine($"a1 = {offsetsA.Item1}");
+                    Console.WriteLine($"a2 = {offsetsA.Item2}");
+                    Console.WriteLine($"b1 = {offsetsB.Item1}");
+                    Console.WriteLine($"b2 = {offsetsB.Item2}");
+
+                    Console.WriteLine($"a1b1n = {a1b1.N}");
+                    Console.WriteLine($"a1b1sol = {a1b1.Solution}");
+                    Console.WriteLine($"a1b2n = {a1b2.N}");
+                    Console.WriteLine($"a1b2sol = {a1b2.Solution}");
+                    Console.WriteLine($"a2b1n = {a2b1.N}");
+                    Console.WriteLine($"a2b1sol = {a2b1.Solution}");
+                    Console.WriteLine($"a2b2n = {a2b2.N}");
+                    Console.WriteLine($"a2b2sol = {a2b2.Solution}");
+
+                    Console.WriteLine($"qxa1b1 = {BigInteger.ModPow(root + a1b1.Solution, 2, n1)}");
+                    Console.WriteLine($"qxa1b2 = {BigInteger.ModPow(root + a1b2.Solution, 2, n1)}");
+                    Console.WriteLine($"qxa2b1 = {BigInteger.ModPow(root + a2b1.Solution, 2, n1)}");
+                    Console.WriteLine($"qxa2b2 = {BigInteger.ModPow(root + a2b2.Solution, 2, n1)}");
+
+                    Console.WriteLine($"rqxa1b1 = {BigInteger.ModPow(root + a1b1.Solution, 2, n1) / a1b1.N}");
+                    Console.WriteLine($"rqxa1b2 = {BigInteger.ModPow(root + a1b2.Solution, 2, n1) / a1b2.N}");
+                    Console.WriteLine($"rqxa2b1 = {BigInteger.ModPow(root + a2b1.Solution, 2, n1) / a2b1.N}");
+                    Console.WriteLine($"rqxa2b2 = {BigInteger.ModPow(root + a2b2.Solution, 2, n1) / a2b2.N}");
+
+                    Console.WriteLine($"modexp(root+a1b1sol, 2,n)%a = {BigInteger.ModPow(root + a1b1.Solution, 2, n1) % a}");
+                    Console.WriteLine($"modexp(root+a1b1sol, 2,n)%b = {BigInteger.ModPow(root + a1b1.Solution, 2, n1) % b}");
+
+                    Console.WriteLine($"modexp(root+a1b2sol, 2,n)%a = {BigInteger.ModPow(root + a1b2.Solution, 2, n1) % a}");
+                    Console.WriteLine($"modexp(root+a1b2sol, 2,n)%b = {BigInteger.ModPow(root + a1b2.Solution, 2, n1) % b}");
+
+                    Console.WriteLine($"modexp(root+a2b1sol, 2,n)%a = {BigInteger.ModPow(root + a2b1.Solution, 2, n1) % a}");
+                    Console.WriteLine($"modexp(root+a2b1sol, 2,n)%b = {BigInteger.ModPow(root + a2b1.Solution, 2, n1) % b}");
+
+                    Console.WriteLine($"modexp(root+a2b2sol, 2,n)%a = {BigInteger.ModPow(root + a2b2.Solution, 2, n1) % a}");
+                    Console.WriteLine($"modexp(root+a2b2sol, 2,n)%b = {BigInteger.ModPow(root + a2b2.Solution, 2, n1) % b}");
+
+
+                    //var test0 = root + offsets.Item1;
+                    //var qx0 = MathLib.PowerMod(test0, 2, n0);
+                    //var check0 = qx0 % p0;
+
+                    //var test1 = root + offsets.Item2;
+                    //var qx1 = MathLib.PowerMod(test1, 2, n0);
+                    //var check1 = qx1 % p0;
+
+                    //Console.WriteLine($"c0: {check0}");
+                    //Console.WriteLine($"c1: {check1}");
+
+
+                    //Console.WriteLine($"0: {offsets.Item1}");
+                    //Console.WriteLine($"1: {offsets.Item2}");
+                    //Console.WriteLine($"p: {p0}");
+
+                }
+                else if (args.Length > 2 && BigInteger.TryParse(args[1], out BigInteger n0) && BigInteger.TryParse(args[2], out BigInteger p0))
+                {
+                    var root = n0.Sqrt();
+                    var offsets = MathLib.TonelliShanksPy.GetFactorBaseOffsets(n0, p0, root);
+
+                    if (findNext)
+                    {
+                        while (offsets.Item1 < 0 || offsets.Item2 < 0)
+                        {
+                            using var gp = (GmpInt)(p0 + 2);
+                            using var gnext = MathUtil.GetNextPrime(gp);
+                            p0 = (BigInteger)gnext;
+                            Console.WriteLine($"Testing: {p0}");
+                            offsets = MathLib.TonelliShanksPy.GetFactorBaseOffsets(n0, p0);
+
+
+                        }
+
+
+                        var test0 = root + offsets.Item1;
+                        var qx0 = MathLib.PowerMod(test0, 2, n0);
+                        var check0 = qx0 % p0;
+
+                        var test1 = root + offsets.Item2;
+                        var qx1 = MathLib.PowerMod(test1, 2, n0);
+                        var check1 = qx1 % p0;
+
+                        Console.WriteLine($"n = {n0}");
+                        Console.WriteLine($"root = {root}");
+
+                        Console.WriteLine($"c0: {check0}");
+                        Console.WriteLine($"c1: {check1}");
+
+
+                        Console.WriteLine($"0: {offsets.Item1}");
+                        Console.WriteLine($"1: {offsets.Item2}");
+                        Console.WriteLine($"p: {p0}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"n = {n0}");
+                        Console.WriteLine($"root = {root}");
+                        Console.WriteLine($"p0 = {p0}");
+                        Console.WriteLine($"a0 = {offsets.Item1}");
+                        Console.WriteLine($"a1 ={offsets.Item2}");
+                        Console.WriteLine($"modexp(root+a0, 2,n)%p0 = {BigInteger.ModPow(root + offsets.Item1, 2, n0) % p0}");
+                        Console.WriteLine($"modexp(root+a1, 2,n)%p0 = {BigInteger.ModPow(root + offsets.Item2, 2, n0) % p0}");
+                    }
+
+                }
+                else if (args.Length > 1 && BigInteger.TryParse(args[1], out BigInteger p))
                 {
                     var n = RsaChallenge.Rsa1024BigInt;
+                    var root = n.Sqrt();
                     var offsets = MathLib.TonelliShanksPy.GetFactorBaseOffsets(n, p);
-                    Console.WriteLine($"0: {offsets.Item1}");
-                    Console.WriteLine($"2: {offsets.Item2}");
+
+                    Console.WriteLine($"n = {n}");
+                    Console.WriteLine($"root = {root}");
+                    Console.WriteLine($"px = {p}");
+                    Console.WriteLine($"a0x = {offsets.Item1}");
+                    Console.WriteLine($"a1x ={offsets.Item2}");
+                    Console.WriteLine($"modexp(root+a0x, 2,n)%px = {BigInteger.ModPow(root + offsets.Item1, 2, n) % p}");
+                    Console.WriteLine($"modexp(root+a1x, 2,n)%px = {BigInteger.ModPow(root + offsets.Item2, 2, n) % p}");
                 }
                 else
                 {
@@ -938,8 +1102,9 @@ namespace TestRunner
                         using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
                         {
                             string threadFilter = totalThreads > 1 ? $" and z.id % {totalThreads} = {Thread} " : string.Empty;
-                            var query = $@"select top {batchSize} z.*, f.* from Factorizations z join factors f on z.id=f.dbFactorizationId
-                                    where z.id>={startId} {threadFilter} 
+                            string endFilter = config.End!=int.MaxValue ? $" and z.id < {config.End} " : string.Empty;
+                            var query = $@"select top {batchSize} z.*, f.* from Factorizations z join CompositeFactors f on z.id=f.dbFactorizationId
+                                    where z.id>={startId} {threadFilter} {endFilter}
                                         and z.TDiv < {effectiveDigits} 
                                         and f.Digits >= {minDigits} and f.Digits <= {maxDigits} 
                                         and z.type < 1 and f.Type < 1 

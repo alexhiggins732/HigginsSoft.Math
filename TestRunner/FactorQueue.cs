@@ -338,6 +338,7 @@ namespace TestRunner
                 DateTime LastAdd = DateTime.Now;
                 while (batch.Count > 0)
                 {
+                    Console.WriteLine($"[{LastAdd}] - Running batch of {batch.Count}");
                     sw.Restart();
                     helperWatch.Restart();
                     List<int> failed = new();

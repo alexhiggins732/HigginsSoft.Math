@@ -29,6 +29,45 @@ namespace TestRunner
             }
 
         }
+
+        public static void TestFactorial()
+        {
+            //
+            var smallQa = new List<int>([2, 3, 31, 43, 47, 61, 67, 71, 79, 97]);
+            int[] smallQ = [31, 43, 47, 61, 67, 71, 79, 97];
+            var t = new FactorTest();
+            t.SetConnectionString();
+            List<DbFactorization> result = new List<DbFactorization>();
+            using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
+            {
+                // load all db factorizations and their factors using dapper
+                var query = @"select  z.id, z.type, f.id, f.p
+                        from Factorizations z join factors f on z.id=f.DbFactorizationId where f.digits=2";
+                var factorizationDict = new Dictionary<int, DbFactorization>();
+                var dbFactorizations = conn.Query<DbFactorization, DbFactor, DbFactorization>(
+                    query, (factorization, factor) =>
+                    {
+                        if (!factorizationDict.TryGetValue(factorization.Id, out var existingFactorization))
+                        {
+                            existingFactorization = factorization;
+                            existingFactorization.Factors = new List<DbFactor>();
+                            factorizationDict.Add(existingFactorization.Id, existingFactorization);
+                        }
+                        existingFactorization.Factors.Add(factor);
+                        return existingFactorization;
+                    },
+                    splitOn: "Id");
+
+                result = factorizationDict.Values.ToList();
+            }
+            smallQa.RemoveAt(0);
+            smallQa.RemoveAt(0);
+            var composites = result.Where(x => smallQ.All(y => x.Factors.Any(z => z.P == y.ToString()))).ToList();
+            var m = result.Max(x => x.Factors.Count);
+            var mresult = result.Where(x => x.Factors.Count == 5).ToList();
+            var distinctMResult = mresult.SelectMany(x => x.Factors.Select(f => f.P)).Distinct().OrderBy(x=> x).ToList();
+        }
+
         internal bool AddFactor(int factorizationId, string factorString)
         {
             var t = new FactorTest();
@@ -63,7 +102,7 @@ namespace TestRunner
                 var factors = conn.Query<(int Id, string P, int Power, int Type)>("SELECT id, p, power, type FROM Factors WHERE DbFactorizationId = @DbFactorizationId",
                     new { DbFactorizationId = factorizationId, P = factorString });
 
-               
+
 
                 var newFactorPrimalityType = (MathLib.PrimalityType)(int)GmpInt.Primality(newFactor);
                 conn.Open();
@@ -246,7 +285,7 @@ namespace TestRunner
                     // get updated factors from the database
                     // get updated factors from the database
                     factors = conn.Query<(int Id, string P, int Power, int Type)>("SELECT id, p, power, type FROM Factors WHERE DbFactorizationId = @DbFactorizationId",
-                            new { DbFactorizationId = factorizationId}, trans);
+                            new { DbFactorizationId = factorizationId }, trans);
 
                     var newFactorValue = factors.Select(x => BigInteger.Pow(BigInteger.Parse(x.P), x.Power)).Aggregate((a, b) => a * b);
                     if (newFactorValue != bigN)
