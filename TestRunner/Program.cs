@@ -40,7 +40,23 @@ namespace TestRunner
             if (args.Any(x => x == "crank"))
             {
                 var f = new SimplePrpFilter();
-                f.TimeFindPm1ModP();
+                //f.TimeFindPm1ModP();
+                // f.FindPow3Classes();
+                int p = 3;
+                var idx = args.ToList().IndexOf("crank");
+                if (args.Any(x=> x== "db"))
+                {
+                    f.FindDbPowNClasses();
+                    return;
+                }
+                if (idx < args.Length - 1)
+                {
+                    if (int.TryParse(args[idx + 1], out int p2))
+                    {
+                        p = p2;
+                    }
+                }
+                f.FindPowNClasses(p);
                 return;
             }
             if (args.Any(x => x == "findpm1"))
@@ -105,8 +121,14 @@ namespace TestRunner
 
             if (args.Any(x => x == "processqueue"))
             {
-                bool.TryParse(args.Length > 1 ? args[1] : bool.TrueString, out bool needsLook);
-                FactoringQueue.ProcessQueue(needsLook);
+                bool.TryParse(args.Length > 1 ? args[1] : bool.TrueString, out bool needsLock);
+                FactoringQueue.ProcessQueue(needsLock);
+                return;
+            }
+
+            if (args.Any(x => x == "verifyprocessqueue"))
+            {
+                FactoringQueue.VerifyProcessed();
                 return;
             }
 
@@ -1055,7 +1077,7 @@ namespace TestRunner
                         using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
                         {
                             string threadFilter = totalThreads > 1 ? $" and z.id % {totalThreads} = {Thread} " : string.Empty;
-                            string endFilter = config.End!=int.MaxValue ? $" and z.id < {config.End} " : string.Empty;
+                            string endFilter = config.End != int.MaxValue ? $" and z.id < {config.End} " : string.Empty;
                             var query = $@"select top {batchSize} z.*, f.* from Factorizations z join CompositeFactors f on z.id=f.dbFactorizationId
                                     where z.id>={startId} {threadFilter} {endFilter}
                                         and z.TDiv < {effectiveDigits} 

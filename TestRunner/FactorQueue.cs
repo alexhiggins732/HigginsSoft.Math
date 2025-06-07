@@ -214,7 +214,7 @@ namespace TestRunner
             {
                 ProcesseQueueBatched();
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 Console.WriteLine($"Error processing queue: {ex}");
             }
@@ -663,6 +663,56 @@ namespace TestRunner
             }
 
             return (isDirty, false);
+        }
+
+        internal static void VerifyProcessed()
+        {
+            var test = new FactorTest();
+            test.SetConnectionString();
+            // todo: use status to mark as picked up and completed to allow concurrency.
+
+            int startId = 0;
+            string nextQueuedIdQuery = "select top 100 p.id, p.FactorizationId, p.Prime from ProcessedFactorQueue p join Factorizations z on p.FactorizationId=z.Id where p.Id>@startId and z.type<1";
+            var sw = Stopwatch.StartNew();
+            int count = 0;
+            int hits = 0;
+            int total = 0;
+            using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
+            {
+                total = conn.ExecuteScalar<int>($@"select count(0) from ProcessedFactorQueue p join Factorizations z on p.FactorizationId=z.Id
+                    where z.type<1");
+            }
+
+
+            var helper = new FactorDbHelper();
+
+            bool hasMore = true;
+            using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
+            {
+
+                while (hasMore)
+                {
+
+
+                    var batch = conn.Query<(int Id, int FactorizationId, string Prime)>(nextQueuedIdQuery, new { startId })
+                            .ToList();
+                    hasMore = batch.Count > 0;
+                    if (hasMore)
+                    {
+                        foreach (var item in batch)
+                        {
+                            count++;
+                            Console.Title = $"[{DateTime.Now}] Processing ({count.ToString("n0")} of {total.ToString("n0")})";
+                           // Console.WriteLine("Executing AddFactor({0}, {1})", item.FactorizationId, item.Prime);
+                            if (helper.AddFactor(item.FactorizationId, item.Prime))
+                                hits++;
+                            startId = item.Id;
+                        }
+                    }
+                }
+
+
+            }
         }
     }
 }

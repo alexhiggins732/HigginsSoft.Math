@@ -106,7 +106,7 @@ namespace TestRunner
 
                 var newFactorPrimalityType = (MathLib.PrimalityType)(int)GmpInt.Primality(newFactor);
                 conn.Open();
-                var trans = conn.BeginTransaction();
+                using var trans = conn.BeginTransaction();
                 try
                 {
 
@@ -153,7 +153,7 @@ namespace TestRunner
                                         Power = 1,
                                         Type = (int)GmpInt.Primality(gcd),
                                         Digits = gcdString.Length,
-                                        Bits = MathLib.BitLength(newFactor)
+                                        Bits = MathLib.BitLength(gcd)
                                     };
                                     conn.Execute(query, pParams, transaction: trans);
                                     trans.Commit();
@@ -167,11 +167,13 @@ namespace TestRunner
                         {
                             if ((int)newFactorPrimalityType > 0)
                             {
-                                result = true;
+                                return true;
+
                             }
                             else
                             {
-                                string p = "";
+                                //string p = "";
+                                return true;
                             }
                         }// && (int)GmpInt.Primality(dbFactor) > 0)
 

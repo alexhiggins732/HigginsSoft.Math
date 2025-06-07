@@ -1,5 +1,8 @@
-﻿using HigginsSoft.Math.Lib;
+﻿using Dapper;
+using HigginsSoft.Math.Lib;
+using HigginsSoft.Math.Lib.Database;
 using MathGmp.Native;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using System;
 using System.ComponentModel.DataAnnotations;
@@ -359,7 +362,7 @@ namespace TestRunner
             var n = RsaChallenge.Rsa1024BigInt;
             var gen = new PrimeGeneratorUnsafeUint();
             var count = 0;
-  
+
             var sw = Stopwatch.StartNew();
             uint last = 0;
             foreach (var p in gen)
@@ -504,7 +507,7 @@ namespace TestRunner
                 {
                     q *= 10;
                 }
-        
+
                 while (q > 1)
                 {
                     gcd = BigInteger.GreatestCommonDivisor(q - 1, n);
@@ -551,5 +554,194 @@ namespace TestRunner
             sw.Stop();
             Console.WriteLine($"[{DateTime.Now}] Cranked out with {q.ToString("N0")} - {sw.Elapsed}");
         }
+
+        public class PowerResidueClass
+        {
+            public BigInteger P { get; set; }
+            public List<ResiduePower> Class0 { get; set; } = new();
+            public List<ResiduePower> Class1 { get; set; } = new();
+        }
+        public class ResiduePower
+        {
+            public BigInteger Offset;
+            public int Power;
+        }
+
+        internal void FindPowNClasses(BigInteger p)
+        {
+
+
+            var n = RsaChallenge.Rsa1024BigInt;
+            var root = n.Sqrt();
+
+            BigInteger value = p;
+
+            var classes = Enumerable.Range(0, (int)p+1).Where(i => BigInteger.ModPow(root + i, 2, n) % p == 0).ToList();
+            int power = 1;
+
+            var offsets = classes.Select(x => (BigInteger)x).ToList();
+
+            var current = value;
+            bool foundAny = true;
+            var r = new PowerResidueClass();
+            r.P = p;
+
+
+            while (foundAny)
+            {
+                foundAny = false;
+                Log($"{p}^{power} = {value.ToString("N0")} (C{value.ToString().Length}) -> Offsets: {offsets[0].ToString("N0")}, {offsets[1].ToString("N0")}");
+                r.Class0.Add(new ResiduePower() { Offset = offsets[0], Power = power });
+                r.Class1.Add(new ResiduePower() { Offset = offsets[1], Power = power });
+                current = value;
+                //;
+                value = BigInteger.Pow(p, power + 1);
+
+
+                for (var k = 0; k < offsets.Count; k++)
+                {
+                    var offset = offsets[k];
+                    var tests = Enumerable.Range(0, (int)p).Select(i => BigInteger.ModPow(root + offset + i * current, 2, n)).ToList();
+                    var powers = tests.Select(x =>
+                    {
+                        var qx = x;// BigInteger.ModPow(root + x, 2, n);
+                        int pow = 0;
+                        while (qx % p == 0)
+                        {
+                            pow++;
+                            qx /= p;
+                        }
+                        return pow;
+                    }).ToList();
+                    var taken = powers.Select(x => x == power).ToList();
+
+                    bool foundSlot = false;
+                    for (var i = 0; i < powers.Count; i++)
+                    {
+                        var open = powers[i] > power && !taken[i];
+
+                        if (open)
+                        {
+                            Log($"  ({classes[k]}) => {p}^{power}[{i}] = {offset + i * current} -> 3^{powers[i]} - Open: {open}");
+                            offsets[k] = offset + i * current;
+                            foundSlot = true;
+                        }
+                    }
+                    if (!foundSlot)
+                    {
+                        Log($"No slots available for slot[{k}] {value} - {offset}");
+                        if (k == 1)
+                            break;
+                    }
+                    else
+                    {
+                        foundAny = true;
+                        Log($"Found slot[{k}] for {value} - {offsets[k]}");
+                    }
+                }
+
+                power++;
+            }
+
+            var residueDirectoryPath = Path.Combine(".", "ResidueClasses");
+            Directory.CreateDirectory(residueDirectoryPath);
+
+            using var sw = new StreamWriter(Path.Combine(residueDirectoryPath, $"{p}-power-classes.txt"), false);
+            var max = Math.Max(r.Class0.Count, r.Class1.Count);
+            for (var i = 0; i < max; i++)
+            {
+                if (i < r.Class0.Count)
+                {
+                    sw.WriteLine($"{r.Class0[i].Power}\t{r.Class0[i].Offset}");
+                }
+                if (i < r.Class1.Count)
+                {
+                    sw.WriteLine($"{r.Class0[i].Power}\t{r.Class1[i].Offset}");
+                }
+            }
+            sw.Close();
+            string bp = $"Found slots up to {p}^{power - 2}";
+            Console.WriteLine(bp);
+        }
+
+        internal void FindPow3Classes()
+        {
+            int[] classes = [2, 3];
+            var c0 = classes[0];
+            var n = RsaChallenge.Rsa1024BigInt;
+            var root = n.Sqrt();
+            int p = 3;
+            BigInteger value = p;
+            int power = 0;
+            BigInteger offset = classes[0];
+            while (true)
+            {
+                power++;
+                value = BigInteger.Pow(p, power);
+                BigInteger[] offsets = [offset, offset + value, offset + value * 2];
+                Log($"3^{power} = {value.ToString("N0")} (C{value.ToString().Length}) -> Offsets: {offsets[0].ToString("N0")}, {offsets[1].ToString("N0")}, {offsets[2].ToString("N0")}");
+                var powers = offsets.Select(x =>
+                {
+                    var qx = BigInteger.ModPow(root + x, 2, n);
+                    int pow = 0;
+                    while (qx % p == 0)
+                    {
+                        pow++;
+                        qx /= p;
+                    }
+                    return pow;
+                }).ToList();
+
+                var taken = powers.Select(x => x == power).ToList();
+                bool foundSlot = false;
+                for (var i = 0; i < offsets.Length; i++)
+                {
+                    var open = !taken[i];
+                    Log($"  => 3^{power}[{i}] = {offsets[i]} -> 3^{powers[i]} - Open: {open}");
+                    if (open)
+                    {
+                        offset = offsets[i];
+                        foundSlot = true;
+                    }
+
+                }
+                if (!foundSlot)
+                {
+                    Log($"No slots available for {value} - {offset}");
+                    break;
+                }
+                else
+                {
+                    Log($"Found slot for {value} - {offset}");
+
+                }
+            }
+        }
+        static void Log(string message, bool appendDate = true)
+        {
+            if (appendDate)
+                message = $"[{DateTime.Now}] {message}";
+            Debug.WriteLine(message);
+            Console.WriteLine(message);
+        }
+
+        internal void FindDbPowNClasses()
+        {
+            var t = new FactorTest();
+            t.SetConnectionString();
+            List<int> primes = new();
+            using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
+            {
+                primes = conn.Query<int>("SELECT pint from LargeResidueOffsets WHERE pbits between 2 and 11").ToList();
+            }
+            foreach (var p in primes)
+            {
+                if (p == 2) continue;
+                Console.Title = $"[{DateTime.Now}] {p.ToString("N0")}";
+                FindPowNClasses(p);
+            }
+
+        }
     }
+
 }
