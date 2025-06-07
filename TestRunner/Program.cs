@@ -433,7 +433,54 @@ namespace TestRunner
 
         }
 
+        static void RunSplitEcm(string[] args)
+        {
 
+            var idx = args.ToList().IndexOf("n");
+            var n = args[idx + 1];
+            idx = args.ToList().IndexOf("threads");
+
+            int.TryParse(args[idx + 1], out int numThreads);
+            if (numThreads == 0)
+                numThreads = 1;
+
+
+            var curDir = Path.GetFullPath(".");
+            var baseDir = Path.Combine(curDir, "jobs");
+            var workStart = 30;
+            bool setMaxWork = false;
+            for (var i = 0; i < numThreads; i++)
+            {
+                var work = workStart + (5 * i);
+                var pretest = work + 2;
+                if (work>=65)
+                {
+                    if (setMaxWork)
+                        Console.WriteLine($"No more work after {65}");
+                    else
+                    {
+                        work = 64;
+                        pretest = 65;
+                    }
+                }    
+             
+                var cmd = $"\"{curDir}\\binaries\\yafu-x64.exe\"";
+                var cmdArgs = $"-work {work} -pretest {pretest} factor({n})";
+                var workingDirectory = Path.Combine(baseDir, $"job_{i}");
+
+                Directory.CreateDirectory(workingDirectory);
+                File.WriteAllLines(Path.Combine(workingDirectory, "yafu.ini"), ["threads=2"]);
+                var info = new ProcessStartInfo()
+                {
+                    FileName = cmd,
+                    Arguments = cmdArgs,
+                    WorkingDirectory = workingDirectory,
+                    UseShellExecute = true
+                };
+
+                Process.Start(info);
+            }
+        }
 
         private static void RunJobs()
         {
