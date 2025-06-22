@@ -703,7 +703,7 @@ namespace TestRunner
                         {
                             count++;
                             Console.Title = $"[{DateTime.Now}] Processing ({count.ToString("n0")} of {total.ToString("n0")})";
-                           // Console.WriteLine("Executing AddFactor({0}, {1})", item.FactorizationId, item.Prime);
+                            // Console.WriteLine("Executing AddFactor({0}, {1})", item.FactorizationId, item.Prime);
                             if (helper.AddFactor(item.FactorizationId, item.Prime))
                                 hits++;
                             startId = item.Id;
@@ -713,6 +713,37 @@ namespace TestRunner
 
 
             }
+        }
+
+        internal static void ProcessBatchFiles()
+        {
+            var divBats = Directory.GetFiles("batches", ".tdiv.bat");
+            var factorBats = Directory.GetFiles("batches", ".factors.bat");
+         
+            {
+                var divUpdates = divBats.SelectMany(x => File.ReadAllLines(x))
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Select(x => $"update factorizations set tdiv={x.Trim().Split(' ')[3]} where id={x.Trim().Split(' ')[2]}")
+                    .Distinct()
+                    .ToList();
+                File.WriteAllLines("tdiv.sql", divUpdates);
+            }
+            var factorUpdates = factorBats.SelectMany(x => File.ReadAllLines(x))
+                 .Where(x => !string.IsNullOrWhiteSpace(x))
+                 .Select(x => $"(GetDate() ,0, '{x.Trim().Split(' ')[3]}')")
+                 .Distinct()
+                 .ToList();
+         
+            File.WriteAllText("factors.sql", @$"
+INSERT INTO [dbo].[FactorQueue]
+([CreatedAt]
+,[Processed]
+,[Prime]
+)
+VALUES 
+{string.Join(",\r\n", factorUpdates)})
+    ");
+
         }
     }
 }

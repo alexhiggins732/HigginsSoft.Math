@@ -135,6 +135,10 @@ namespace TestRunner
                 FactoringQueue.ProcessQueue(needsLock);
                 return;
             }
+            if (args.Any(x => x == "bat"))
+            {
+                FactoringQueue.ProcessBatchFiles();
+            }
 
             if (args.Any(x => x == "verifyprocessqueue"))
             {
@@ -1098,7 +1102,7 @@ namespace TestRunner
                 if (!File.Exists(benchmarkSettings.FileName))
                 {
                     Log($"Downloading Benchmark file {benchmarkSettings.FileName}");
-             
+
                     var downloadWatch = Stopwatch.StartNew();
                     using (var client = new WebClient())
                     {
@@ -1325,7 +1329,7 @@ namespace TestRunner
 
                 };
 
-               
+
                 startId = unFactored.Max(x => x.Id) + 1;
                 var factorWatch = Stopwatch.StartNew();
                 List<int> tdivUpdates = new List<int>();
