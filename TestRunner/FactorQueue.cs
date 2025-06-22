@@ -736,16 +736,24 @@ namespace TestRunner
                  .Select(x => $"({x.Trim().Split(' ')[2]}, GetDate() ,0, '{x.Trim().Split(' ')[3]}')")
                  .Distinct()
                  .ToList();
-         
-            File.WriteAllText("factors.sql", @$"
+
+            var template = @$"
 INSERT INTO [dbo].[FactorQueue]
 (FactorizationId, [CreatedAt]
 ,[Processed]
 ,[Prime]
 )
-VALUES 
-{string.Join(",\r\n", factorUpdates)})
-    ");
+VALUES
+";
+            // insert 1000 at a time.
+            var sb = new StringBuilder();
+            for(var i=0; i < factorUpdates.Count; i += 1000)
+            {
+                var batch = factorUpdates.Skip(i).Take(1000).ToList();
+                sb.AppendLine(template + string.Join(",\r\n", batch) + ";");
+              
+            }
+            File.WriteAllText("factors.sql", sb.ToString());
 
         }
     }
