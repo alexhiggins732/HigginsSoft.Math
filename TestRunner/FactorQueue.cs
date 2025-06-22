@@ -717,8 +717,9 @@ namespace TestRunner
 
         internal static void ProcessBatchFiles()
         {
-            var divBats = Directory.GetFiles("batches", ".tdiv.bat");
-            var factorBats = Directory.GetFiles("batches", ".factors.bat");
+            var di= new DirectoryInfo(AppContext.BaseDirectory);
+            var divBats = Directory.GetFiles(di.FullName, ".tdiv.bat");
+            var factorBats = Directory.GetFiles(di.FullName, ".factors.bat");
          
             {
                 var divUpdates = divBats.SelectMany(x => File.ReadAllLines(x))
