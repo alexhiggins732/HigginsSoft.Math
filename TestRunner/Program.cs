@@ -466,7 +466,7 @@ namespace TestRunner
 
             var template = JsonSerializer.Deserialize<JobTemplate>(File.ReadAllText(jsonFilePath));
             template.Threads = threads;
-            template.StartThread = (client-1) * jobsSize;
+            template.StartThread = (client - 1) * jobsSize;
             template.EndThread = (client * jobsSize) - 1;
             template.JobStart = DateTime.Now.ToString();
             File.WriteAllText(jsonFilePath, JsonSerializer.Serialize(template, new JsonSerializerOptions { WriteIndented = true }));
@@ -553,6 +553,9 @@ namespace TestRunner
                 Console.WriteLine($"Failed to deserialize {jsonFilePath}");
                 return;
             }
+
+            new FactorTest().UpdateBenchmarkReport();
+
             for (var i = template.StartThread; i <= template.EndThread; i++)
             {
                 var args = template.Args
@@ -1107,6 +1110,38 @@ namespace TestRunner
 
         public int Thread = -1;
 
+        public void UpdateBenchmarkReport()
+        {
+            var config = FactorConfig.GetCommandLineConfig();
+            if (config.Offline)
+            {
+                if (File.Exists(config.OfflineFiilePath))
+                {
+                    File.Delete(config.OfflineFiilePath);
+                }
+                var benchmarkSettings = new BenchmarkSettings();
+
+                Log($"Updated in offline benchmark - {config.OfflineFiilePath}");
+                Program.Config.Bind("Benchmark", benchmarkSettings);
+                benchmarkSettings.FileName = Path.Combine(AppContext.BaseDirectory, benchmarkSettings.FileName);
+                config.OfflineFiilePath = benchmarkSettings.FileName;
+                if (!File.Exists(benchmarkSettings.FileName))
+                {
+                    Log($"Downloading Benchmark file {benchmarkSettings.FileName}");
+
+                    var downloadWatch = Stopwatch.StartNew();
+                    using (var client = new WebClient())
+                    {
+                        client.DownloadFile(benchmarkSettings.Url, benchmarkSettings.FileName);
+                    }
+                    downloadWatch.Stop();
+                    Log($"Downloaded Benchmark file {benchmarkSettings.FileName} in {downloadWatch.Elapsed}");
+                }
+
+
+
+            }
+        }
         public void ProcessDbFactors(int minDigits = 0, int maxDigits = 30, int batchSize = 100)
         {
 
