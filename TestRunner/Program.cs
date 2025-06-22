@@ -1118,7 +1118,7 @@ namespace TestRunner
              
                 var benchmarkSettings = new BenchmarkSettings();
 
-                Log($"Updated in offline benchmark - {config.OfflineFiilePath}");
+                Log($"Updating in offline benchmark - {config.OfflineFiilePath}");
                 Program.Config.Bind("Benchmark", benchmarkSettings);
                 benchmarkSettings.FileName = Path.Combine(AppContext.BaseDirectory, benchmarkSettings.FileName);
                 config.OfflineFiilePath = benchmarkSettings.FileName;
