@@ -717,10 +717,12 @@ namespace TestRunner
 
         internal static void ProcessBatchFiles()
         {
+            Console.WriteLine($"[{DateTime.Now}] Processing batch files");
             var di= new DirectoryInfo(AppContext.BaseDirectory);
-            var divBats = Directory.GetFiles(di.FullName, ".tdiv.bat");
-            var factorBats = Directory.GetFiles(di.FullName, ".factors.bat");
-         
+            var divBats = Directory.GetFiles(di.FullName, "*.tdiv.bat");
+            Console.WriteLine($"[{DateTime.Now}] Found {divBats.Length} tdiv files");
+            var factorBats = Directory.GetFiles(di.FullName, "*.factors.bat");
+            Console.WriteLine($"[{DateTime.Now}] Found {factorBats.Length} fact files");
             {
                 var divUpdates = divBats.SelectMany(x => File.ReadAllLines(x))
                     .Where(x => !string.IsNullOrWhiteSpace(x))

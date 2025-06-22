@@ -138,6 +138,7 @@ namespace TestRunner
             if (args.Any(x => x == "bat"))
             {
                 FactoringQueue.ProcessBatchFiles();
+                return;
             }
 
             if (args.Any(x => x == "verifyprocessqueue"))
