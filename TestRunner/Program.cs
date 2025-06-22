@@ -1093,10 +1093,12 @@ namespace TestRunner
             {
                 Log($"Running in offline mode - {config.OfflineFiilePath}");
                 Program.Config.Bind("Benchmark", benchmarkSettings);
-                if (!File.Exists(Path.Combine(AppContext.BaseDirectory, benchmarkSettings.FileName)))
+                benchmarkSettings.FileName = Path.Combine(AppContext.BaseDirectory, benchmarkSettings.FileName);
+                config.OfflineFiilePath = benchmarkSettings.FileName;
+                if (!File.Exists(benchmarkSettings.FileName))
                 {
                     Log($"Downloading Benchmark file {benchmarkSettings.FileName}");
-                    benchmarkSettings.FileName = Path.Combine(AppContext.BaseDirectory, benchmarkSettings.FileName);
+             
                     var downloadWatch = Stopwatch.StartNew();
                     using (var client = new WebClient())
                     {
