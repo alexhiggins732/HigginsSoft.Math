@@ -733,13 +733,13 @@ namespace TestRunner
             }
             var factorUpdates = factorBats.SelectMany(x => File.ReadAllLines(x))
                  .Where(x => !string.IsNullOrWhiteSpace(x))
-                 .Select(x => $"(GetDate() ,0, '{x.Trim().Split(' ')[3]}')")
+                 .Select(x => $"({x.Trim().Split(' ')[2]}, GetDate() ,0, '{x.Trim().Split(' ')[3]}')")
                  .Distinct()
                  .ToList();
          
             File.WriteAllText("factors.sql", @$"
 INSERT INTO [dbo].[FactorQueue]
-([CreatedAt]
+(FactorizationId, [CreatedAt]
 ,[Processed]
 ,[Prime]
 )
