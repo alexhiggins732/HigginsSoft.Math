@@ -1115,16 +1115,19 @@ namespace TestRunner
             var config = FactorConfig.GetCommandLineConfig();
             if (config.Offline)
             {
-                if (File.Exists(config.OfflineFiilePath))
-                {
-                    File.Delete(config.OfflineFiilePath);
-                }
+             
                 var benchmarkSettings = new BenchmarkSettings();
 
                 Log($"Updated in offline benchmark - {config.OfflineFiilePath}");
                 Program.Config.Bind("Benchmark", benchmarkSettings);
                 benchmarkSettings.FileName = Path.Combine(AppContext.BaseDirectory, benchmarkSettings.FileName);
                 config.OfflineFiilePath = benchmarkSettings.FileName;
+
+                if (File.Exists(config.OfflineFiilePath))
+                {
+                    File.Delete(config.OfflineFiilePath);
+                }
+
                 if (!File.Exists(benchmarkSettings.FileName))
                 {
                     Log($"Downloading Benchmark file {benchmarkSettings.FileName}");
