@@ -1325,50 +1325,7 @@ namespace TestRunner
 
                 };
 
-                if (config.Offline)
-                {
-                    processFactors = (dbFact, factored, thisfactorWatch) =>
-                    {
-                        var factString = factored.GetProduct().ToString();
-                        if (factored.Factors.Count > 1)
-                        {
-                            batchFactored++;
-                            factorCount++;
-                            factored.Factors.ForEach(x => x.FactorType = (MathLib.PrimalityType)(int)GmpInt.Primality(x.P));
-                            // recursively factor small composites less than 20 digits
-                            var composites = factored.Factors.Where(x => x.P.ToString().Length <= 20 && (x.FactorType != MathLib.PrimalityType.ProbablePrime && x.FactorType != MathLib.PrimalityType.Prime)).ToList();
-                            foreach (var c in composites)
-                            {
-                                thisfactorWatch.Start();
-                                using var subfac = FactorizationBigInteger.Factor(c.P, false, true);
-                                if (subfac.Factors.Count > 1)
-                                {
-                                    factored.Factors.Remove(c);
-                                    thisfactorWatch.Stop();
-                                    if (c.Power > 1)
-                                    {
-                                        Log($"Need to handle powers");
-                                    }
-                                    subfac.Factors.ForEach(x => x.FactorType = (MathLib.PrimalityType)(int)GmpInt.Primality(x.P));
-                                    factored.Add(subfac);
-                                }
-                                subfac.Dispose();
-                            }
-                            composites.Clear();
-                            composites = null;
-                            dbFact.Factors.RemoveAll(x => x.Digits >= minDigits && x.Digits <= maxDigits && (x.Type == PrimalityType.Unknown || x.Type == PrimalityType.Composite));
-                            dbFact.Factors.AddRange(factored.Factors.Select(x => new DbFactor
-                            {
-                                P = x.P.ToString(),
-                                Power = x.Power,
-                                Type = (PrimalityType)x.FactorType,
-                                Digits = x.P.ToString().Length,
-                                Bits = MathLib.BitLength(x.P)
-                            }));
-                            dbFact.Type = dbFact.Factors.All(x => x.Type == PrimalityType.ProbablePrime || x.Type == PrimalityType.Prime) ? PrimalityType.ProbablePrime : PrimalityType.Composite;
-                        }
-                    };
-                }
+               
                 startId = unFactored.Max(x => x.Id) + 1;
                 var factorWatch = Stopwatch.StartNew();
                 List<int> tdivUpdates = new List<int>();
