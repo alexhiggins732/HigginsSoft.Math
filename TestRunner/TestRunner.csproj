@@ -10,11 +10,19 @@
 
 	<ItemGroup>
 		<None Remove="appSettings.json" />
+		<None Remove="download.bat" />
+		<None Remove="job-template.json" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<Content Include="appSettings.json">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="download.bat">
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="job-template.json">
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 	</ItemGroup>
 

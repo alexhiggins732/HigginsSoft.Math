@@ -1,0 +1,7 @@
+{
+  "Args": "80 180 30 ecm 50000 5000000 76 digits 22 thread [thread] threads [threads] start 9000000 end 10000000 offline benchmark.rpt",
+  "Threads": 240,
+  "StartThread": 0,
+  "EndThread": 23,
+  "JobStart": "6/22/2025 4:40 AM"
+}
