@@ -1455,7 +1455,7 @@ namespace HigginsSoft.Math.Lib
         {
             if (config.ProcessorIndex != null)
             {
-                var idx = config.ProcessorIndex.Value;
+                var idx = config.ProcessorIndex.Value % Environment.ProcessorCount;
                 if (idx < 0) // || idx > Environment.ProcessorCount) <-- bug some cpus are returning 0 processors
                 {
                     throw new ArgumentOutOfRangeException($"ProcessorIndex {idx} is out of range. Must be between >0)");
