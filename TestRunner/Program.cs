@@ -5,10 +5,12 @@ using HigginsSoft.Math.Lib.Database;
 using MathGmp.Native;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.SqlServer.Server;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
+using System.Net;
 using System.Numerics;
 using System.Text.Json;
 
@@ -18,8 +20,16 @@ namespace TestRunner
 
     internal class Program
     {
+        public static IConfiguration Config;
         static void Main(string[] args)
         {
+            // build configuration from appSettings.json
+            var config = new ConfigurationBuilder()
+                .SetBasePath(AppContext.BaseDirectory)
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                .Build();
+
+            Config = config;
             Console.WriteLine($"Running {AppContext.BaseDirectory}{Path.GetFileName(Process.GetCurrentProcess().ProcessName)}.exe - args: {string.Join(" ", args)}");
             Console.WriteLine($"[{DateTime.Now}] Starting test {nameof(Program)} with working directory {Path.GetFullPath(".")}");
 
@@ -44,7 +54,7 @@ namespace TestRunner
                 // f.FindPow3Classes();
                 int p = 3;
                 var idx = args.ToList().IndexOf("crank");
-                if (args.Any(x=> x== "db"))
+                if (args.Any(x => x == "db"))
                 {
                     f.FindDbPowNClasses();
                     return;
@@ -453,7 +463,7 @@ namespace TestRunner
             {
                 var work = workStart + (5 * i);
                 var pretest = work + 2;
-                if (work>=65)
+                if (work >= 65)
                 {
                     if (setMaxWork)
                         Console.WriteLine($"No more work after {65}");
@@ -462,8 +472,8 @@ namespace TestRunner
                         work = 64;
                         pretest = 65;
                     }
-                }    
-             
+                }
+
                 var cmd = $"\"{curDir}\\binaries\\yafu-x64.exe\"";
                 var cmdArgs = $"-work {work} -pretest {pretest} factor({n})";
                 var workingDirectory = Path.Combine(baseDir, $"job_{i}");
@@ -551,6 +561,12 @@ namespace TestRunner
         }
     }
 
+    public class BenchmarkSettings
+    {
+        public string FileName { get; set; } = "benchmark.rpt";
+        public string Url { get; set; } = "http://localhost:5000/api/benchmark";
+
+    }
     public class FactorTest
     {
 
@@ -573,19 +589,19 @@ namespace TestRunner
             var modRoots = smallPrimes.Select(x => new { P = x, Offset = MathLib.TonelliShanks2.ModSqrt(n, x) })
                 .Where(x => x.Offset > -1).ToList();
             var solutions = modRoots.Select(x =>
-             {
-                 var solutions2 = MathLib.TonelliShanks2.SolveResidueOffsets(n, x.Offset, x.P);
-                 var solutions = MathLib.TonelliShanks.GetSolutions(n, x.P);
-                 var solutions3 = MathLib.TonelliShanksPy.TonelliShanksAlgo(n, x.P);
+            {
+                var solutions2 = MathLib.TonelliShanks2.SolveResidueOffsets(n, x.Offset, x.P);
+                var solutions = MathLib.TonelliShanks.GetSolutions(n, x.P);
+                var solutions3 = MathLib.TonelliShanksPy.TonelliShanksAlgo(n, x.P);
 
-                 return new
-                 {
-                     x.P,
-                     x.Offset,
-                     Class1 = solutions2.a,
-                     Class2 = solutions2.b,
-                 };
-             }).ToList();
+                return new
+                {
+                    x.P,
+                    x.Offset,
+                    Class1 = solutions2.a,
+                    Class2 = solutions2.b,
+                };
+            }).ToList();
 
 
 
@@ -1072,6 +1088,26 @@ namespace TestRunner
             var initWatch = Stopwatch.StartNew();
             var init = false;
             SetConnectionString();
+            var benchmarkSettings = new BenchmarkSettings();
+            if (config.Offline)
+            {
+                Log($"Running in offline mode - {config.OfflineFiilePath}");
+                Program.Config.Bind("Benchmark", benchmarkSettings);
+                if (!File.Exists(Path.Combine(AppContext.BaseDirectory, benchmarkSettings.FileName)))
+                {
+                    Log($"Downloading Benchmark file {benchmarkSettings.FileName}");
+                    benchmarkSettings.FileName = Path.Combine(AppContext.BaseDirectory, benchmarkSettings.FileName);
+                    var downloadWatch = Stopwatch.StartNew();
+                    using (var client = new WebClient())
+                    {
+                        client.DownloadFile(benchmarkSettings.Url, benchmarkSettings.FileName);
+                    }
+                    downloadWatch.Stop();
+                    Log($"Downloaded Benchmark file {benchmarkSettings.FileName} in {downloadWatch.Elapsed}");
+                }
+
+
+            }
 
             var startId = config.Start;
             int idx = 0;
@@ -1100,6 +1136,8 @@ namespace TestRunner
 
                 }
             };
+            if (config.Offline)
+                runProcessor = () => { };
 
             while (true)
             {
@@ -1121,22 +1159,95 @@ namespace TestRunner
                         //      .OrderBy(x => x.Id)
                         //      .Take(batchSize)
                         //      .ToList();
-                        using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
+                        if (config.Offline)
                         {
-                            string threadFilter = totalThreads > 1 ? $" and z.id % {totalThreads} = {Thread} " : string.Empty;
-                            string endFilter = config.End != int.MaxValue ? $" and z.id < {config.End} " : string.Empty;
-                            var query = $@"select top {batchSize} z.*, f.* from Factorizations z join CompositeFactors f on z.id=f.dbFactorizationId
+                            using (var sr = new StreamReader(Path.Combine(AppContext.BaseDirectory, config.OfflineFiilePath)))
+                            {
+                                while (!sr.EndOfStream)
+                                {
+                                    var line = sr.ReadLine();
+
+
+                                    if (string.IsNullOrWhiteSpace(line))
+                                        continue;
+                                    var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                                    if (parts.Length != 5)
+                                        continue;
+                                    if (!int.TryParse(parts[0], out int id))
+                                        continue;
+                                    if (id < startId)
+                                        continue;
+                                    if (id >= config.End)
+                                        break;
+                                    var n = parts[1];
+                                    if (n.Length < minDigits || n.Length > maxDigits)
+                                        continue;
+                                    if (!int.TryParse(parts[2], out int _type))
+                                        continue;
+                                    var type = (PrimalityType)(_type);
+                                    if (type != PrimalityType.Unknown && type != PrimalityType.Composite)
+                                        continue;
+                                    if (!int.TryParse(parts[3], out int tdiv))
+                                        continue;
+                                    if (tdiv >= effectiveDigits)
+                                        continue;
+                                    if (totalThreads > 1 && id % totalThreads != Thread)
+                                        continue;
+                                    var factor = parts[4];
+
+                                    var dbFactor = new DbFactor
+                                    {
+                                        Digits = factor.Length,
+                                        Bits = MathLib.BitLength(BigInteger.Parse(factor)),
+                                        P = factor,
+                                        Power = 1,
+                                        Type = PrimalityType.Unknown
+
+                                    };
+
+                                    var z = new DbFactorization
+                                    {
+                                        Digits = n.Length,
+                                        Bits = MathLib.BitLength(BigInteger.Parse(n)),
+                                        Id = id,
+                                        N = n,
+                                        Type = type,
+                                        TDiv = tdiv,
+                                        Factors = new List<DbFactor> { dbFactor }
+                                    };
+
+                                    if (!z.Factors.Any(x => x.Digits >= minDigits && x.Digits <= maxDigits))
+                                        continue;
+                                    if (z.TDiv >= effectiveDigits)
+                                        continue;
+                                    unFactored.Add(z);
+                                    if (unFactored.Count >= batchSize)
+                                        break;
+                                }
+                            }
+
+                        }
+
+
+                        else
+                        {
+                            using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
+                            {
+                                string threadFilter = totalThreads > 1 ? $" and z.id % {totalThreads} = {Thread} " : string.Empty;
+                                string endFilter = config.End != int.MaxValue ? $" and z.id < {config.End} " : string.Empty;
+                                var query = $@"select top {batchSize} z.*, f.* from Factorizations z join CompositeFactors f on z.id=f.dbFactorizationId
                                     where z.id>={startId} {threadFilter} {endFilter}
                                         and z.TDiv < {effectiveDigits} 
                                         and f.Digits >= {minDigits} and f.Digits <= {maxDigits} 
                                         and z.type < 1 and f.Type < 1 
                                     order by z.id
                                 ";
-                            unFactored = conn.Query<DbFactorization, DbFactor, DbFactorization>(query, (x, y) =>
-                            {
-                                x.Factors.Add(y);
-                                return x;
-                            }, splitOn: "Id").ToList();
+                                unFactored = conn.Query<DbFactorization, DbFactor, DbFactorization>(query, (x, y) =>
+                                {
+                                    x.Factors.Add(y);
+                                    return x;
+                                }, splitOn: "Id").ToList();
+                            }
                         }
                         break;
                     }
@@ -1212,6 +1323,50 @@ namespace TestRunner
 
                 };
 
+                if (config.Offline)
+                {
+                    processFactors = (dbFact, factored, thisfactorWatch) =>
+                    {
+                        var factString = factored.GetProduct().ToString();
+                        if (factored.Factors.Count > 1)
+                        {
+                            batchFactored++;
+                            factorCount++;
+                            factored.Factors.ForEach(x => x.FactorType = (MathLib.PrimalityType)(int)GmpInt.Primality(x.P));
+                            // recursively factor small composites less than 20 digits
+                            var composites = factored.Factors.Where(x => x.P.ToString().Length <= 20 && (x.FactorType != MathLib.PrimalityType.ProbablePrime && x.FactorType != MathLib.PrimalityType.Prime)).ToList();
+                            foreach (var c in composites)
+                            {
+                                thisfactorWatch.Start();
+                                using var subfac = FactorizationBigInteger.Factor(c.P, false, true);
+                                if (subfac.Factors.Count > 1)
+                                {
+                                    factored.Factors.Remove(c);
+                                    thisfactorWatch.Stop();
+                                    if (c.Power > 1)
+                                    {
+                                        Log($"Need to handle powers");
+                                    }
+                                    subfac.Factors.ForEach(x => x.FactorType = (MathLib.PrimalityType)(int)GmpInt.Primality(x.P));
+                                    factored.Add(subfac);
+                                }
+                                subfac.Dispose();
+                            }
+                            composites.Clear();
+                            composites = null;
+                            dbFact.Factors.RemoveAll(x => x.Digits >= minDigits && x.Digits <= maxDigits && (x.Type == PrimalityType.Unknown || x.Type == PrimalityType.Composite));
+                            dbFact.Factors.AddRange(factored.Factors.Select(x => new DbFactor
+                            {
+                                P = x.P.ToString(),
+                                Power = x.Power,
+                                Type = (PrimalityType)x.FactorType,
+                                Digits = x.P.ToString().Length,
+                                Bits = MathLib.BitLength(x.P)
+                            }));
+                            dbFact.Type = dbFact.Factors.All(x => x.Type == PrimalityType.ProbablePrime || x.Type == PrimalityType.Prime) ? PrimalityType.ProbablePrime : PrimalityType.Composite;
+                        }
+                    };
+                }
                 startId = unFactored.Max(x => x.Id) + 1;
                 var factorWatch = Stopwatch.StartNew();
                 List<int> tdivUpdates = new List<int>();
@@ -1371,16 +1526,34 @@ namespace TestRunner
 
                 }
                 factorWatch.Stop();
-                FactoringQueue.QueueFactors(l);
-                if (tdivUpdates.Any())
+                if (config.Offline)
                 {
-                    using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
+                    if (l.Any())
                     {
-                        var query = $"update Factorizations set TDiv={effectiveDigits} where Id in ({string.Join(",", tdivUpdates)})";
-                        conn.Execute(query);
+                        var filePath = config.OfflineFiilePath + $".{Thread}.factors.bat";
+                        var lines = l.Select(x => $"testrunner add {x.Item1} {x.Item2}").ToArray();
+                        File.AppendAllLines(filePath, lines);
+                    }
+                    if (tdivUpdates.Any())
+                    {
+                        var filePath = config.OfflineFiilePath + $".{Thread}.tdiv.bat";
+                        var lines = tdivUpdates.Select(x => $"testrunner tdiv {x} {effectiveDigits}").ToArray();
+                        File.AppendAllLines(filePath, lines);
+                    }
+
+                }
+                else
+                {
+                    FactoringQueue.QueueFactors(l);
+                    if (tdivUpdates.Any())
+                    {
+                        using (var conn = new SqlConnection(FactorDbContext.DbConnectionString))
+                        {
+                            var query = $"update Factorizations set TDiv={effectiveDigits} where Id in ({string.Join(",", tdivUpdates)})";
+                            conn.Execute(query);
+                        }
                     }
                 }
-
                 sw.Stop();
                 Log($"{Console.Title}");
                 Log($"{unFactored.Last().Id.ToString("N0")} Factored {batchFactored} of {unFactored.Count.ToString("N0")} factors in {sw.Elapsed} - factor {factorWatch.Elapsed} select {selectWatch.Elapsed}");
@@ -2131,17 +2304,17 @@ namespace TestRunner
                             dbFact.Factors.Remove(unfactor);
                             dtoWatch.Start();
                             dbFact.Factors.AddRange(factorization.Factors.Select(f =>
-                                    {
-                                        var result = new DbFactor
-                                        {
-                                            P = f.P.ToString(),
-                                            Power = f.Power,
-                                            Type = (PrimalityType)(int)f.FactorType,
-                                            Bits = MathLib.BitLength(f.P)
-                                        };
-                                        result.Digits = result.P.Length;
-                                        return result;
-                                    }
+                            {
+                                var result = new DbFactor
+                                {
+                                    P = f.P.ToString(),
+                                    Power = f.Power,
+                                    Type = (PrimalityType)(int)f.FactorType,
+                                    Bits = MathLib.BitLength(f.P)
+                                };
+                                result.Digits = result.P.Length;
+                                return result;
+                            }
                                 ));
                             dtoWatch.Stop();
                         }

@@ -48,6 +48,8 @@ namespace HigginsSoft.Math.Lib
         public int End { get; private set; } = int.MaxValue;
 
         static FactorConfig? commandLineConfig = null;
+        public bool Offline = false;
+        public string OfflineFiilePath = string.Empty;
         public static FactorConfig GetFromCommandArgs(List<string> args)
         {
             // copy the arguments to a new list
@@ -73,6 +75,20 @@ namespace HigginsSoft.Math.Lib
                 if (idx < argCopy.Count - 1 && int.TryParse(argCopy[idx + 1], out var digits))
                 {
                     commandLineConfig.Digits = digits;
+                    // remove the args from the list
+                    argCopy.RemoveAt(idx + 1);
+                    argCopy.RemoveAt(idx);
+
+                }
+            }
+
+            if (argCopy.Contains("offline", StringComparer.OrdinalIgnoreCase))
+            {
+                idx = argCopy.Select(x => x.ToLower()).ToList().IndexOf("offline");
+                if (idx < argCopy.Count - 1)
+                {
+                    commandLineConfig.Offline = true;
+                    commandLineConfig.OfflineFiilePath = argCopy[idx + 1];
                     // remove the args from the list
                     argCopy.RemoveAt(idx + 1);
                     argCopy.RemoveAt(idx);
