@@ -80,6 +80,12 @@ namespace TestRunner
                 JobManager.UpdateProgress();
                 return;
             }
+            if (args.Any(x => x == "setjob"))
+            {
+                SetJobTemplate(args);
+                return;
+            }
+
             if (args.Any(x => x == "runjobs"))
             {
                 RunJobs();
@@ -448,6 +454,25 @@ namespace TestRunner
 
         }
 
+        private static void SetJobTemplate(string[] args)
+        {
+            //testrunner setjobs 1 12 
+            Console.WriteLine($"[{DateTime.Now}] Setting Job Template");
+            var client = int.Parse(args[1]);
+            var clients = int.Parse(args[2]);
+            var jobsSize = Environment.ProcessorCount;
+            var threads = clients * jobsSize;
+            var jsonFilePath = Path.Combine(Path.GetFullPath("."), "job-template.json");
+
+            var template = JsonSerializer.Deserialize<JobTemplate>(File.ReadAllText(jsonFilePath));
+            template.Threads = threads;
+            template.StartThread = (client-1) * jobsSize;
+            template.EndThread = (client * jobsSize) - 1;
+            template.JobStart = DateTime.Now.ToString();
+            File.WriteAllText(jsonFilePath, JsonSerializer.Serialize(template, new JsonSerializerOptions { WriteIndented = true }));
+
+        }
+
         static void RunSplitEcm(string[] args)
         {
 
@@ -563,6 +588,7 @@ namespace TestRunner
             public int Threads { get; set; } = 0;
             public int StartThread { get; set; } = 0;
             public int EndThread { get; set; } = 0;
+            public string JobStart { get; set; } = DateTime.Now.ToString();
         }
     }
 
