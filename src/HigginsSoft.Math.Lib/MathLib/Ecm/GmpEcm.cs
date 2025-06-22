@@ -1460,6 +1460,7 @@ namespace HigginsSoft.Math.Lib
                 {
                     throw new ArgumentOutOfRangeException($"ProcessorIndex {idx} is out of range. Must be between >0)");
                 }
+                Console.WriteLine("Setting Processor Affinity to " + idx + " from " + config.ProcessorIndex);
                 process.ProcessorAffinity = (IntPtr)(1L << idx);
                 process.PriorityClass = priority;
                 //Console.WriteLine($"Set process {process.Id} affinity to processor " + config.ProcessorIndex.Value);
