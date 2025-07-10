@@ -718,42 +718,71 @@ namespace TestRunner
         internal static void ProcessBatchFiles()
         {
             Console.WriteLine($"[{DateTime.Now}] Processing batch files");
-            var di= new DirectoryInfo(AppContext.BaseDirectory);
-            var divBats = Directory.GetFiles(di.FullName, "*.tdiv.bat");
-            Console.WriteLine($"[{DateTime.Now}] Found {divBats.Length} tdiv files");
-            var factorBats = Directory.GetFiles(di.FullName, "*.factors.bat");
-            Console.WriteLine($"[{DateTime.Now}] Found {factorBats.Length} fact files");
-            {
-                var divUpdates = divBats.SelectMany(x => File.ReadAllLines(x))
-                    .Where(x => !string.IsNullOrWhiteSpace(x))
-                    .Select(x => $"update factorizations set tdiv={x.Trim().Split(' ')[3]} where id={x.Trim().Split(' ')[2]}")
-                    .Distinct()
-                    .ToList();
-                File.WriteAllLines("tdiv.sql", divUpdates);
-            }
-            var factorUpdates = factorBats.SelectMany(x => File.ReadAllLines(x))
-                 .Where(x => !string.IsNullOrWhiteSpace(x))
-                 .Select(x => $"({x.Trim().Split(' ')[2]}, GetDate() ,0, '{x.Trim().Split(' ')[3]}')")
-                 .Distinct()
-                 .ToList();
+            var di = new DirectoryInfo(@"Z:\Benchmark");
+            var opts = new EnumerationOptions { RecurseSubdirectories = true };
 
-            var template = @$"
-INSERT INTO [dbo].[FactorQueue]
-(FactorizationId, [CreatedAt]
-,[Processed]
-,[Prime]
-)
-VALUES
-";
-            // insert 1000 at a time.
-            var sb = new StringBuilder();
-            for(var i=0; i < factorUpdates.Count; i += 1000)
             {
-                var batch = factorUpdates.Skip(i).Take(1000).ToList();
-                sb.AppendLine(template + string.Join(",\r\n", batch) + ";");
-              
+                var divBats = Directory.GetFiles(di.FullName, "*.tdiv.bat", opts);
+                Console.WriteLine($"[{DateTime.Now}] Found {divBats.Length} tdiv files");
+                var dest = Path.Combine(di.FullName, "tdiv.txt");
+                if (File.Exists(dest))
+                    File.Delete(dest);
+                int count = 0;
+                int fileCount = 0;
+                using (var sw = new StreamWriter(dest))
+                {
+                    foreach (var file in divBats)
+                    {
+                        var rows = File.ReadAllLines(file)
+                            .Where(x => !string.IsNullOrWhiteSpace(x))
+                            .Select(x => new { id = x.Trim().Split(' ')[2], tdiv = x.Trim().Split(' ')[3] })
+                            .ToList();
+                        fileCount++;
+                        Console.Title = $"[{DateTime.Now}] Merging {fileCount} of {divBats.Length} facts";
+                        foreach (var row in rows)
+                        {
+                            count++;
+                            sw.WriteLine($"{row.id} {row.tdiv}");
+                        }
+
+                    }
+                    sw.Close();
+                    Console.WriteLine($"[{DateTime.Now}] Merged {count} tdiv benchmarks to {dest}");
+                }
             }
-            File.WriteAllText("factors.sql", sb.ToString());
+
+            {
+                var factorBats = Directory.GetFiles(di.FullName, "*.factors.bat", opts);
+                Console.WriteLine($"[{DateTime.Now}] Found {factorBats.Length} fact files");
+
+                var dest = Path.Combine(di.FullName, "fact.txt");
+                if (File.Exists(dest))
+                    File.Delete(dest);
+
+                int count = 0;
+                int fileCount = 0;
+                using (var sw = new StreamWriter(dest))
+                {
+                    foreach (var file in factorBats)
+                    {
+                        var rows = File.ReadAllLines(file)
+                            .Where(x => !string.IsNullOrWhiteSpace(x))
+                            .Select(x => new { id = x.Trim().Split(' ')[2], p = x.Trim().Split(' ')[3] })
+                            .ToList();
+                        fileCount++;
+                        Console.Title= $"[{DateTime.Now}] Merging {fileCount} of {factorBats.Length} facts";
+                        foreach (var row in rows)
+                        {
+                            count++;
+                            sw.WriteLine($"{row.id} {row.p}");
+                        }
+
+                    
+                    }
+                    sw.Close();
+                    Console.WriteLine($"[{DateTime.Now}] Merged {count} facts to {dest}");
+                }
+            }
 
         }
     }
